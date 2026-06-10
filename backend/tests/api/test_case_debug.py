@@ -13,3 +13,5 @@ def test_debug_fixture_case_returns_report() -> None:
     assert body["case_id"] == "handwrite233"
     assert body["status"] == "needs_human_review"
     assert "baseline_replay" in body["planned_experiments"]
+    assert body["experiment_summary"]["total_trials"] == 6
+    assert body["experiment_summary"]["success_count"] == 0
