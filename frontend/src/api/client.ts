@@ -44,6 +44,13 @@ export type BatchDebugJobResponse = {
   rejected_case_ids: string[];
 };
 
+export type WorkerStatus = {
+  running: boolean;
+  processed_count: number;
+  error_count: number;
+  last_error: string | null;
+};
+
 export type ExperimentEvidence = {
   evidence_id: string;
   step_name: string;
@@ -89,6 +96,30 @@ export async function fetchJobStatus(jobId: string): Promise<DebugJobStatus> {
     throw new Error(`Failed to fetch debug job ${jobId}: ${response.status}`);
   }
   return (await response.json()) as DebugJobStatus;
+}
+
+export async function fetchWorkerStatus(): Promise<WorkerStatus> {
+  const response = await fetch("/api/worker/status");
+  if (!response.ok) {
+    throw new Error(`Failed to fetch worker status: ${response.status}`);
+  }
+  return (await response.json()) as WorkerStatus;
+}
+
+export async function startWorker(): Promise<WorkerStatus> {
+  const response = await fetch("/api/worker/start", { method: "POST" });
+  if (!response.ok) {
+    throw new Error(`Failed to start worker: ${response.status}`);
+  }
+  return (await response.json()) as WorkerStatus;
+}
+
+export async function stopWorker(): Promise<WorkerStatus> {
+  const response = await fetch("/api/worker/stop", { method: "POST" });
+  if (!response.ok) {
+    throw new Error(`Failed to stop worker: ${response.status}`);
+  }
+  return (await response.json()) as WorkerStatus;
 }
 
 export async function fetchEvidenceDetail(

@@ -136,4 +136,55 @@ describe("App", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1");
     expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-2");
   });
+
+  it("starts, polls, and stops the worker from the UI", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            running: true,
+            processed_count: 0,
+            error_count: 0,
+            last_error: null
+          }),
+          { status: 202, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            running: true,
+            processed_count: 1,
+            error_count: 0,
+            last_error: null
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            running: false,
+            processed_count: 1,
+            error_count: 0,
+            last_error: null
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Start worker" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/worker/start", { method: "POST" });
+    expect(await screen.findByText("Worker running：true")).toBeInTheDocument();
+    expect(await screen.findByText("Worker processed：1", {}, { timeout: 500 })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Stop worker" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/worker/stop", { method: "POST" });
+    expect(await screen.findByText("Worker running：false")).toBeInTheDocument();
+    expect(screen.getByText("Worker errors：0")).toBeInTheDocument();
+  });
 });

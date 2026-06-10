@@ -4,12 +4,16 @@ import {
   type BatchDebugJobResponse,
   fetchEvidenceDetail,
   fetchJobStatus,
+  fetchWorkerStatus,
+  startWorker,
   submitBatchDebugJobs,
   submitDebugJob,
+  stopWorker,
   type DebugJobStatus,
   type DebugReport,
   type ExperimentEvidence,
-  type SubmittedDebugJob
+  type SubmittedDebugJob,
+  type WorkerStatus
 } from "../api/client";
 import { CaseDetail } from "../cases/CaseDetail";
 import { EvidenceDetail } from "../evidence/EvidenceDetail";
@@ -24,6 +28,7 @@ export function App() {
   const [batchCaseIds, setBatchCaseIds] = useState("");
   const [batchResult, setBatchResult] = useState<BatchDebugJobResponse | null>(null);
   const [batchJobStatuses, setBatchJobStatuses] = useState<Record<string, DebugJobStatus | SubmittedDebugJob>>({});
+  const [workerStatus, setWorkerStatus] = useState<WorkerStatus | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<ExperimentEvidence | null>(null);
   const [error, setError] = useState<string>("");
 
@@ -67,6 +72,22 @@ export function App() {
     return () => window.clearTimeout(timeoutId);
   }, [batchJobStatuses]);
 
+  useEffect(() => {
+    if (!workerStatus?.running) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      fetchWorkerStatus()
+        .then(setWorkerStatus)
+        .catch((caught: unknown) => {
+          setError(caught instanceof Error ? caught.message : "Unknown error");
+        });
+    }, 100);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [workerStatus]);
+
   async function submitJob() {
     setError("");
     try {
@@ -94,6 +115,24 @@ export function App() {
     }
   }
 
+  async function startWorkerLoop() {
+    setError("");
+    try {
+      setWorkerStatus(await startWorker());
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
+  async function stopWorkerLoop() {
+    setError("");
+    try {
+      setWorkerStatus(await stopWorker());
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
   async function selectEvidence(evidenceId: string) {
     if (!report) {
       return;
@@ -112,6 +151,23 @@ export function App() {
       <button type="button" onClick={submitJob}>
         Submit debug job
       </button>
+      <section>
+        <h2>Worker</h2>
+        <button type="button" onClick={startWorkerLoop}>
+          Start worker
+        </button>
+        <button type="button" onClick={stopWorkerLoop}>
+          Stop worker
+        </button>
+        {workerStatus ? (
+          <>
+            <p>Worker running：{String(workerStatus.running)}</p>
+            <p>Worker processed：{workerStatus.processed_count}</p>
+            <p>Worker errors：{workerStatus.error_count}</p>
+            {workerStatus.last_error ? <p role="alert">Worker error：{workerStatus.last_error}</p> : null}
+          </>
+        ) : null}
+      </section>
       <section>
         <h2>Batch Jobs</h2>
         <label htmlFor="batch-case-ids">Batch case ids</label>
