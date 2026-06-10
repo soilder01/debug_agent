@@ -12,13 +12,12 @@ from debug_agent.jobs.worker import AsyncJobWorker, AsyncJobWorkerStatus
 from debug_agent.models.fake import FakeModelAdapter
 from debug_agent.reports.generator import DebugReport, generate_initial_report
 from debug_agent.settings import DebugAgentSettings
-from debug_agent.storage.database import create_sqlite_session_factory
-from debug_agent.storage.models import Base
+from debug_agent.storage.database import create_sqlite_session_factory, ensure_database_schema
 from debug_agent.storage.repository import DebugJobRepository
 
 settings = DebugAgentSettings.from_env()
 session_factory, engine = create_sqlite_session_factory(settings.database_url)
-Base.metadata.create_all(engine)
+ensure_database_schema(engine)
 job_repository = DebugJobRepository(session_factory)
 job_service = DebugJobService(job_repository)
 job_worker = AsyncJobWorker(job_service)

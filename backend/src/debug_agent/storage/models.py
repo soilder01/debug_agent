@@ -19,8 +19,8 @@ class DebugJobRow(Base):
 class EvidenceRow(Base):
     __tablename__ = "evidence"
 
+    job_id: Mapped[str] = mapped_column(String(80), primary_key=True)
     evidence_id: Mapped[str] = mapped_column(String(200), primary_key=True)
-    job_id: Mapped[str] = mapped_column(String(80), index=True)
     case_id: Mapped[str] = mapped_column(String(120), index=True)
     step_name: Mapped[str] = mapped_column(String(120), index=True)
     trial: Mapped[int] = mapped_column(Integer)

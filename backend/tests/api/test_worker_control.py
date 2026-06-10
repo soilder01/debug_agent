@@ -54,7 +54,7 @@ def test_worker_start_consumes_submitted_debug_job() -> None:
     start_response = client.post("/worker/start")
     wait_until(
         lambda: (status := client.get(f"/jobs/{job_id}").json())["status"] == "completed"
-        and len(status["evidence_ids"]) > 0
+        and len(status["evidence_ids"]) == 6
     )
     stop_response = client.post("/worker/stop")
 
@@ -64,5 +64,5 @@ def test_worker_start_consumes_submitted_debug_job() -> None:
     assert stop_response.status_code == 200
     assert status_response.json()["status"] == "completed"
     assert status_response.json()["attempt_count"] == 1
-    assert len(status_response.json()["evidence_ids"]) > 0
+    assert len(status_response.json()["evidence_ids"]) == 6
     assert worker_status["processed_count"] >= 1

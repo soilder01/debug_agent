@@ -2,7 +2,11 @@ from pathlib import Path
 
 from debug_agent.experiments.runner import ExperimentEvidence
 from debug_agent.judging.runner import JudgeResult
-from debug_agent.storage.database import create_sqlite_memory_session_factory, create_sqlite_session_factory
+from debug_agent.storage.database import (
+    create_sqlite_memory_session_factory,
+    create_sqlite_session_factory,
+    ensure_database_schema,
+)
 from debug_agent.storage.models import Base, DebugJobRow, EvidenceRow
 from debug_agent.storage.repository import DebugJobRepository
 
@@ -30,7 +34,9 @@ def test_storage_tables_can_be_created() -> None:
 
     with session_factory() as session:
         assert session.get(DebugJobRow, "job-1").status == "created"
-        assert session.get(EvidenceRow, "evidence-1").step_name == "baseline"
+        row = session.get(EvidenceRow, ("job-1", "evidence-1"))
+        assert row is not None
+        assert row.step_name == "baseline"
 
 
 def test_sqlite_file_session_factory_persists_rows_between_sessions() -> None:
@@ -150,3 +156,90 @@ def test_repository_releases_running_job_for_retry() -> None:
     assert job.status == "created"
     assert job.attempt_count == 1
     assert job.error_message == "transient model error"
+
+
+def test_repository_keeps_same_evidence_ids_for_different_jobs() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    evidence = ExperimentEvidence(
+        evidence_id="case-1:baseline:0",
+        step_name="baseline",
+        trial=0,
+        raw_output="{\"answers\":[]}",
+        judge=JudgeResult(score=0, reasons=["box 1 mismatch"]),
+    )
+
+    repository.create_job(job_id="job-1", case_id="case-1")
+    repository.create_job(job_id="job-2", case_id="case-1")
+    repository.save_evidence(job_id="job-1", case_id="case-1", evidence=[evidence])
+    repository.save_evidence(job_id="job-2", case_id="case-1", evidence=[evidence])
+
+    assert repository.list_evidence_ids("job-1") == ["case-1:baseline:0"]
+    assert repository.list_evidence_ids("job-2") == ["case-1:baseline:0"]
+
+
+def test_database_schema_migrates_legacy_global_evidence_primary_key() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            """
+            CREATE TABLE evidence (
+                evidence_id VARCHAR(200) NOT NULL PRIMARY KEY,
+                job_id VARCHAR(80) NOT NULL,
+                case_id VARCHAR(120) NOT NULL,
+                step_name VARCHAR(120) NOT NULL,
+                trial INTEGER NOT NULL,
+                score INTEGER NOT NULL,
+                reasons_json TEXT NOT NULL,
+                raw_output TEXT NOT NULL
+            )
+            """
+        )
+        connection.exec_driver_sql(
+            """
+            INSERT INTO evidence (
+                evidence_id,
+                job_id,
+                case_id,
+                step_name,
+                trial,
+                score,
+                reasons_json,
+                raw_output
+            )
+            VALUES (
+                'case-1:baseline:0',
+                'job-1',
+                'case-1',
+                'baseline',
+                0,
+                0,
+                '[]',
+                '{"answers":[]}'
+            )
+            """
+        )
+
+    ensure_database_schema(engine)
+
+    with session_factory() as session:
+        legacy_row = session.get(EvidenceRow, ("job-1", "case-1:baseline:0"))
+        session.add(
+            EvidenceRow(
+                job_id="job-2",
+                evidence_id="case-1:baseline:0",
+                case_id="case-1",
+                step_name="baseline",
+                trial=0,
+                score=1,
+                reasons_json="[]",
+                raw_output="{\"answers\":[]}",
+            )
+        )
+        session.commit()
+
+    with session_factory() as session:
+        assert legacy_row is not None
+        assert session.get(EvidenceRow, ("job-1", "case-1:baseline:0")) is not None
+        assert session.get(EvidenceRow, ("job-2", "case-1:baseline:0")) is not None

@@ -1,6 +1,6 @@
 from collections.abc import Callable
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -17,3 +17,47 @@ def create_sqlite_session_factory(database_url: str) -> tuple[Callable[[], Sessi
 
 def create_sqlite_memory_session_factory() -> tuple[Callable[[], Session], Engine]:
     return create_sqlite_session_factory("sqlite+pysqlite:///:memory:")
+
+
+def ensure_database_schema(engine: Engine) -> None:
+    from debug_agent.storage.models import Base, EvidenceRow
+
+    inspector = inspect(engine)
+    has_legacy_evidence_table = False
+    if "evidence" in inspector.get_table_names():
+        primary_key = inspector.get_pk_constraint("evidence").get("constrained_columns", [])
+        has_legacy_evidence_table = primary_key == ["evidence_id"]
+
+    if has_legacy_evidence_table:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE evidence RENAME TO evidence_legacy_global_pk"))
+            Base.metadata.tables[EvidenceRow.__tablename__].create(bind=connection)
+            connection.execute(
+                text(
+                    """
+                    INSERT INTO evidence (
+                        job_id,
+                        evidence_id,
+                        case_id,
+                        step_name,
+                        trial,
+                        score,
+                        reasons_json,
+                        raw_output
+                    )
+                    SELECT
+                        job_id,
+                        evidence_id,
+                        case_id,
+                        step_name,
+                        trial,
+                        score,
+                        reasons_json,
+                        raw_output
+                    FROM evidence_legacy_global_pk
+                    """
+                )
+            )
+            connection.execute(text("DROP TABLE evidence_legacy_global_pk"))
+
+    Base.metadata.create_all(engine)
