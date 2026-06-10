@@ -28,7 +28,10 @@ export function App() {
       {report ? (
         <>
           <CaseDetail caseId={report.case_id} status={report.status} />
-          <ExperimentTimeline experiments={report.planned_experiments} />
+          <ExperimentTimeline
+            experiments={report.planned_experiments}
+            summary={report.experiment_summary}
+          />
           <ReportPanel report={report} />
         </>
       ) : (

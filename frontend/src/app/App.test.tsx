@@ -21,6 +21,11 @@ describe("App", () => {
             affected_box_ids: [1]
           },
           planned_experiments: ["baseline_replay"],
+          experiment_summary: {
+            total_trials: 6,
+            success_count: 0,
+            evidence_ids: ["handwrite233:baseline_replay:0"]
+          },
           root_cause: {
             label: "erasure_revision_failure",
             confidence: "medium",
@@ -37,6 +42,7 @@ describe("App", () => {
 
     expect(await screen.findByText("样本 ID：handwrite233")).toBeInTheDocument();
     expect(screen.getByText("baseline_replay")).toBeInTheDocument();
+    expect(screen.getByText(/成功次数：0 \/ 6/)).toBeInTheDocument();
     expect(screen.getByText(/类型：\s*erasure_revision_failure/)).toBeInTheDocument();
   });
 });
