@@ -1,0 +1,22 @@
+services:
+  backend:
+    image: python:3.11-slim
+    working_dir: /app/backend
+    volumes:
+      - .:/app
+    command: sh -c "pip install -e .[dev] && uvicorn debug_agent.main:app --host 0.0.0.0 --port 8000 --reload"
+    ports:
+      - "8000:8000"
+    environment:
+      DEBUG_AGENT_DATABASE_URL: sqlite:///./debug_agent.db
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app/frontend
+    volumes:
+      - .:/app
+    command: sh -c "corepack enable && pnpm install && pnpm dev --host 0.0.0.0"
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
