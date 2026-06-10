@@ -1,5 +1,6 @@
 import pytest
 
+from debug_agent.cases.fixtures import load_fixture_case
 from debug_agent.jobs.service import DebugJobService
 from debug_agent.storage.database import create_sqlite_memory_session_factory
 from debug_agent.storage.models import Base
@@ -79,3 +80,17 @@ async def test_job_service_marks_job_failed_when_attempts_exhausted() -> None:
     assert job.attempt_count == 1
     assert job.error_message is not None
     assert "missing-case" in job.error_message
+
+
+def test_job_service_submits_imported_case_from_repository() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    service = DebugJobService(repository)
+    case = load_fixture_case("handwrite233").model_copy(update={"case_id": "imported-1"})
+    repository.save_case(case)
+
+    submitted = service.submit_case_debug("imported-1")
+
+    assert submitted.case_id == "imported-1"
+    assert submitted.status == "created"

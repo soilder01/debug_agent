@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from debug_agent.artifacts.store import artifact_store
 from debug_agent.cases.fixtures import load_fixture_case
+from debug_agent.cases.models import DebugCase
 from debug_agent.experiments.planner import plan_experiments
 from debug_agent.experiments.runner import run_experiments
 from debug_agent.models.fake import FakeModelAdapter
@@ -22,7 +23,7 @@ class DebugJobService:
         self._max_attempts = max_attempts
 
     def submit_case_debug(self, case_id: str) -> SubmittedDebugJob:
-        case = load_fixture_case(case_id)
+        case = self._load_case(case_id)
         job_id = str(uuid4())
         self._repository.create_job(job_id=job_id, case_id=case.case_id)
         return SubmittedDebugJob(job_id=job_id, case_id=case.case_id, status="created")
@@ -45,7 +46,7 @@ class DebugJobService:
         if job is None:
             raise KeyError(f"Debug job not found: {job_id}")
         try:
-            case = load_fixture_case(job.case_id)
+            case = self._load_case(job.case_id)
             plan = plan_experiments(case)
             adapter = FakeModelAdapter(outputs=[prediction.raw_output for prediction in case.predictions])
             run_result = await run_experiments(case=case, plan=plan, adapter=adapter)
@@ -64,3 +65,9 @@ class DebugJobService:
                 self._repository.mark_failed(job_id, str(exc))
             raise
         return SubmittedDebugJob(job_id=job_id, case_id=job.case_id, status="completed")
+
+    def _load_case(self, case_id: str) -> DebugCase:
+        imported_case = self._repository.get_case(case_id)
+        if imported_case is not None:
+            return imported_case
+        return load_fixture_case(case_id)

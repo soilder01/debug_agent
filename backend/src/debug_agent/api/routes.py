@@ -1,10 +1,12 @@
+import json
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from debug_agent.artifacts.store import artifact_store
 from debug_agent.cases.fixtures import load_fixture_case
+from debug_agent.cases.models import DebugCase
 from debug_agent.experiments.planner import plan_experiments
 from debug_agent.experiments.runner import ExperimentEvidence, run_experiments
 from debug_agent.jobs.service import DebugJobService, SubmittedDebugJob
@@ -41,6 +43,22 @@ class BatchDebugJobRequest(BaseModel):
 class BatchDebugJobResponse(BaseModel):
     jobs: list[SubmittedDebugJob]
     rejected_case_ids: list[str]
+
+
+class JsonlImportRequest(BaseModel):
+    jsonl: str
+    create_jobs: bool = True
+
+
+class JsonlRejectedLine(BaseModel):
+    line_number: int
+    error_message: str
+
+
+class JsonlImportResponse(BaseModel):
+    imported_case_ids: list[str]
+    jobs: list[SubmittedDebugJob]
+    rejected_lines: list[JsonlRejectedLine]
 
 
 @router.get("/health")
@@ -95,6 +113,25 @@ def submit_batch_debug_jobs(request: BatchDebugJobRequest) -> BatchDebugJobRespo
         except FileNotFoundError:
             rejected_case_ids.append(case_id)
     return BatchDebugJobResponse(jobs=jobs, rejected_case_ids=rejected_case_ids)
+
+
+@router.post("/imports/jsonl", status_code=202)
+def import_jsonl_cases(request: JsonlImportRequest) -> JsonlImportResponse:
+    imported_case_ids: list[str] = []
+    jobs: list[SubmittedDebugJob] = []
+    rejected_lines: list[JsonlRejectedLine] = []
+    for line_number, line in enumerate(request.jsonl.splitlines(), start=1):
+        if not line.strip():
+            continue
+        try:
+            case = DebugCase.model_validate(json.loads(line))
+            job_repository.save_case(case)
+            imported_case_ids.append(case.case_id)
+            if request.create_jobs:
+                jobs.append(job_service.submit_case_debug(case.case_id))
+        except (json.JSONDecodeError, ValidationError, FileNotFoundError) as exc:
+            rejected_lines.append(JsonlRejectedLine(line_number=line_number, error_message=str(exc)))
+    return JsonlImportResponse(imported_case_ids=imported_case_ids, jobs=jobs, rejected_lines=rejected_lines)
 
 
 @router.post("/jobs/run-next")

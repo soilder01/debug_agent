@@ -5,8 +5,9 @@ from collections.abc import Callable
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from debug_agent.cases.models import DebugCase
 from debug_agent.experiments.runner import ExperimentEvidence
-from debug_agent.storage.models import DebugJobRow, EvidenceRow
+from debug_agent.storage.models import DebugCaseRow, DebugJobRow, EvidenceRow
 
 
 class DebugJobRepository:
@@ -19,6 +20,20 @@ class DebugJobRepository:
             with self._session_factory() as session:
                 session.add(DebugJobRow(job_id=job_id, case_id=case_id, status="created"))
                 session.commit()
+
+    def save_case(self, case: DebugCase) -> None:
+        with self._lock:
+            with self._session_factory() as session:
+                session.merge(DebugCaseRow(case_id=case.case_id, case_json=case.model_dump_json()))
+                session.commit()
+
+    def get_case(self, case_id: str) -> DebugCase | None:
+        with self._lock:
+            with self._session_factory() as session:
+                row = session.get(DebugCaseRow, case_id)
+                if row is None:
+                    return None
+                return DebugCase.model_validate_json(row.case_json)
 
     def mark_running(self, job_id: str) -> None:
         self._set_status(job_id, "running")

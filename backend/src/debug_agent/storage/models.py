@@ -16,6 +16,13 @@ class DebugJobRow(Base):
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+class DebugCaseRow(Base):
+    __tablename__ = "debug_cases"
+
+    case_id: Mapped[str] = mapped_column(String(120), primary_key=True)
+    case_json: Mapped[str] = mapped_column(Text)
+
+
 class EvidenceRow(Base):
     __tablename__ = "evidence"
 
