@@ -1,0 +1,20 @@
+import json
+from pathlib import Path
+
+from debug_agent.cases.models import DebugCase
+from debug_agent.experiments.planner import plan_experiments
+
+
+def test_plan_experiments_for_low_score_case() -> None:
+    fixture_path = Path(__file__).parents[1] / "fixtures" / "handwrite233.json"
+    case = DebugCase.model_validate(json.loads(fixture_path.read_text(encoding="utf-8")))
+
+    plan = plan_experiments(case)
+
+    assert plan.case_id == "handwrite233"
+    assert plan.max_model_calls == 10
+    assert [step.name for step in plan.steps] == [
+        "baseline_replay",
+        "strict_prompt_replay",
+        "localized_observation_request",
+    ]
