@@ -16,3 +16,7 @@ The default live model family is configured through environment variables. Do no
 - Never print keys in logs, reports, frontend payloads, or test fixtures.
 - Unit tests must use deterministic fake adapters and must not require live API access.
 - Live model calls belong in integration tests or manually approved debug jobs.
+
+## Integration Test Policy
+
+Live Seed model calls are never part of unit tests or default CI. They must be run through explicitly named integration commands after confirming `ARK_API_KEY` is available in the local environment.
