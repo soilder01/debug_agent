@@ -59,7 +59,7 @@ export async function debugFixtureCase(caseId: string): Promise<DebugReport> {
 }
 
 export async function submitDebugJob(caseId: string): Promise<SubmittedDebugJob> {
-  const response = await fetch(`/api/cases/${caseId}/debug-jobs`, { method: "POST" });
+  const response = await fetch(`/api/cases/${caseId}/debug-jobs?auto_run=true`, { method: "POST" });
   if (!response.ok) {
     throw new Error(`Failed to submit debug job for case ${caseId}: ${response.status}`);
   }

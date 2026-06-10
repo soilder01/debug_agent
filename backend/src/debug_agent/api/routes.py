@@ -65,9 +65,12 @@ async def debug_case(case_id: str) -> DebugReport:
 
 
 @router.post("/cases/{case_id}/debug-jobs", status_code=202)
-def submit_debug_job(case_id: str) -> SubmittedDebugJob:
+async def submit_debug_job(case_id: str, auto_run: bool = False) -> SubmittedDebugJob:
     try:
-        return job_service.submit_case_debug(case_id)
+        submitted = job_service.submit_case_debug(case_id)
+        if auto_run:
+            await job_service.run_job(submitted.job_id)
+        return submitted
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
