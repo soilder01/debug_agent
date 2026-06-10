@@ -80,4 +80,60 @@ describe("App", () => {
     expect(await screen.findByText("批量创建：1")).toBeInTheDocument();
     expect(screen.getByText("拒绝：missing-case")).toBeInTheDocument();
   });
+
+  it("polls and renders statuses for batch debug jobs", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jobs: [
+              { job_id: "job-1", case_id: "handwrite233", status: "created" },
+              { job_id: "job-2", case_id: "handwrite233", status: "created" }
+            ],
+            rejected_case_ids: []
+          }),
+          { status: 202, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            job_id: "job-1",
+            case_id: "handwrite233",
+            status: "completed",
+            attempt_count: 1,
+            error_message: null,
+            evidence_ids: ["handwrite233:baseline_replay:0"]
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            job_id: "job-2",
+            case_id: "handwrite233",
+            status: "failed",
+            attempt_count: 2,
+            error_message: "fixture failed",
+            evidence_ids: []
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+
+    render(<App />);
+    await userEvent.type(screen.getByLabelText("Batch case ids"), "handwrite233 handwrite233");
+    await userEvent.click(screen.getByRole("button", { name: "Submit batch jobs" }));
+
+    expect(await screen.findByText("批量创建：2")).toBeInTheDocument();
+    expect(screen.getByText("job-1：created")).toBeInTheDocument();
+    expect(screen.getByText("job-2：created")).toBeInTheDocument();
+    expect(await screen.findByText("job-1：completed", {}, { timeout: 500 })).toBeInTheDocument();
+    expect(await screen.findByText("job-2：failed", {}, { timeout: 500 })).toBeInTheDocument();
+    expect(screen.getByText("job-2 错误：fixture failed")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1");
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-2");
+  });
 });

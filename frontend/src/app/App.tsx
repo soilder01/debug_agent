@@ -23,6 +23,7 @@ export function App() {
   const [jobStatus, setJobStatus] = useState<DebugJobStatus | null>(null);
   const [batchCaseIds, setBatchCaseIds] = useState("");
   const [batchResult, setBatchResult] = useState<BatchDebugJobResponse | null>(null);
+  const [batchJobStatuses, setBatchJobStatuses] = useState<Record<string, DebugJobStatus | SubmittedDebugJob>>({});
   const [selectedEvidence, setSelectedEvidence] = useState<ExperimentEvidence | null>(null);
   const [error, setError] = useState<string>("");
 
@@ -43,6 +44,29 @@ export function App() {
     return () => window.clearTimeout(timeoutId);
   }, [jobStatus, submittedJob]);
 
+  useEffect(() => {
+    const pendingJobs = Object.values(batchJobStatuses).filter(
+      (job) => job.status !== "completed" && job.status !== "failed"
+    );
+    if (pendingJobs.length === 0) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      for (const job of pendingJobs) {
+        fetchJobStatus(job.job_id)
+          .then((status) => {
+            setBatchJobStatuses((current) => ({ ...current, [status.job_id]: status }));
+          })
+          .catch((caught: unknown) => {
+            setError(caught instanceof Error ? caught.message : "Unknown error");
+          });
+      }
+    }, 100);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [batchJobStatuses]);
+
   async function submitJob() {
     setError("");
     try {
@@ -62,7 +86,9 @@ export function App() {
       .map((caseId) => caseId.trim())
       .filter(Boolean);
     try {
-      setBatchResult(await submitBatchDebugJobs(caseIds));
+      const result = await submitBatchDebugJobs(caseIds);
+      setBatchResult(result);
+      setBatchJobStatuses(Object.fromEntries(result.jobs.map((job) => [job.job_id, job])));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
     }
@@ -101,6 +127,18 @@ export function App() {
           <>
             <p>批量创建：{batchResult.jobs.length}</p>
             <p>拒绝：{batchResult.rejected_case_ids.join(", ") || "无"}</p>
+            {Object.values(batchJobStatuses).length > 0 ? (
+              <ul aria-label="Batch job statuses">
+                {Object.values(batchJobStatuses).map((job) => (
+                  <li key={job.job_id}>
+                    <span>
+                      {job.job_id}：{job.status}
+                    </span>
+                    {job.error_message ? <span> {job.job_id} 错误：{job.error_message}</span> : null}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </>
         ) : null}
       </section>
