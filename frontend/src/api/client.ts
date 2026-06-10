@@ -62,6 +62,17 @@ export type JsonlImportResponse = {
   rejected_lines: JsonlRejectedLine[];
 };
 
+export type CsvRejectedRow = {
+  row_number: number;
+  error_message: string;
+};
+
+export type CsvImportResponse = {
+  imported_case_ids: string[];
+  jobs: SubmittedDebugJob[];
+  rejected_rows: CsvRejectedRow[];
+};
+
 export type ExperimentEvidence = {
   evidence_id: string;
   step_name: string;
@@ -111,6 +122,18 @@ export async function importJsonlCases(jsonl: string, createJobs = true): Promis
     throw new Error(`Failed to import JSONL cases: ${response.status}`);
   }
   return (await response.json()) as JsonlImportResponse;
+}
+
+export async function importCsvCases(csvText: string, createJobs = true): Promise<CsvImportResponse> {
+  const response = await fetch("/api/imports/csv", {
+    body: JSON.stringify({ csv_text: csvText, create_jobs: createJobs }),
+    headers: { "Content-Type": "application/json" },
+    method: "POST"
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to import CSV cases: ${response.status}`);
+  }
+  return (await response.json()) as CsvImportResponse;
 }
 
 export async function fetchJobStatus(jobId: string): Promise<DebugJobStatus> {

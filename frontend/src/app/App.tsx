@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 
 import {
   type BatchDebugJobResponse,
+  type CsvImportResponse,
   fetchEvidenceDetail,
   fetchJobStatus,
   fetchWorkerStatus,
+  importCsvCases,
   importJsonlCases,
   type JsonlImportResponse,
   startWorker,
@@ -32,6 +34,8 @@ export function App() {
   const [batchJobStatuses, setBatchJobStatuses] = useState<Record<string, DebugJobStatus | SubmittedDebugJob>>({});
   const [jsonlCases, setJsonlCases] = useState("");
   const [jsonlImportResult, setJsonlImportResult] = useState<JsonlImportResponse | null>(null);
+  const [csvCases, setCsvCases] = useState("");
+  const [csvImportResult, setCsvImportResult] = useState<CsvImportResponse | null>(null);
   const [workerStatus, setWorkerStatus] = useState<WorkerStatus | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<ExperimentEvidence | null>(null);
   const [error, setError] = useState<string>("");
@@ -140,6 +144,18 @@ export function App() {
     }
   }
 
+  async function importCsv() {
+    setError("");
+    try {
+      const result = await importCsvCases(csvCases);
+      setCsvImportResult(result);
+      setBatchResult({ jobs: result.jobs, rejected_case_ids: [] });
+      setBatchJobStatuses(Object.fromEntries(result.jobs.map((job) => [job.job_id, job])));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
   async function stopWorkerLoop() {
     setError("");
     try {
@@ -204,6 +220,31 @@ export function App() {
                 ? "无"
                 : jsonlImportResult.rejected_lines
                     .map((line) => `${line.line_number}:${line.error_message}`)
+                    .join(", ")}
+            </p>
+          </>
+        ) : null}
+      </section>
+      <section>
+        <h2>CSV Import</h2>
+        <label htmlFor="csv-cases">CSV cases</label>
+        <textarea
+          id="csv-cases"
+          value={csvCases}
+          onChange={(event) => setCsvCases(event.target.value)}
+        />
+        <button type="button" onClick={importCsv}>
+          Import CSV cases
+        </button>
+        {csvImportResult ? (
+          <>
+            <p>CSV 导入样本：{csvImportResult.imported_case_ids.length}</p>
+            <p>
+              CSV 导入拒绝：
+              {csvImportResult.rejected_rows.length === 0
+                ? "无"
+                : csvImportResult.rejected_rows
+                    .map((row) => `${row.row_number}:${row.error_message}`)
                     .join(", ")}
             </p>
           </>

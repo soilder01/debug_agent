@@ -291,4 +291,32 @@ describe("App", () => {
     expect(screen.getByText("批量创建：1")).toBeInTheDocument();
     expect(screen.getByText("job-imported-1：created")).toBeInTheDocument();
   });
+
+  it("imports CSV cases and renders created jobs in the batch area", async () => {
+    const csvText = "case_id,image_uri,prompt,golden_answer_json,scoring_standard,predictions_json,avg_score\n";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          imported_case_ids: ["csv-import-1"],
+          jobs: [{ job_id: "job-csv-1", case_id: "csv-import-1", status: "created" }],
+          rejected_rows: []
+        }),
+        { status: 202, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    render(<App />);
+    fireEvent.change(screen.getByLabelText("CSV cases"), { target: { value: csvText } });
+    await userEvent.click(screen.getByRole("button", { name: "Import CSV cases" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/imports/csv", {
+      body: JSON.stringify({ csv_text: csvText, create_jobs: true }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST"
+    });
+    expect(await screen.findByText("CSV 导入样本：1")).toBeInTheDocument();
+    expect(screen.getByText("CSV 导入拒绝：无")).toBeInTheDocument();
+    expect(screen.getByText("批量创建：1")).toBeInTheDocument();
+    expect(screen.getByText("job-csv-1：created")).toBeInTheDocument();
+  });
 });
