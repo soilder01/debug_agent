@@ -187,4 +187,80 @@ describe("App", () => {
     expect(await screen.findByText("Worker running：false")).toBeInTheDocument();
     expect(screen.getByText("Worker errors：0")).toBeInTheDocument();
   });
+
+  it("starts the worker from the batch section and renders batch progress", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jobs: [
+              { job_id: "job-1", case_id: "handwrite233", status: "created" },
+              { job_id: "job-2", case_id: "handwrite233", status: "created" }
+            ],
+            rejected_case_ids: []
+          }),
+          { status: 202, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            running: true,
+            processed_count: 0,
+            error_count: 0,
+            last_error: null
+          }),
+          { status: 202, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            job_id: "job-1",
+            case_id: "handwrite233",
+            status: "completed",
+            attempt_count: 1,
+            error_message: null,
+            evidence_ids: ["handwrite233:baseline_replay:0"]
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            job_id: "job-2",
+            case_id: "handwrite233",
+            status: "running",
+            attempt_count: 1,
+            error_message: null,
+            evidence_ids: []
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            running: true,
+            processed_count: 1,
+            error_count: 0,
+            last_error: null
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+
+    render(<App />);
+    await userEvent.type(screen.getByLabelText("Batch case ids"), "handwrite233 handwrite233");
+    await userEvent.click(screen.getByRole("button", { name: "Submit batch jobs" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Start worker for batch" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/worker/start", { method: "POST" });
+    expect(await screen.findByText("批量进度：0/2")).toBeInTheDocument();
+    expect(await screen.findByText("批量进度：1/2", {}, { timeout: 500 })).toBeInTheDocument();
+    expect(screen.getByText("Worker running：true")).toBeInTheDocument();
+    expect(await screen.findByText("Worker processed：1", {}, { timeout: 500 })).toBeInTheDocument();
+  });
 });

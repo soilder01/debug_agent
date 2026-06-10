@@ -31,6 +31,8 @@ export function App() {
   const [workerStatus, setWorkerStatus] = useState<WorkerStatus | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<ExperimentEvidence | null>(null);
   const [error, setError] = useState<string>("");
+  const batchJobs = Object.values(batchJobStatuses);
+  const completedBatchJobs = batchJobs.filter((job) => job.status === "completed").length;
 
   useEffect(() => {
     const currentJob = jobStatus ?? submittedJob;
@@ -50,9 +52,7 @@ export function App() {
   }, [jobStatus, submittedJob]);
 
   useEffect(() => {
-    const pendingJobs = Object.values(batchJobStatuses).filter(
-      (job) => job.status !== "completed" && job.status !== "failed"
-    );
+    const pendingJobs = batchJobs.filter((job) => job.status !== "completed" && job.status !== "failed");
     if (pendingJobs.length === 0) {
       return;
     }
@@ -183,9 +183,15 @@ export function App() {
           <>
             <p>批量创建：{batchResult.jobs.length}</p>
             <p>拒绝：{batchResult.rejected_case_ids.join(", ") || "无"}</p>
-            {Object.values(batchJobStatuses).length > 0 ? (
+            <p>
+              批量进度：{completedBatchJobs}/{batchResult.jobs.length}
+            </p>
+            <button type="button" onClick={startWorkerLoop}>
+              Start worker for batch
+            </button>
+            {batchJobs.length > 0 ? (
               <ul aria-label="Batch job statuses">
-                {Object.values(batchJobStatuses).map((job) => (
+                {batchJobs.map((job) => (
                   <li key={job.job_id}>
                     <span>
                       {job.job_id}：{job.status}
