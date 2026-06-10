@@ -24,6 +24,7 @@ class ExperimentSummary(BaseModel):
 
 
 class DebugReport(BaseModel):
+    job_id: str | None = None
     case_id: str
     status: str
     observed_failure: ObservedFailure
@@ -37,6 +38,7 @@ def generate_initial_report(
     case: DebugCase,
     plan: ExperimentPlan,
     run_result: ExperimentRunResult | None = None,
+    job_id: str | None = None,
 ) -> DebugReport:
     experiment_summary = None
     if run_result is not None:
@@ -46,6 +48,7 @@ def generate_initial_report(
             evidence_ids=[evidence.evidence_id for evidence in run_result.evidence],
         )
     return DebugReport(
+        job_id=job_id,
         case_id=case.case_id,
         status="needs_human_review",
         observed_failure=ObservedFailure(

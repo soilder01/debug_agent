@@ -1,25 +1,29 @@
 import { useState } from "react";
 
 import {
-  debugFixtureCase,
   fetchEvidenceDetail,
+  submitDebugJob,
   type DebugReport,
-  type ExperimentEvidence
+  type ExperimentEvidence,
+  type SubmittedDebugJob
 } from "../api/client";
 import { CaseDetail } from "../cases/CaseDetail";
 import { EvidenceDetail } from "../evidence/EvidenceDetail";
 import { ExperimentTimeline } from "../experiments/ExperimentTimeline";
+import { JobStatusPanel } from "../jobs/JobStatusPanel";
 import { ReportPanel } from "../reports/ReportPanel";
 
 export function App() {
   const [report, setReport] = useState<DebugReport | null>(null);
+  const [submittedJob, setSubmittedJob] = useState<SubmittedDebugJob | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<ExperimentEvidence | null>(null);
   const [error, setError] = useState<string>("");
 
-  async function runDebug() {
+  async function submitJob() {
     setError("");
     try {
-      setReport(await debugFixtureCase("handwrite233"));
+      setSubmittedJob(await submitDebugJob("handwrite233"));
+      setReport(null);
       setSelectedEvidence(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
@@ -41,13 +45,14 @@ export function App() {
   return (
     <main>
       <h1>Handwriting OCR Debug Agent</h1>
-      <button type="button" onClick={runDebug}>
-        Run single-case debug
+      <button type="button" onClick={submitJob}>
+        Submit debug job
       </button>
       {error ? <p role="alert">{error}</p> : null}
+      {submittedJob ? <JobStatusPanel job={submittedJob} /> : null}
       {report ? (
         <>
-          <CaseDetail caseId={report.case_id} status={report.status} />
+          <CaseDetail jobId={report.job_id} caseId={report.case_id} status={report.status} />
           <ExperimentTimeline
             experiments={report.planned_experiments}
             summary={report.experiment_summary}
@@ -56,7 +61,7 @@ export function App() {
           <EvidenceDetail evidence={selectedEvidence} />
           <ReportPanel report={report} />
         </>
-      ) : (
+      ) : submittedJob ? null : (
         <p>点击按钮运行第一条可验证 debug 闭环。</p>
       )}
     </main>

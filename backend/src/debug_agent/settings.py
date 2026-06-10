@@ -3,6 +3,19 @@ import os
 from pydantic import BaseModel, SecretStr
 
 
+class DebugAgentSettings(BaseModel):
+    database_url: str = "sqlite+pysqlite:///:memory:"
+
+    @classmethod
+    def from_env(cls) -> "DebugAgentSettings":
+        return cls(
+            database_url=os.environ.get(
+                "DEBUG_AGENT_DATABASE_URL",
+                cls.model_fields["database_url"].default,
+            )
+        )
+
+
 class ArkSettings(BaseModel):
     api_key: SecretStr
     base_url: str = "https://ark-cn-beijing.bytedance.net/api/v3"
