@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -262,5 +262,33 @@ describe("App", () => {
     expect(await screen.findByText("批量进度：1/2", {}, { timeout: 500 })).toBeInTheDocument();
     expect(screen.getByText("Worker running：true")).toBeInTheDocument();
     expect(await screen.findByText("Worker processed：1", {}, { timeout: 500 })).toBeInTheDocument();
+  });
+
+  it("imports JSONL cases and renders created jobs in the batch area", async () => {
+    const jsonl = "{\"case_id\":\"imported-jsonl-1\"}";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          imported_case_ids: ["imported-jsonl-1"],
+          jobs: [{ job_id: "job-imported-1", case_id: "imported-jsonl-1", status: "created" }],
+          rejected_lines: []
+        }),
+        { status: 202, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    render(<App />);
+    fireEvent.change(screen.getByLabelText("JSONL cases"), { target: { value: jsonl } });
+    await userEvent.click(screen.getByRole("button", { name: "Import JSONL cases" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/imports/jsonl", {
+      body: JSON.stringify({ jsonl, create_jobs: true }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST"
+    });
+    expect(await screen.findByText("导入样本：1")).toBeInTheDocument();
+    expect(screen.getByText("导入拒绝：无")).toBeInTheDocument();
+    expect(screen.getByText("批量创建：1")).toBeInTheDocument();
+    expect(screen.getByText("job-imported-1：created")).toBeInTheDocument();
   });
 });

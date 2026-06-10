@@ -51,6 +51,17 @@ export type WorkerStatus = {
   last_error: string | null;
 };
 
+export type JsonlRejectedLine = {
+  line_number: number;
+  error_message: string;
+};
+
+export type JsonlImportResponse = {
+  imported_case_ids: string[];
+  jobs: SubmittedDebugJob[];
+  rejected_lines: JsonlRejectedLine[];
+};
+
 export type ExperimentEvidence = {
   evidence_id: string;
   step_name: string;
@@ -88,6 +99,18 @@ export async function submitBatchDebugJobs(caseIds: string[]): Promise<BatchDebu
     throw new Error(`Failed to submit batch debug jobs: ${response.status}`);
   }
   return (await response.json()) as BatchDebugJobResponse;
+}
+
+export async function importJsonlCases(jsonl: string, createJobs = true): Promise<JsonlImportResponse> {
+  const response = await fetch("/api/imports/jsonl", {
+    body: JSON.stringify({ jsonl, create_jobs: createJobs }),
+    headers: { "Content-Type": "application/json" },
+    method: "POST"
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to import JSONL cases: ${response.status}`);
+  }
+  return (await response.json()) as JsonlImportResponse;
 }
 
 export async function fetchJobStatus(jobId: string): Promise<DebugJobStatus> {

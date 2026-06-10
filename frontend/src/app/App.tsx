@@ -5,6 +5,8 @@ import {
   fetchEvidenceDetail,
   fetchJobStatus,
   fetchWorkerStatus,
+  importJsonlCases,
+  type JsonlImportResponse,
   startWorker,
   submitBatchDebugJobs,
   submitDebugJob,
@@ -28,6 +30,8 @@ export function App() {
   const [batchCaseIds, setBatchCaseIds] = useState("");
   const [batchResult, setBatchResult] = useState<BatchDebugJobResponse | null>(null);
   const [batchJobStatuses, setBatchJobStatuses] = useState<Record<string, DebugJobStatus | SubmittedDebugJob>>({});
+  const [jsonlCases, setJsonlCases] = useState("");
+  const [jsonlImportResult, setJsonlImportResult] = useState<JsonlImportResponse | null>(null);
   const [workerStatus, setWorkerStatus] = useState<WorkerStatus | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<ExperimentEvidence | null>(null);
   const [error, setError] = useState<string>("");
@@ -124,6 +128,18 @@ export function App() {
     }
   }
 
+  async function importJsonl() {
+    setError("");
+    try {
+      const result = await importJsonlCases(jsonlCases);
+      setJsonlImportResult(result);
+      setBatchResult({ jobs: result.jobs, rejected_case_ids: [] });
+      setBatchJobStatuses(Object.fromEntries(result.jobs.map((job) => [job.job_id, job])));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
   async function stopWorkerLoop() {
     setError("");
     try {
@@ -165,6 +181,31 @@ export function App() {
             <p>Worker processed：{workerStatus.processed_count}</p>
             <p>Worker errors：{workerStatus.error_count}</p>
             {workerStatus.last_error ? <p role="alert">Worker error：{workerStatus.last_error}</p> : null}
+          </>
+        ) : null}
+      </section>
+      <section>
+        <h2>JSONL Import</h2>
+        <label htmlFor="jsonl-cases">JSONL cases</label>
+        <textarea
+          id="jsonl-cases"
+          value={jsonlCases}
+          onChange={(event) => setJsonlCases(event.target.value)}
+        />
+        <button type="button" onClick={importJsonl}>
+          Import JSONL cases
+        </button>
+        {jsonlImportResult ? (
+          <>
+            <p>导入样本：{jsonlImportResult.imported_case_ids.length}</p>
+            <p>
+              导入拒绝：
+              {jsonlImportResult.rejected_lines.length === 0
+                ? "无"
+                : jsonlImportResult.rejected_lines
+                    .map((line) => `${line.line_number}:${line.error_message}`)
+                    .join(", ")}
+            </p>
           </>
         ) : null}
       </section>
