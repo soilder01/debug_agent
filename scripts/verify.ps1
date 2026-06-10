@@ -19,10 +19,12 @@ function Run-Step($Name, $Command, $WorkingDirectory) {
 
 if ($Target -eq "test" -or $Target -eq "all") {
   Run-Step "backend tests" "python -m pytest -q" "backend"
+  Run-Step "frontend tests" "npx --yes pnpm@9.15.4 test -- --run" "frontend"
 }
 
 if ($Target -eq "lint" -or $Target -eq "all") {
   Run-Step "backend lint" "python -m ruff check src tests" "backend"
+  Run-Step "frontend lint" "npx --yes pnpm@9.15.4 lint" "frontend"
 }
 
 if ($Target -eq "typecheck" -or $Target -eq "all") {
