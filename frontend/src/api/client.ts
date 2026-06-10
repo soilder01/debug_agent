@@ -20,10 +20,32 @@ export type DebugReport = {
   suggested_sheet_fields: Record<string, string>;
 };
 
+export type ExperimentEvidence = {
+  evidence_id: string;
+  step_name: string;
+  trial: number;
+  raw_output: string;
+  judge: {
+    score: number;
+    reasons: string[];
+  };
+};
+
 export async function debugFixtureCase(caseId: string): Promise<DebugReport> {
   const response = await fetch(`/api/cases/${caseId}/debug`, { method: "POST" });
   if (!response.ok) {
     throw new Error(`Failed to debug case ${caseId}: ${response.status}`);
   }
   return (await response.json()) as DebugReport;
+}
+
+export async function fetchEvidenceDetail(
+  caseId: string,
+  evidenceId: string
+): Promise<ExperimentEvidence> {
+  const response = await fetch(`/api/cases/${caseId}/evidence/${encodeURIComponent(evidenceId)}`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch evidence ${evidenceId}: ${response.status}`);
+  }
+  return (await response.json()) as ExperimentEvidence;
 }

@@ -1,18 +1,38 @@
 import { useState } from "react";
 
-import { debugFixtureCase, type DebugReport } from "../api/client";
+import {
+  debugFixtureCase,
+  fetchEvidenceDetail,
+  type DebugReport,
+  type ExperimentEvidence
+} from "../api/client";
 import { CaseDetail } from "../cases/CaseDetail";
+import { EvidenceDetail } from "../evidence/EvidenceDetail";
 import { ExperimentTimeline } from "../experiments/ExperimentTimeline";
 import { ReportPanel } from "../reports/ReportPanel";
 
 export function App() {
   const [report, setReport] = useState<DebugReport | null>(null);
+  const [selectedEvidence, setSelectedEvidence] = useState<ExperimentEvidence | null>(null);
   const [error, setError] = useState<string>("");
 
   async function runDebug() {
     setError("");
     try {
       setReport(await debugFixtureCase("handwrite233"));
+      setSelectedEvidence(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
+  async function selectEvidence(evidenceId: string) {
+    if (!report) {
+      return;
+    }
+    setError("");
+    try {
+      setSelectedEvidence(await fetchEvidenceDetail(report.case_id, evidenceId));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
     }
@@ -31,7 +51,9 @@ export function App() {
           <ExperimentTimeline
             experiments={report.planned_experiments}
             summary={report.experiment_summary}
+            onSelectEvidence={selectEvidence}
           />
+          <EvidenceDetail evidence={selectedEvidence} />
           <ReportPanel report={report} />
         </>
       ) : (
