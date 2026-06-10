@@ -8,6 +8,7 @@ from debug_agent.cases.fixtures import load_fixture_case
 from debug_agent.experiments.planner import plan_experiments
 from debug_agent.experiments.runner import ExperimentEvidence, run_experiments
 from debug_agent.jobs.service import DebugJobService, SubmittedDebugJob
+from debug_agent.jobs.worker import AsyncJobWorker, AsyncJobWorkerStatus
 from debug_agent.models.fake import FakeModelAdapter
 from debug_agent.reports.generator import DebugReport, generate_initial_report
 from debug_agent.settings import DebugAgentSettings
@@ -20,6 +21,7 @@ session_factory, engine = create_sqlite_session_factory(settings.database_url)
 Base.metadata.create_all(engine)
 job_repository = DebugJobRepository(session_factory)
 job_service = DebugJobService(job_repository)
+job_worker = AsyncJobWorker(job_service)
 
 router = APIRouter()
 
@@ -99,6 +101,23 @@ def submit_batch_debug_jobs(request: BatchDebugJobRequest) -> BatchDebugJobRespo
 @router.post("/jobs/run-next")
 async def run_next_job() -> SubmittedDebugJob | None:
     return await job_service.run_next_job()
+
+
+@router.get("/worker/status")
+def get_worker_status() -> AsyncJobWorkerStatus:
+    return job_worker.status()
+
+
+@router.post("/worker/start", status_code=202)
+async def start_worker() -> AsyncJobWorkerStatus:
+    job_worker.start()
+    return job_worker.status()
+
+
+@router.post("/worker/stop")
+async def stop_worker() -> AsyncJobWorkerStatus:
+    await job_worker.stop()
+    return job_worker.status()
 
 
 @router.get("/jobs/{job_id}")

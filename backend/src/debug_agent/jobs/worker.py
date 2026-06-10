@@ -1,4 +1,5 @@
 import asyncio
+import threading
 
 from pydantic import BaseModel
 
@@ -16,24 +17,25 @@ class AsyncJobWorker:
     def __init__(self, service: DebugJobService, idle_sleep_seconds: float = 0.1) -> None:
         self._service = service
         self._idle_sleep_seconds = idle_sleep_seconds
-        self._task: asyncio.Task[None] | None = None
-        self._stop_requested = False
+        self._thread: threading.Thread | None = None
+        self._stop_requested = threading.Event()
         self._processed_count = 0
         self._error_count = 0
         self._last_error: str | None = None
 
     def start(self) -> bool:
-        if self._task is not None and not self._task.done():
+        if self._thread is not None and self._thread.is_alive():
             return False
-        self._stop_requested = False
-        self._task = asyncio.create_task(self._run())
+        self._stop_requested.clear()
+        self._thread = threading.Thread(target=self._run_in_thread, daemon=True)
+        self._thread.start()
         return True
 
     async def stop(self) -> None:
-        self._stop_requested = True
-        if self._task is None:
+        self._stop_requested.set()
+        if self._thread is None:
             return
-        await self._task
+        await asyncio.to_thread(self._thread.join)
 
     async def tick(self) -> None:
         try:
@@ -47,13 +49,16 @@ class AsyncJobWorker:
 
     def status(self) -> AsyncJobWorkerStatus:
         return AsyncJobWorkerStatus(
-            running=self._task is not None and not self._task.done(),
+            running=self._thread is not None and self._thread.is_alive(),
             processed_count=self._processed_count,
             error_count=self._error_count,
             last_error=self._last_error,
         )
 
+    def _run_in_thread(self) -> None:
+        asyncio.run(self._run())
+
     async def _run(self) -> None:
-        while not self._stop_requested:
+        while not self._stop_requested.is_set():
             await self.tick()
             await asyncio.sleep(self._idle_sleep_seconds)
