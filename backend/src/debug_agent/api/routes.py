@@ -9,6 +9,7 @@ from debug_agent.cases.fixtures import load_fixture_case
 from debug_agent.cases.models import DebugCase
 from debug_agent.experiments.planner import plan_experiments
 from debug_agent.experiments.runner import ExperimentEvidence, run_experiments
+from debug_agent.imports.csv_cases import CsvRejectedRow, parse_csv_cases
 from debug_agent.jobs.service import DebugJobService, SubmittedDebugJob
 from debug_agent.jobs.worker import AsyncJobWorker, AsyncJobWorkerStatus
 from debug_agent.models.fake import FakeModelAdapter
@@ -59,6 +60,17 @@ class JsonlImportResponse(BaseModel):
     imported_case_ids: list[str]
     jobs: list[SubmittedDebugJob]
     rejected_lines: list[JsonlRejectedLine]
+
+
+class CsvImportRequest(BaseModel):
+    csv_text: str
+    create_jobs: bool = True
+
+
+class CsvImportResponse(BaseModel):
+    imported_case_ids: list[str]
+    jobs: list[SubmittedDebugJob]
+    rejected_rows: list[CsvRejectedRow]
 
 
 @router.get("/health")
@@ -132,6 +144,23 @@ def import_jsonl_cases(request: JsonlImportRequest) -> JsonlImportResponse:
         except (json.JSONDecodeError, ValidationError, FileNotFoundError) as exc:
             rejected_lines.append(JsonlRejectedLine(line_number=line_number, error_message=str(exc)))
     return JsonlImportResponse(imported_case_ids=imported_case_ids, jobs=jobs, rejected_lines=rejected_lines)
+
+
+@router.post("/imports/csv", status_code=202)
+def import_csv_cases(request: CsvImportRequest) -> CsvImportResponse:
+    parse_result = parse_csv_cases(request.csv_text)
+    imported_case_ids: list[str] = []
+    jobs: list[SubmittedDebugJob] = []
+    for case in parse_result.cases:
+        job_repository.save_case(case)
+        imported_case_ids.append(case.case_id)
+        if request.create_jobs:
+            jobs.append(job_service.submit_case_debug(case.case_id))
+    return CsvImportResponse(
+        imported_case_ids=imported_case_ids,
+        jobs=jobs,
+        rejected_rows=parse_result.rejected_rows,
+    )
 
 
 @router.post("/jobs/run-next")
