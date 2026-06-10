@@ -7,6 +7,7 @@ type JobStatusPanelProps = {
 export function JobStatusPanel({ job }: JobStatusPanelProps) {
   const attemptCount = job.attempt_count ?? 0;
   const errorMessage = job.error_message ?? "";
+  const evidenceCount = job.evidence_ids?.length ?? 0;
   return (
     <section>
       <h2>Job Status</h2>
@@ -14,6 +15,7 @@ export function JobStatusPanel({ job }: JobStatusPanelProps) {
       <p>样本 ID：{job.case_id}</p>
       <p>状态：{job.status}</p>
       <p>尝试次数：{attemptCount}</p>
+      <p>证据数：{evidenceCount}</p>
       {errorMessage ? <p role="alert">错误：{errorMessage}</p> : null}
     </section>
   );

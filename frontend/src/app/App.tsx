@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   fetchEvidenceDetail,
+  fetchJobStatus,
   submitDebugJob,
+  type DebugJobStatus,
   type DebugReport,
   type ExperimentEvidence,
   type SubmittedDebugJob
@@ -16,13 +18,32 @@ import { ReportPanel } from "../reports/ReportPanel";
 export function App() {
   const [report, setReport] = useState<DebugReport | null>(null);
   const [submittedJob, setSubmittedJob] = useState<SubmittedDebugJob | null>(null);
+  const [jobStatus, setJobStatus] = useState<DebugJobStatus | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<ExperimentEvidence | null>(null);
   const [error, setError] = useState<string>("");
+
+  useEffect(() => {
+    const currentJob = jobStatus ?? submittedJob;
+    if (!currentJob || currentJob.status === "completed" || currentJob.status === "failed") {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      fetchJobStatus(currentJob.job_id)
+        .then(setJobStatus)
+        .catch((caught: unknown) => {
+          setError(caught instanceof Error ? caught.message : "Unknown error");
+        });
+    }, 100);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [jobStatus, submittedJob]);
 
   async function submitJob() {
     setError("");
     try {
       setSubmittedJob(await submitDebugJob("handwrite233"));
+      setJobStatus(null);
       setReport(null);
       setSelectedEvidence(null);
     } catch (caught) {
@@ -49,7 +70,7 @@ export function App() {
         Submit debug job
       </button>
       {error ? <p role="alert">{error}</p> : null}
-      {submittedJob ? <JobStatusPanel job={submittedJob} /> : null}
+      {submittedJob ? <JobStatusPanel job={jobStatus ?? submittedJob} /> : null}
       {report ? (
         <>
           <CaseDetail jobId={report.job_id} caseId={report.case_id} status={report.status} />
