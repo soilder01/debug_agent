@@ -33,6 +33,15 @@ class DebugJobStatus(BaseModel):
     evidence_ids: list[str]
 
 
+class BatchDebugJobRequest(BaseModel):
+    case_ids: list[str]
+
+
+class BatchDebugJobResponse(BaseModel):
+    jobs: list[SubmittedDebugJob]
+    rejected_case_ids: list[str]
+
+
 @router.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "debug-agent-backend"}
@@ -73,6 +82,18 @@ async def submit_debug_job(case_id: str, auto_run: bool = False) -> SubmittedDeb
         return submitted
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/debug-jobs/batch", status_code=202)
+def submit_batch_debug_jobs(request: BatchDebugJobRequest) -> BatchDebugJobResponse:
+    jobs: list[SubmittedDebugJob] = []
+    rejected_case_ids: list[str] = []
+    for case_id in request.case_ids:
+        try:
+            jobs.append(job_service.submit_case_debug(case_id))
+        except FileNotFoundError:
+            rejected_case_ids.append(case_id)
+    return BatchDebugJobResponse(jobs=jobs, rejected_case_ids=rejected_case_ids)
 
 
 @router.post("/jobs/run-next")
