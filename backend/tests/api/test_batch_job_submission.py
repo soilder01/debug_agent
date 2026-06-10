@@ -21,3 +21,7 @@ def test_batch_debug_job_submission_creates_jobs_and_reports_rejections() -> Non
     status_response = client.get(f"/jobs/{job_id}")
     assert status_response.status_code == 200
     assert status_response.json()["status"] == "created"
+
+    worker_response = client.post("/jobs/run-next")
+    assert worker_response.status_code == 200
+    assert worker_response.json()["job_id"] == job_id

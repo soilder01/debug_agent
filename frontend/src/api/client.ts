@@ -39,6 +39,11 @@ export type DebugJobStatus = {
   evidence_ids: string[];
 };
 
+export type BatchDebugJobResponse = {
+  jobs: SubmittedDebugJob[];
+  rejected_case_ids: string[];
+};
+
 export type ExperimentEvidence = {
   evidence_id: string;
   step_name: string;
@@ -64,6 +69,18 @@ export async function submitDebugJob(caseId: string): Promise<SubmittedDebugJob>
     throw new Error(`Failed to submit debug job for case ${caseId}: ${response.status}`);
   }
   return (await response.json()) as SubmittedDebugJob;
+}
+
+export async function submitBatchDebugJobs(caseIds: string[]): Promise<BatchDebugJobResponse> {
+  const response = await fetch("/api/debug-jobs/batch", {
+    body: JSON.stringify({ case_ids: caseIds }),
+    headers: { "Content-Type": "application/json" },
+    method: "POST"
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to submit batch debug jobs: ${response.status}`);
+  }
+  return (await response.json()) as BatchDebugJobResponse;
 }
 
 export async function fetchJobStatus(jobId: string): Promise<DebugJobStatus> {

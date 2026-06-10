@@ -1,10 +1,11 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "./App";
 
 afterEach(() => {
+  cleanup();
   vi.restoreAllMocks();
 });
 
@@ -54,5 +55,29 @@ describe("App", () => {
     expect(screen.getByText("尝试次数：1")).toBeInTheDocument();
     expect(screen.getByText("证据数：1")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-123");
+  });
+
+  it("submits batch debug jobs and renders the batch summary", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          jobs: [{ job_id: "job-123", case_id: "handwrite233", status: "created" }],
+          rejected_case_ids: ["missing-case"]
+        }),
+        { status: 202, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    render(<App />);
+    await userEvent.type(screen.getByLabelText("Batch case ids"), "handwrite233\nmissing-case");
+    await userEvent.click(screen.getByRole("button", { name: "Submit batch jobs" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/debug-jobs/batch", {
+      body: JSON.stringify({ case_ids: ["handwrite233", "missing-case"] }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST"
+    });
+    expect(await screen.findByText("批量创建：1")).toBeInTheDocument();
+    expect(screen.getByText("拒绝：missing-case")).toBeInTheDocument();
   });
 });
