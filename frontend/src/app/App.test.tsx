@@ -285,7 +285,7 @@ describe("App", () => {
     await userEvent.click(screen.getByRole("button", { name: "Load debug jobs" }));
 
     expect(fetchMock).toHaveBeenCalledWith("/api/jobs");
-    expect(await screen.findByText("批量创建：1")).toBeInTheDocument();
+    expect(await screen.findByText("队列任务：1")).toBeInTheDocument();
     expect(screen.getByText("job-history-1：failed")).toBeInTheDocument();
     expect(screen.getByText("job-history-1 错误：fixture failed")).toBeInTheDocument();
     expect(screen.getByText("job-history-1 建议：重试预算已耗尽")).toBeInTheDocument();
@@ -336,6 +336,7 @@ describe("App", () => {
     await userEvent.click(screen.getByRole("button", { name: "Load failed jobs" }));
 
     expect(fetchMock).toHaveBeenCalledWith("/api/jobs?status=failed");
+    expect(await screen.findByText("失败任务：1")).toBeInTheDocument();
     expect(await screen.findByText("job-failed-1：failed")).toBeInTheDocument();
     expect(screen.getByText("job-failed-1 建议：重试预算已耗尽")).toBeInTheDocument();
   });
