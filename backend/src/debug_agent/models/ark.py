@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 
+from debug_agent.models.adapters import ModelResponse
 from debug_agent.settings import ArkSettings
 
 
@@ -26,3 +27,7 @@ class ArkModelAdapter:
                 "messages": [{"role": "user", "content": content}],
             },
         )
+
+    async def generate(self, prompt: str, image_uri: str) -> ModelResponse:
+        del prompt, image_uri
+        raise NotImplementedError("Live Ark generation is not enabled yet")

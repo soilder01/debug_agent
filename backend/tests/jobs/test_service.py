@@ -1,7 +1,9 @@
 import pytest
 
 from debug_agent.cases.fixtures import load_fixture_case
+from debug_agent.cases.models import DebugCase
 from debug_agent.jobs.service import DebugJobService
+from debug_agent.models.fake import FakeModelAdapter
 from debug_agent.storage.database import create_sqlite_memory_session_factory
 from debug_agent.storage.models import Base
 from debug_agent.storage.repository import DebugJobRepository
@@ -94,3 +96,24 @@ def test_job_service_submits_imported_case_from_repository() -> None:
 
     assert submitted.case_id == "imported-1"
     assert submitted.status == "created"
+
+
+@pytest.mark.asyncio
+async def test_job_service_uses_injected_model_provider() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    selected_case_ids: list[str] = []
+
+    def model_provider(case: DebugCase) -> FakeModelAdapter:
+        selected_case_ids.append(case.case_id)
+        return FakeModelAdapter(outputs=[case.predictions[0].raw_output], model_name="injected")
+
+    service = DebugJobService(repository, model_provider=model_provider)
+    submitted = service.submit_case_debug("handwrite233")
+
+    await service.run_next_job()
+
+    assert selected_case_ids == ["handwrite233"]
+    evidence_ids = repository.list_evidence_ids(submitted.job_id)
+    assert len(evidence_ids) == 6

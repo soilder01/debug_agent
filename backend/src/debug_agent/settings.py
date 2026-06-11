@@ -16,6 +16,19 @@ class DebugAgentSettings(BaseModel):
         )
 
 
+class ModelRuntimeSettings(BaseModel):
+    provider: str = "fake"
+
+    @classmethod
+    def from_env(cls) -> "ModelRuntimeSettings":
+        return cls(
+            provider=os.environ.get(
+                "DEBUG_AGENT_MODEL_PROVIDER",
+                cls.model_fields["provider"].default,
+            )
+        )
+
+
 class ArkSettings(BaseModel):
     api_key: SecretStr
     base_url: str = "https://ark-cn-beijing.bytedance.net/api/v3"

@@ -1,4 +1,5 @@
 from uuid import uuid4
+from collections.abc import Callable
 
 from pydantic import BaseModel
 
@@ -7,7 +8,8 @@ from debug_agent.cases.fixtures import load_fixture_case
 from debug_agent.cases.models import DebugCase
 from debug_agent.experiments.planner import plan_experiments
 from debug_agent.experiments.runner import run_experiments
-from debug_agent.models.fake import FakeModelAdapter
+from debug_agent.models.adapters import ModelAdapter
+from debug_agent.models.factory import build_model_adapter
 from debug_agent.storage.repository import DebugJobRepository
 
 
@@ -18,9 +20,15 @@ class SubmittedDebugJob(BaseModel):
 
 
 class DebugJobService:
-    def __init__(self, repository: DebugJobRepository, max_attempts: int = 2) -> None:
+    def __init__(
+        self,
+        repository: DebugJobRepository,
+        max_attempts: int = 2,
+        model_provider: Callable[[DebugCase], ModelAdapter] = build_model_adapter,
+    ) -> None:
         self._repository = repository
         self._max_attempts = max_attempts
+        self._model_provider = model_provider
 
     def submit_case_debug(self, case_id: str) -> SubmittedDebugJob:
         case = self._load_case(case_id)
@@ -51,7 +59,7 @@ class DebugJobService:
         try:
             case = self._load_case(job.case_id)
             plan = plan_experiments(case)
-            adapter = FakeModelAdapter(outputs=[prediction.raw_output for prediction in case.predictions])
+            adapter = self._model_provider(case)
             run_result = await run_experiments(case=case, plan=plan, adapter=adapter)
             artifact_store.save_case_evidence(case.case_id, run_result.evidence)
             self._repository.save_evidence(
