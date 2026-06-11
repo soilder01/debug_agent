@@ -73,10 +73,13 @@ class DebugJobRepository:
             with self._session_factory() as session:
                 return session.get(DebugJobRow, job_id)
 
-    def list_jobs(self) -> list[DebugJobRow]:
+    def list_jobs(self, status: str | None = None) -> list[DebugJobRow]:
         with self._lock:
             with self._session_factory() as session:
-                rows = session.scalars(select(DebugJobRow).order_by(DebugJobRow.job_id))
+                query = select(DebugJobRow).order_by(DebugJobRow.job_id)
+                if status is not None:
+                    query = query.where(DebugJobRow.status == status)
+                rows = session.scalars(query)
                 return list(rows)
 
     def get_next_created_job(self) -> DebugJobRow | None:

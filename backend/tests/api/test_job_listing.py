@@ -30,3 +30,19 @@ def test_job_listing_returns_submitted_jobs_with_retry_metadata() -> None:
             "model_call_errors": 0,
         }
         job_repository.mark_failed(submitted["job_id"], "test cleanup")
+
+
+def test_job_listing_filters_jobs_by_status() -> None:
+    client = TestClient(app)
+
+    failed = client.post("/cases/handwrite233/debug-jobs").json()
+    created = client.post("/cases/handwrite233/debug-jobs").json()
+    job_repository.mark_failed(failed["job_id"], "forced failure for filter test")
+
+    response = client.get("/jobs?status=failed")
+
+    assert response.status_code == 200
+    job_ids = [job["job_id"] for job in response.json()["jobs"]]
+    assert failed["job_id"] in job_ids
+    assert created["job_id"] not in job_ids
+    job_repository.mark_failed(created["job_id"], "test cleanup")
