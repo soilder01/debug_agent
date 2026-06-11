@@ -2,7 +2,7 @@ import json
 import threading
 from collections.abc import Callable
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from debug_agent.cases.models import DebugCase
@@ -83,6 +83,14 @@ class DebugJobRepository:
                     query = query.limit(limit)
                 rows = session.scalars(query)
                 return list(rows)
+
+    def count_jobs(self, status: str | None = None) -> int:
+        with self._lock:
+            with self._session_factory() as session:
+                query = select(func.count()).select_from(DebugJobRow)
+                if status is not None:
+                    query = query.where(DebugJobRow.status == status)
+                return session.scalar(query) or 0
 
     def get_next_created_job(self) -> DebugJobRow | None:
         with self._lock:

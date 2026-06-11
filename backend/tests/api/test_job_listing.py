@@ -56,6 +56,9 @@ def test_job_listing_limits_number_of_returned_jobs() -> None:
     response = client.get("/jobs?limit=2")
 
     assert response.status_code == 200
-    assert len(response.json()["jobs"]) == 2
+    body = response.json()
+    assert len(body["jobs"]) == 2
+    assert body["total_count"] >= 3
+    assert body["total_count"] > len(body["jobs"])
     for submitted in submitted_jobs:
         job_repository.mark_failed(submitted["job_id"], "test cleanup")
