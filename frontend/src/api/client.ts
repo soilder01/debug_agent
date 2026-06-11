@@ -67,6 +67,10 @@ export type BatchDebugJobResponse = {
   rejected_case_ids: string[];
 };
 
+export type DebugJobListResponse = {
+  jobs: DebugJobStatus[];
+};
+
 export type DebugCaseSummary = {
   case_id: string;
   image_uri: string;
@@ -228,6 +232,14 @@ export async function fetchJobStatus(jobId: string): Promise<DebugJobStatus> {
     throw new Error(`Failed to fetch debug job ${jobId}: ${response.status}`);
   }
   return (await response.json()) as DebugJobStatus;
+}
+
+export async function fetchDebugJobs(): Promise<DebugJobListResponse> {
+  const response = await fetch("/api/jobs");
+  if (!response.ok) {
+    throw new Error(`Failed to fetch debug jobs: ${response.status}`);
+  }
+  return (await response.json()) as DebugJobListResponse;
 }
 
 export async function fetchWorkerStatus(): Promise<WorkerStatus> {

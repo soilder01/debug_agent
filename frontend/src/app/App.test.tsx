@@ -246,6 +246,52 @@ describe("App", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-2");
   });
 
+  it("loads persisted debug jobs into the batch triage list", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          jobs: [
+            {
+              job_id: "job-history-1",
+              case_id: "handwrite233",
+              status: "failed",
+              attempt_count: 2,
+              max_attempts: 2,
+              remaining_attempts: 0,
+              will_retry: false,
+              retry_recommendation: "retry_budget_exhausted",
+              retry_recommendation_detail: {
+                code: "retry_budget_exhausted",
+                label: "重试预算已耗尽",
+                action: "不要继续自动重试，转人工检查任务错误和证据链。",
+                severity: "critical"
+              },
+              error_message: "fixture failed",
+              evidence_ids: [],
+              evidence_error_counts: {
+                total_evidence: 0,
+                failed_judgements: 0,
+                response_parse_errors: 0,
+                model_call_errors: 0
+              }
+            }
+          ]
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load debug jobs" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs");
+    expect(await screen.findByText("批量创建：1")).toBeInTheDocument();
+    expect(screen.getByText("job-history-1：failed")).toBeInTheDocument();
+    expect(screen.getByText("job-history-1 错误：fixture failed")).toBeInTheDocument();
+    expect(screen.getByText("job-history-1 建议：重试预算已耗尽")).toBeInTheDocument();
+    expect(screen.getByText("job-history-1 级别：critical")).toBeInTheDocument();
+  });
+
   it("starts, polls, and stops the worker from the UI", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")

@@ -7,6 +7,7 @@ import {
   type DebugCaseSummary,
   fetchCaseDetail,
   fetchCases,
+  fetchDebugJobs,
   fetchEvidenceDetail,
   fetchJobEvidenceDetail,
   fetchJobStatus,
@@ -159,6 +160,17 @@ export function App() {
     try {
       const result = await submitBatchDebugJobs(caseIds);
       setBatchResult(result);
+      setBatchJobStatuses(Object.fromEntries(result.jobs.map((job) => [job.job_id, job])));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
+  async function loadDebugJobs() {
+    setError("");
+    try {
+      const result = await fetchDebugJobs();
+      setBatchResult({ jobs: result.jobs, rejected_case_ids: [] });
       setBatchJobStatuses(Object.fromEntries(result.jobs.map((job) => [job.job_id, job])));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
@@ -367,6 +379,9 @@ export function App() {
         />
         <button type="button" onClick={submitBatchJobs}>
           Submit batch jobs
+        </button>
+        <button type="button" onClick={loadDebugJobs}>
+          Load debug jobs
         </button>
         {batchResult ? (
           <>
