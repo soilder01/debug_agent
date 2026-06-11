@@ -23,6 +23,8 @@ export function JobStatusPanel({ job, onSelectEvidence }: JobStatusPanelProps) {
       <p>Job ID：{job.job_id}</p>
       <p>样本 ID：{job.case_id}</p>
       <p>状态：{job.status}</p>
+      {job.created_at ? <p title={job.created_at}>创建时间：{formatJobTimestamp(job.created_at)}</p> : null}
+      {job.updated_at ? <p title={job.updated_at}>更新时间：{formatJobTimestamp(job.updated_at)}</p> : null}
       <p>尝试次数：{attemptCount}</p>
       <p>最大尝试：{maxAttempts}</p>
       <p>剩余尝试：{remainingAttempts}</p>
@@ -51,4 +53,18 @@ export function JobStatusPanel({ job, onSelectEvidence }: JobStatusPanelProps) {
       {errorMessage ? <p role="alert">错误：{errorMessage}</p> : null}
     </section>
   );
+}
+
+function formatJobTimestamp(timestamp: string): string {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) {
+    return timestamp;
+  }
+  return `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())} ${padDatePart(
+    date.getHours()
+  )}:${padDatePart(date.getMinutes())}:${padDatePart(date.getSeconds())}`;
+}
+
+function padDatePart(value: number): string {
+  return String(value).padStart(2, "0");
 }
