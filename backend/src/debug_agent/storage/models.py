@@ -36,6 +36,7 @@ class EvidenceRow(Base):
     model_id: Mapped[str] = mapped_column(String(160), default="", server_default="")
     request_summary_json: Mapped[str] = mapped_column(Text, default="{}", server_default="{}")
     latency_ms: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    response_parse_error: Mapped[str] = mapped_column(Text, default="", server_default="")
     score: Mapped[int] = mapped_column(Integer)
     reasons_json: Mapped[str] = mapped_column(Text)
     raw_output: Mapped[str] = mapped_column(Text)

@@ -19,6 +19,7 @@ class ExperimentEvidence(BaseModel):
     model_id: str = ""
     request_summary: dict[str, object] = {}
     latency_ms: int = 0
+    response_parse_error: str = ""
     raw_output: str
     judge: JudgeResult
 
@@ -42,8 +43,13 @@ async def run_experiments(
             started_at = perf_counter()
             response = await adapter.generate(prompt=case.prompt, image_uri=case.image_uri)
             latency_ms = int((perf_counter() - started_at) * 1000)
-            predicted = parse_prediction_answer(response.raw_output)
-            judge = judge_answer(case.golden_answer, predicted)
+            response_parse_error = ""
+            try:
+                predicted = parse_prediction_answer(response.raw_output)
+                judge = judge_answer(case.golden_answer, predicted)
+            except Exception as exc:
+                response_parse_error = str(exc)
+                judge = JudgeResult(score=0, reasons=["response_parse_error"])
             success_count += judge.score
             evidence.append(
                 ExperimentEvidence(
@@ -55,6 +61,7 @@ async def run_experiments(
                     model_id=response.model_id,
                     request_summary=_build_request_summary(prompt=case.prompt, image_uri=case.image_uri),
                     latency_ms=latency_ms,
+                    response_parse_error=response_parse_error,
                     raw_output=response.raw_output,
                     judge=judge,
                 )
