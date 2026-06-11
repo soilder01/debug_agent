@@ -15,13 +15,13 @@ class ExperimentPlan(BaseModel):
     steps: list[ExperimentStep]
 
 
-def plan_experiments(case: DebugCase) -> ExperimentPlan:
-    baseline_trials = min(5, max(1, len(case.predictions)))
+def plan_experiments(case: DebugCase, baseline_trials: int | None = None) -> ExperimentPlan:
+    resolved_baseline_trials = baseline_trials if baseline_trials is not None else min(5, max(1, len(case.predictions)))
     steps = [
         ExperimentStep(
             name="baseline_replay",
             description="Replay the original prompt and image condition to confirm the failure.",
-            trials=baseline_trials,
+            trials=resolved_baseline_trials,
         ),
         ExperimentStep(
             name="strict_prompt_replay",

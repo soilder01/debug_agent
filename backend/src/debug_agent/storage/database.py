@@ -70,6 +70,7 @@ def ensure_database_schema(engine: Engine) -> None:
         missing_columns = [
             ("created_at", "VARCHAR(40)", "''"),
             ("updated_at", "VARCHAR(40)", "''"),
+            ("baseline_trials", "INTEGER", "0"),
         ]
         with engine.begin() as connection:
             for column_name, column_type, default_value in missing_columns:

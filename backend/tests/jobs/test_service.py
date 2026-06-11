@@ -37,6 +37,25 @@ async def test_job_service_submits_pending_job_and_runs_next_to_completion() -> 
 
 
 @pytest.mark.asyncio
+async def test_job_service_uses_submitted_baseline_trials_when_running_job() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    service = DebugJobService(repository)
+
+    submitted = service.submit_case_debug("handwrite233", baseline_trials=5)
+
+    await service.run_next_job()
+
+    job = repository.get_job(submitted.job_id)
+    assert job is not None
+    assert job.baseline_trials == 5
+    evidence_ids = repository.list_evidence_ids(submitted.job_id)
+    assert len([evidence_id for evidence_id in evidence_ids if ":baseline_replay:" in evidence_id]) == 5
+    assert len(evidence_ids) == 10
+
+
+@pytest.mark.asyncio
 async def test_job_service_does_not_run_already_running_job() -> None:
     session_factory, engine = create_sqlite_memory_session_factory()
     Base.metadata.create_all(engine)

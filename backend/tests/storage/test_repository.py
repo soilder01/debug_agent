@@ -247,6 +247,18 @@ def test_repository_created_job_starts_with_zero_attempts() -> None:
     assert job.attempt_count == 0
 
 
+def test_repository_persists_job_baseline_trials() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+
+    repository.create_job(job_id="job-1", case_id="case-1", baseline_trials=5)
+
+    job = repository.get_job("job-1")
+    assert job is not None
+    assert job.baseline_trials == 5
+
+
 def test_repository_sets_job_timestamps_and_updates_updated_at_on_status_change() -> None:
     session_factory, engine = create_sqlite_memory_session_factory()
     Base.metadata.create_all(engine)

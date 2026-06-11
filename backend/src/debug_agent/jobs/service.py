@@ -46,10 +46,10 @@ class DebugJobService:
         self._model_provider = model_provider
         self._image_artifact_dir = image_artifact_dir
 
-    def submit_case_debug(self, case_id: str) -> SubmittedDebugJob:
+    def submit_case_debug(self, case_id: str, baseline_trials: int = 0) -> SubmittedDebugJob:
         case = self._load_case(case_id)
         job_id = str(uuid4())
-        self._repository.create_job(job_id=job_id, case_id=case.case_id)
+        self._repository.create_job(job_id=job_id, case_id=case.case_id, baseline_trials=baseline_trials)
         return SubmittedDebugJob(job_id=job_id, case_id=case.case_id, status="created")
 
     async def run_next_job(self) -> SubmittedDebugJob | None:
@@ -142,7 +142,7 @@ class DebugJobService:
             raise KeyError(f"Debug job not found: {job_id}")
         try:
             case = self._load_case(job.case_id)
-            plan = plan_experiments(case)
+            plan = plan_experiments(case, baseline_trials=job.baseline_trials or None)
             adapter = self._model_provider(case)
             run_result = await run_experiments(
                 case=case,

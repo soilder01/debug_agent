@@ -17,7 +17,7 @@ class DebugJobRepository:
         self._session_factory = session_factory
         self._lock = threading.RLock()
 
-    def create_job(self, job_id: str, case_id: str) -> None:
+    def create_job(self, job_id: str, case_id: str, baseline_trials: int = 0) -> None:
         with self._lock:
             with self._session_factory() as session:
                 now = _utc_now_iso()
@@ -26,6 +26,7 @@ class DebugJobRepository:
                         job_id=job_id,
                         case_id=case_id,
                         status="created",
+                        baseline_trials=baseline_trials,
                         created_at=now,
                         updated_at=now,
                     )

@@ -2,7 +2,7 @@ import json
 from typing import Literal
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, ValidationError
 
@@ -166,9 +166,13 @@ async def debug_case(case_id: str) -> DebugReport:
 
 
 @router.post("/cases/{case_id}/debug-jobs", status_code=202)
-async def submit_debug_job(case_id: str, auto_run: bool = False) -> SubmittedDebugJob:
+async def submit_debug_job(
+    case_id: str,
+    auto_run: bool = False,
+    baseline_trials: int = Query(default=0, ge=0, le=5),
+) -> SubmittedDebugJob:
     try:
-        submitted = job_service.submit_case_debug(case_id)
+        submitted = job_service.submit_case_debug(case_id, baseline_trials=baseline_trials)
         if auto_run:
             await job_service.run_job(submitted.job_id)
         return submitted
