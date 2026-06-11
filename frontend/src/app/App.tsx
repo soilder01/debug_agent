@@ -256,6 +256,15 @@ export function App() {
     }
   }
 
+  async function selectBatchJobEvidence(jobId: string, evidenceId: string) {
+    setError("");
+    try {
+      setSelectedEvidence(await fetchJobEvidenceDetail(jobId, evidenceId));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
   return (
     <main>
       <h1>Handwriting OCR Debug Agent</h1>
@@ -425,6 +434,15 @@ export function App() {
                     <button type="button" onClick={() => openBatchJob(job)}>
                       Open job {job.job_id}
                     </button>
+                    {job.evidence_ids?.map((evidenceId) => (
+                      <button
+                        key={evidenceId}
+                        type="button"
+                        onClick={() => void selectBatchJobEvidence(job.job_id, evidenceId)}
+                      >
+                        Open evidence {evidenceId} for job {job.job_id}
+                      </button>
+                    ))}
                   </li>
                 ))}
               </ul>

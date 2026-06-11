@@ -247,39 +247,68 @@ describe("App", () => {
   });
 
   it("loads persisted debug jobs into the batch triage list", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({
-          jobs: [
-            {
-              job_id: "job-history-1",
-              case_id: "handwrite233",
-              status: "failed",
-              attempt_count: 2,
-              max_attempts: 2,
-              remaining_attempts: 0,
-              will_retry: false,
-              retry_recommendation: "retry_budget_exhausted",
-              retry_recommendation_detail: {
-                code: "retry_budget_exhausted",
-                label: "重试预算已耗尽",
-                action: "不要继续自动重试，转人工检查任务错误和证据链。",
-                severity: "critical"
-              },
-              error_message: "fixture failed",
-              evidence_ids: [],
-              evidence_error_counts: {
-                total_evidence: 0,
-                failed_judgements: 0,
-                response_parse_errors: 0,
-                model_call_errors: 0
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jobs: [
+              {
+                job_id: "job-history-1",
+                case_id: "handwrite233",
+                status: "failed",
+                attempt_count: 2,
+                max_attempts: 2,
+                remaining_attempts: 0,
+                will_retry: false,
+                retry_recommendation: "retry_budget_exhausted",
+                retry_recommendation_detail: {
+                  code: "retry_budget_exhausted",
+                  label: "重试预算已耗尽",
+                  action: "不要继续自动重试，转人工检查任务错误和证据链。",
+                  severity: "critical"
+                },
+                error_message: "fixture failed",
+                evidence_ids: ["handwrite233:baseline_replay:0"],
+                evidence_error_counts: {
+                  total_evidence: 0,
+                  failed_judgements: 0,
+                  response_parse_errors: 0,
+                  model_call_errors: 0
+                }
               }
-            }
-          ]
-        }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
+            ]
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
       )
-    );
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            evidence_id: "handwrite233:baseline_replay:0",
+            step_name: "baseline_replay",
+            trial: 0,
+            model_name: "ark-seed2-lite",
+            model_provider: "ark",
+            model_id: "ep-20260609151048-sbfnk",
+            request_summary: {
+              prompt_length: 22,
+              has_image: true,
+              image_uri_scheme: "file"
+            },
+            latency_ms: 35,
+            response_parse_error: "",
+            model_call_error_type: "",
+            model_call_error_message: "",
+            raw_output: "{\"answers\":[]}",
+            judge: {
+              score: 0,
+              reasons: ["box 1 student_answer_mismatch"]
+            }
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
 
     render(<App />);
     await userEvent.click(screen.getByRole("button", { name: "Load debug jobs" }));
@@ -295,6 +324,14 @@ describe("App", () => {
 
     expect(screen.getByText("Job ID：job-history-1")).toBeInTheDocument();
     expect(screen.getByText("建议动作：不要继续自动重试，转人工检查任务错误和证据链。")).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Open evidence handwrite233:baseline_replay:0 for job job-history-1" })
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-history-1/evidence/handwrite233%3Abaseline_replay%3A0");
+    expect(await screen.findByText("证据 ID：handwrite233:baseline_replay:0")).toBeInTheDocument();
+    expect(screen.getByText("模型 Provider：ark")).toBeInTheDocument();
   });
 
   it("loads failed debug jobs with a status filter", async () => {
