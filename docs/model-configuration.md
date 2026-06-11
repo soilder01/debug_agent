@@ -9,6 +9,8 @@ The default live model family is configured through environment variables. Do no
 - `ARK_CONTENT_TASKS_URL`: URL for content generation task APIs.
 - `ARK_SEED2_LITE_MODEL_ID`: default lite model id for cost-aware repeated debug experiments.
 - `ARK_SEED2_PRO_MODEL_ID`: optional stronger model id for escalation experiments.
+- `DEBUG_AGENT_MODEL_PROVIDER`: runtime model provider. Supported values are `fake`, `ark-seed2-lite`, and `ark-seed2-pro`.
+- `DEBUG_AGENT_ENABLE_LIVE_MODEL_TESTS`: set to `1` only when intentionally running live Ark integration tests.
 
 ## Security Rules
 
@@ -20,3 +22,16 @@ The default live model family is configured through environment variables. Do no
 ## Integration Test Policy
 
 Live Seed model calls are never part of unit tests or default CI. They must be run through explicitly named integration commands after confirming `ARK_API_KEY` is available in the local environment.
+
+Default verification keeps `DEBUG_AGENT_MODEL_PROVIDER=fake` and `DEBUG_AGENT_ENABLE_LIVE_MODEL_TESTS=0`, so it never calls the live model.
+
+To intentionally run the live Ark adapter test locally:
+
+```powershell
+$env:ARK_API_KEY="<local-secret>"
+$env:DEBUG_AGENT_MODEL_PROVIDER="ark-seed2-lite"
+$env:DEBUG_AGENT_ENABLE_LIVE_MODEL_TESTS="1"
+python -m pytest tests/integration/test_live_ark_adapter.py -q
+```
+
+Do not paste real keys into committed files, test fixtures, logs, screenshots, or frontend payloads.
