@@ -29,6 +29,7 @@ export type SubmittedDebugJob = {
   max_attempts?: number;
   remaining_attempts?: number;
   will_retry?: boolean;
+  retry_recommendation?: string;
   error_message?: string | null;
   evidence_ids?: string[];
 };
@@ -41,6 +42,7 @@ export type DebugJobStatus = {
   max_attempts: number;
   remaining_attempts: number;
   will_retry: boolean;
+  retry_recommendation: string;
   error_message: string | null;
   evidence_ids: string[];
   evidence_error_counts: {

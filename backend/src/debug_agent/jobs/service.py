@@ -66,6 +66,23 @@ class DebugJobService:
             will_retry=status == "created" and attempt_count > 0 and remaining_attempts > 0,
         )
 
+    def retry_recommendation(
+        self,
+        status: str,
+        attempt_count: int,
+        evidence_error_counts: dict[str, int],
+    ) -> str:
+        retry_status = self.retry_status(attempt_count=attempt_count, status=status)
+        if status == "completed":
+            return "no_retry_needed"
+        if evidence_error_counts["model_call_errors"] > 0 and retry_status.will_retry:
+            return "retry_model_call_error"
+        if evidence_error_counts["response_parse_errors"] > 0:
+            return "inspect_parse_error"
+        if not retry_status.will_retry:
+            return "retry_budget_exhausted"
+        return "retry_waiting_for_next_attempt"
+
     async def _run_claimed_job(self, job_id: str) -> SubmittedDebugJob:
         job = self._repository.get_job(job_id)
         if job is None:

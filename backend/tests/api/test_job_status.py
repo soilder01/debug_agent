@@ -1,5 +1,7 @@
 from fastapi.testclient import TestClient
 
+from debug_agent.experiments.runner import ExperimentEvidence
+from debug_agent.judging.runner import JudgeResult
 from debug_agent.main import app
 
 
@@ -21,6 +23,7 @@ def test_debug_case_returns_queryable_completed_job_status() -> None:
     assert body["max_attempts"] == 2
     assert body["remaining_attempts"] == 2
     assert body["will_retry"] is False
+    assert body["retry_recommendation"] == "no_retry_needed"
     assert body["error_message"] is None
     assert len(body["evidence_ids"]) == 6
     assert body["evidence_error_counts"] == {
@@ -49,3 +52,63 @@ def test_requeued_failed_job_status_exposes_retry_budget() -> None:
     assert body["max_attempts"] == 2
     assert body["remaining_attempts"] == 1
     assert body["will_retry"] is True
+    assert body["retry_recommendation"] == "retry_waiting_for_next_attempt"
+
+
+def test_job_status_recommends_retry_for_model_call_errors_with_budget() -> None:
+    client = TestClient(app)
+    from debug_agent.api.routes import job_repository
+
+    job_repository.create_job(job_id="000-model-error-retry-job", case_id="case-1")
+    claimed = job_repository.claim_next_created_job()
+    assert claimed is not None
+    assert claimed.job_id == "000-model-error-retry-job"
+    job_repository.release_for_retry("000-model-error-retry-job", "model request timed out")
+    job_repository.save_evidence(
+        job_id="000-model-error-retry-job",
+        case_id="case-1",
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="case-1:model:0",
+                step_name="model",
+                trial=0,
+                model_call_error_type="TimeoutError",
+                model_call_error_message="model request timed out",
+                raw_output="",
+                judge=JudgeResult(score=0, reasons=["model_call_error"]),
+            )
+        ],
+    )
+
+    response = client.get("/jobs/000-model-error-retry-job")
+
+    assert response.status_code == 200
+    assert response.json()["retry_recommendation"] == "retry_model_call_error"
+    job_repository.mark_failed("000-model-error-retry-job", "test cleanup")
+
+
+def test_job_status_does_not_recommend_retry_for_parse_errors() -> None:
+    client = TestClient(app)
+    from debug_agent.api.routes import job_repository
+
+    job_repository.create_job(job_id="000-parse-error-no-retry-job", case_id="case-1")
+    job_repository.save_evidence(
+        job_id="000-parse-error-no-retry-job",
+        case_id="case-1",
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="case-1:parse:0",
+                step_name="parse",
+                trial=0,
+                response_parse_error="Expecting value",
+                raw_output="not-json",
+                judge=JudgeResult(score=0, reasons=["response_parse_error"]),
+            )
+        ],
+    )
+
+    response = client.get("/jobs/000-parse-error-no-retry-job")
+
+    assert response.status_code == 200
+    assert response.json()["retry_recommendation"] == "inspect_parse_error"
+    job_repository.mark_failed("000-parse-error-no-retry-job", "test cleanup")

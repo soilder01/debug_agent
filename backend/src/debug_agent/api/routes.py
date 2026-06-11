@@ -36,6 +36,7 @@ class DebugJobStatus(BaseModel):
     max_attempts: int
     remaining_attempts: int
     will_retry: bool
+    retry_recommendation: str
     error_message: str | None
     evidence_ids: list[str]
     evidence_error_counts: dict[str, int]
@@ -239,6 +240,7 @@ def get_job_status(job_id: str) -> DebugJobStatus:
     if job is None:
         raise HTTPException(status_code=404, detail=f"Debug job not found: {job_id}")
     retry_status = job_service.retry_status(attempt_count=job.attempt_count, status=job.status)
+    evidence_error_counts = job_repository.count_evidence_errors(job_id)
     return DebugJobStatus(
         job_id=job.job_id,
         case_id=job.case_id,
@@ -247,9 +249,14 @@ def get_job_status(job_id: str) -> DebugJobStatus:
         max_attempts=retry_status.max_attempts,
         remaining_attempts=retry_status.remaining_attempts,
         will_retry=retry_status.will_retry,
+        retry_recommendation=job_service.retry_recommendation(
+            status=job.status,
+            attempt_count=job.attempt_count,
+            evidence_error_counts=evidence_error_counts,
+        ),
         error_message=job.error_message,
         evidence_ids=job_repository.list_evidence_ids(job_id),
-        evidence_error_counts=job_repository.count_evidence_errors(job_id),
+        evidence_error_counts=evidence_error_counts,
     )
 
 
