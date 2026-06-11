@@ -61,3 +61,12 @@ def ensure_database_schema(engine: Engine) -> None:
             connection.execute(text("DROP TABLE evidence_legacy_global_pk"))
 
     Base.metadata.create_all(engine)
+
+    inspector = inspect(engine)
+    if "evidence" in inspector.get_table_names():
+        evidence_columns = {column["name"] for column in inspector.get_columns("evidence")}
+        if "model_name" not in evidence_columns:
+            with engine.begin() as connection:
+                connection.execute(
+                    text("ALTER TABLE evidence ADD COLUMN model_name VARCHAR(120) NOT NULL DEFAULT ''")
+                )

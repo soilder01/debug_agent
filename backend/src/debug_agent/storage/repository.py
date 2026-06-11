@@ -114,6 +114,7 @@ class DebugJobRepository:
                             case_id=case_id,
                             step_name=item.step_name,
                             trial=item.trial,
+                            model_name=item.model_name,
                             score=item.judge.score,
                             reasons_json=json.dumps(item.judge.reasons),
                             raw_output=item.raw_output,

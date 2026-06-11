@@ -25,6 +25,7 @@ def test_storage_tables_can_be_created() -> None:
                 case_id="case-1",
                 step_name="baseline",
                 trial=0,
+                model_name="fake",
                 score=0,
                 reasons_json="[\"box 1 mismatch\"]",
                 raw_output="{\"answers\":[]}",
@@ -37,6 +38,7 @@ def test_storage_tables_can_be_created() -> None:
         row = session.get(EvidenceRow, ("job-1", "evidence-1"))
         assert row is not None
         assert row.step_name == "baseline"
+        assert row.model_name == "fake"
 
 
 def test_sqlite_file_session_factory_persists_rows_between_sessions() -> None:
@@ -69,6 +71,7 @@ def test_repository_tracks_job_state_and_evidence() -> None:
         evidence_id="case-1:baseline:0",
         step_name="baseline",
         trial=0,
+        model_name="seed2-lite",
         raw_output="{\"answers\":[]}",
         judge=JudgeResult(score=0, reasons=["box 1 mismatch"]),
     )
@@ -82,6 +85,10 @@ def test_repository_tracks_job_state_and_evidence() -> None:
     assert job is not None
     assert job.status == "completed"
     assert repository.list_evidence_ids("job-1") == ["case-1:baseline:0"]
+    with session_factory() as session:
+        row = session.get(EvidenceRow, ("job-1", "case-1:baseline:0"))
+        assert row is not None
+        assert row.model_name == "seed2-lite"
 
 
 def test_repository_created_job_starts_with_zero_attempts() -> None:
@@ -166,6 +173,7 @@ def test_repository_keeps_same_evidence_ids_for_different_jobs() -> None:
         evidence_id="case-1:baseline:0",
         step_name="baseline",
         trial=0,
+        model_name="fake",
         raw_output="{\"answers\":[]}",
         judge=JudgeResult(score=0, reasons=["box 1 mismatch"]),
     )
@@ -243,3 +251,54 @@ def test_database_schema_migrates_legacy_global_evidence_primary_key() -> None:
         assert legacy_row is not None
         assert session.get(EvidenceRow, ("job-1", "case-1:baseline:0")) is not None
         assert session.get(EvidenceRow, ("job-2", "case-1:baseline:0")) is not None
+
+
+def test_database_schema_adds_missing_evidence_model_name_column() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            """
+            CREATE TABLE evidence (
+                job_id VARCHAR(80) NOT NULL,
+                evidence_id VARCHAR(200) NOT NULL,
+                case_id VARCHAR(120) NOT NULL,
+                step_name VARCHAR(120) NOT NULL,
+                trial INTEGER NOT NULL,
+                score INTEGER NOT NULL,
+                reasons_json TEXT NOT NULL,
+                raw_output TEXT NOT NULL,
+                PRIMARY KEY (job_id, evidence_id)
+            )
+            """
+        )
+        connection.exec_driver_sql(
+            """
+            INSERT INTO evidence (
+                job_id,
+                evidence_id,
+                case_id,
+                step_name,
+                trial,
+                score,
+                reasons_json,
+                raw_output
+            )
+            VALUES (
+                'job-1',
+                'case-1:baseline:0',
+                'case-1',
+                'baseline',
+                0,
+                0,
+                '[]',
+                '{"answers":[]}'
+            )
+            """
+        )
+
+    ensure_database_schema(engine)
+
+    with session_factory() as session:
+        row = session.get(EvidenceRow, ("job-1", "case-1:baseline:0"))
+        assert row is not None
+        assert row.model_name == ""

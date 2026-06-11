@@ -31,6 +31,7 @@ class EvidenceRow(Base):
     case_id: Mapped[str] = mapped_column(String(120), index=True)
     step_name: Mapped[str] = mapped_column(String(120), index=True)
     trial: Mapped[int] = mapped_column(Integer)
+    model_name: Mapped[str] = mapped_column(String(120), default="", server_default="")
     score: Mapped[int] = mapped_column(Integer)
     reasons_json: Mapped[str] = mapped_column(Text)
     raw_output: Mapped[str] = mapped_column(Text)

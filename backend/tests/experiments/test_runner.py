@@ -22,5 +22,6 @@ async def test_run_experiments_collects_judged_evidence() -> None:
     assert result.total_trials == 6
     assert result.success_count == 0
     assert result.evidence[0].step_name == "baseline_replay"
+    assert result.evidence[0].model_name == "fake"
     assert result.evidence[0].judge.score == 0
     assert "student_answer_mismatch" in result.evidence[0].judge.reasons[0]
