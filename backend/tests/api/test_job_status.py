@@ -24,6 +24,12 @@ def test_debug_case_returns_queryable_completed_job_status() -> None:
     assert body["remaining_attempts"] == 2
     assert body["will_retry"] is False
     assert body["retry_recommendation"] == "no_retry_needed"
+    assert body["retry_recommendation_detail"] == {
+        "code": "no_retry_needed",
+        "label": "无需重试",
+        "action": "任务已完成，直接查看证据链和结论。",
+        "severity": "info",
+    }
     assert body["error_message"] is None
     assert len(body["evidence_ids"]) == 6
     assert body["evidence_error_counts"] == {

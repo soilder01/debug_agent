@@ -37,6 +37,12 @@ describe("App", () => {
             remaining_attempts: 1,
             will_retry: false,
             retry_recommendation: "no_retry_needed",
+            retry_recommendation_detail: {
+              code: "no_retry_needed",
+              label: "无需重试",
+              action: "任务已完成，直接查看证据链和结论。",
+              severity: "info"
+            },
             error_message: null,
             evidence_ids: ["handwrite233:baseline_replay:0"],
             evidence_error_counts: {
@@ -66,7 +72,8 @@ describe("App", () => {
     expect(screen.getByText("最大尝试：2")).toBeInTheDocument();
     expect(screen.getByText("剩余尝试：1")).toBeInTheDocument();
     expect(screen.getByText("将会重试：false")).toBeInTheDocument();
-    expect(screen.getByText("重试建议：no_retry_needed")).toBeInTheDocument();
+    expect(screen.getByText("重试建议：无需重试")).toBeInTheDocument();
+    expect(screen.getByText("建议动作：任务已完成，直接查看证据链和结论。")).toBeInTheDocument();
     expect(screen.getByText("证据数：1")).toBeInTheDocument();
     expect(screen.getByText("失败判分：1")).toBeInTheDocument();
     expect(screen.getByText("解析错误：0")).toBeInTheDocument();

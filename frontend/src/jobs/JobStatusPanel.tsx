@@ -11,6 +11,8 @@ export function JobStatusPanel({ job, onSelectEvidence }: JobStatusPanelProps) {
   const remainingAttempts = job.remaining_attempts ?? 0;
   const willRetry = job.will_retry ?? false;
   const retryRecommendation = job.retry_recommendation ?? "unknown";
+  const retryRecommendationDetail =
+    "retry_recommendation_detail" in job ? job.retry_recommendation_detail : null;
   const errorMessage = job.error_message ?? "";
   const evidenceIds = job.evidence_ids ?? [];
   const evidenceCount = evidenceIds.length;
@@ -25,7 +27,8 @@ export function JobStatusPanel({ job, onSelectEvidence }: JobStatusPanelProps) {
       <p>最大尝试：{maxAttempts}</p>
       <p>剩余尝试：{remainingAttempts}</p>
       <p>将会重试：{String(willRetry)}</p>
-      <p>重试建议：{retryRecommendation}</p>
+      <p>重试建议：{retryRecommendationDetail?.label ?? retryRecommendation}</p>
+      {retryRecommendationDetail ? <p>建议动作：{retryRecommendationDetail.action}</p> : null}
       <p>证据数：{evidenceCount}</p>
       {evidenceErrorCounts ? (
         <>

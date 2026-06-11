@@ -25,6 +25,13 @@ class RetryStatus(BaseModel):
     will_retry: bool
 
 
+class RetryRecommendationDetail(BaseModel):
+    code: str
+    label: str
+    action: str
+    severity: str
+
+
 class DebugJobService:
     def __init__(
         self,
@@ -82,6 +89,49 @@ class DebugJobService:
         if not retry_status.will_retry:
             return "retry_budget_exhausted"
         return "retry_waiting_for_next_attempt"
+
+    def retry_recommendation_detail(self, code: str) -> RetryRecommendationDetail:
+        details = {
+            "no_retry_needed": RetryRecommendationDetail(
+                code="no_retry_needed",
+                label="无需重试",
+                action="任务已完成，直接查看证据链和结论。",
+                severity="info",
+            ),
+            "retry_waiting_for_next_attempt": RetryRecommendationDetail(
+                code="retry_waiting_for_next_attempt",
+                label="等待自动重试",
+                action="保留在队列中，等待 worker 执行下一次尝试。",
+                severity="warning",
+            ),
+            "retry_model_call_error": RetryRecommendationDetail(
+                code="retry_model_call_error",
+                label="建议重试模型调用",
+                action="模型调用失败且仍有重试预算，优先重新执行该任务。",
+                severity="warning",
+            ),
+            "inspect_parse_error": RetryRecommendationDetail(
+                code="inspect_parse_error",
+                label="检查解析错误",
+                action="模型已有返回但解析失败，优先检查输出格式、prompt 或解析器。",
+                severity="warning",
+            ),
+            "retry_budget_exhausted": RetryRecommendationDetail(
+                code="retry_budget_exhausted",
+                label="重试预算已耗尽",
+                action="不要继续自动重试，转人工检查任务错误和证据链。",
+                severity="critical",
+            ),
+        }
+        return details.get(
+            code,
+            RetryRecommendationDetail(
+                code=code,
+                label="未知重试建议",
+                action="检查任务状态、错误信息和证据链后再决定下一步。",
+                severity="warning",
+            ),
+        )
 
     async def _run_claimed_job(self, job_id: str) -> SubmittedDebugJob:
         job = self._repository.get_job(job_id)

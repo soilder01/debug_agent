@@ -21,6 +21,13 @@ export type DebugReport = {
   suggested_sheet_fields: Record<string, string>;
 };
 
+export type RetryRecommendationDetail = {
+  code: string;
+  label: string;
+  action: string;
+  severity: string;
+};
+
 export type SubmittedDebugJob = {
   job_id: string;
   case_id: string;
@@ -30,6 +37,7 @@ export type SubmittedDebugJob = {
   remaining_attempts?: number;
   will_retry?: boolean;
   retry_recommendation?: string;
+  retry_recommendation_detail?: RetryRecommendationDetail;
   error_message?: string | null;
   evidence_ids?: string[];
 };
@@ -43,6 +51,7 @@ export type DebugJobStatus = {
   remaining_attempts: number;
   will_retry: boolean;
   retry_recommendation: string;
+  retry_recommendation_detail: RetryRecommendationDetail;
   error_message: string | null;
   evidence_ids: string[];
   evidence_error_counts: {
