@@ -27,6 +27,18 @@ class DebugCaseRow(Base):
     box_region_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0", index=True)
 
 
+class SpreadsheetRowMappingRow(Base):
+    __tablename__ = "spreadsheet_row_mappings"
+
+    spreadsheet_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    sheet_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    row_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    case_id: Mapped[str] = mapped_column(String(120), index=True)
+    job_id: Mapped[str] = mapped_column(String(80), default="", server_default="", index=True)
+    created_at: Mapped[str] = mapped_column(String(40), default="", server_default="", index=True)
+    updated_at: Mapped[str] = mapped_column(String(40), default="", server_default="")
+
+
 class EvidenceRow(Base):
     __tablename__ = "evidence"
 

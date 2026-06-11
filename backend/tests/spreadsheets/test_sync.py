@@ -59,6 +59,14 @@ def test_sync_spreadsheet_rows_persists_cases_and_creates_five_replay_jobs() -> 
     assert job is not None
     assert job.baseline_trials == 5
     assert repository.get_case("synced-case-1") is not None
+    mapping = repository.get_spreadsheet_row_mapping(
+        spreadsheet_id="spreadsheet-1",
+        sheet_id="sheet-1",
+        row_id="row-1",
+    )
+    assert mapping is not None
+    assert mapping.case_id == "synced-case-1"
+    assert mapping.job_id == result.jobs[0].job_id
 
 
 def test_sync_spreadsheet_rows_reports_rejections_without_creating_jobs() -> None:

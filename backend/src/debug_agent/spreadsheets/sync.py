@@ -46,8 +46,18 @@ def sync_spreadsheet_rows(
         case = imported_row.case
         repository.save_case(case)
         imported_case_ids.append(case.case_id)
+        job_id = ""
         if create_jobs:
-            jobs.append(job_service.submit_case_debug(case.case_id, baseline_trials=baseline_trials))
+            submitted_job = job_service.submit_case_debug(case.case_id, baseline_trials=baseline_trials)
+            jobs.append(submitted_job)
+            job_id = submitted_job.job_id
+        repository.save_spreadsheet_row_mapping(
+            spreadsheet_id=spreadsheet_id,
+            sheet_id=sheet_id,
+            row_id=imported_row.sheet_row_id,
+            case_id=case.case_id,
+            job_id=job_id,
+        )
     return SpreadsheetSyncResult(
         imported_case_ids=imported_case_ids,
         imported_rows=parse_result.imported_rows,

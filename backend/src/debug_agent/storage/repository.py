@@ -3,13 +3,24 @@ import threading
 from collections.abc import Callable
 from datetime import UTC, datetime
 
+from pydantic import BaseModel
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
 from debug_agent.cases.models import DebugCase
 from debug_agent.experiments.runner import ExperimentEvidence
 from debug_agent.judging.runner import JudgeResult
-from debug_agent.storage.models import DebugCaseRow, DebugJobRow, EvidenceRow
+from debug_agent.storage.models import DebugCaseRow, DebugJobRow, EvidenceRow, SpreadsheetRowMappingRow
+
+
+class SpreadsheetRowMapping(BaseModel):
+    spreadsheet_id: str
+    sheet_id: str
+    row_id: str
+    case_id: str
+    job_id: str
+    created_at: str
+    updated_at: str
 
 
 class DebugJobRepository:
@@ -52,6 +63,69 @@ class DebugJobRepository:
                 if row is None:
                     return None
                 return DebugCase.model_validate_json(row.case_json)
+
+    def save_spreadsheet_row_mapping(
+        self,
+        *,
+        spreadsheet_id: str,
+        sheet_id: str,
+        row_id: str,
+        case_id: str,
+        job_id: str = "",
+    ) -> None:
+        with self._lock:
+            with self._session_factory() as session:
+                now = _utc_now_iso()
+                existing = session.get(
+                    SpreadsheetRowMappingRow,
+                    {
+                        "spreadsheet_id": spreadsheet_id,
+                        "sheet_id": sheet_id,
+                        "row_id": row_id,
+                    },
+                )
+                created_at = existing.created_at if existing is not None else now
+                session.merge(
+                    SpreadsheetRowMappingRow(
+                        spreadsheet_id=spreadsheet_id,
+                        sheet_id=sheet_id,
+                        row_id=row_id,
+                        case_id=case_id,
+                        job_id=job_id,
+                        created_at=created_at,
+                        updated_at=now,
+                    )
+                )
+                session.commit()
+
+    def get_spreadsheet_row_mapping(
+        self,
+        *,
+        spreadsheet_id: str,
+        sheet_id: str,
+        row_id: str,
+    ) -> SpreadsheetRowMapping | None:
+        with self._lock:
+            with self._session_factory() as session:
+                row = session.get(
+                    SpreadsheetRowMappingRow,
+                    {
+                        "spreadsheet_id": spreadsheet_id,
+                        "sheet_id": sheet_id,
+                        "row_id": row_id,
+                    },
+                )
+                if row is None:
+                    return None
+                return SpreadsheetRowMapping(
+                    spreadsheet_id=row.spreadsheet_id,
+                    sheet_id=row.sheet_id,
+                    row_id=row.row_id,
+                    case_id=row.case_id,
+                    job_id=row.job_id,
+                    created_at=row.created_at,
+                    updated_at=row.updated_at,
+                )
 
     def list_cases(self, has_regions: bool = False, limit: int | None = None, offset: int = 0) -> list[DebugCase]:
         with self._lock:
