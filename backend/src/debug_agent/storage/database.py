@@ -1,5 +1,6 @@
 import json
 from collections.abc import Callable
+from datetime import UTC, datetime
 
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import Engine
@@ -64,6 +65,35 @@ def ensure_database_schema(engine: Engine) -> None:
     Base.metadata.create_all(engine)
 
     inspector = inspect(engine)
+    if "debug_jobs" in inspector.get_table_names():
+        debug_job_columns = {column["name"] for column in inspector.get_columns("debug_jobs")}
+        missing_columns = [
+            ("created_at", "VARCHAR(40)", "''"),
+            ("updated_at", "VARCHAR(40)", "''"),
+        ]
+        with engine.begin() as connection:
+            for column_name, column_type, default_value in missing_columns:
+                if column_name not in debug_job_columns:
+                    connection.execute(
+                        text(
+                            f"ALTER TABLE debug_jobs ADD COLUMN {column_name} "
+                            f"{column_type} NOT NULL DEFAULT {default_value}"
+                        )
+                    )
+            now = _utc_now_iso()
+            connection.execute(
+                text(
+                    """
+                    UPDATE debug_jobs
+                    SET
+                        created_at = CASE WHEN created_at = '' THEN :now ELSE created_at END,
+                        updated_at = CASE WHEN updated_at = '' THEN :now ELSE updated_at END
+                    """
+                ),
+                {"now": now},
+            )
+
+    inspector = inspect(engine)
     if "evidence" in inspector.get_table_names():
         evidence_columns = {column["name"] for column in inspector.get_columns("evidence")}
         missing_columns = [
@@ -117,3 +147,7 @@ def _count_box_regions(case_json: str) -> int:
     if not isinstance(box_regions, list):
         return 0
     return len(box_regions)
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(UTC).isoformat(timespec="microseconds")

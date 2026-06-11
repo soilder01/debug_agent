@@ -1,6 +1,7 @@
 import json
 import threading
 from collections.abc import Callable
+from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -19,7 +20,16 @@ class DebugJobRepository:
     def create_job(self, job_id: str, case_id: str) -> None:
         with self._lock:
             with self._session_factory() as session:
-                session.add(DebugJobRow(job_id=job_id, case_id=case_id, status="created"))
+                now = _utc_now_iso()
+                session.add(
+                    DebugJobRow(
+                        job_id=job_id,
+                        case_id=case_id,
+                        status="created",
+                        created_at=now,
+                        updated_at=now,
+                    )
+                )
                 session.commit()
 
     def save_case(self, case: DebugCase) -> None:
@@ -77,6 +87,7 @@ class DebugJobRepository:
                     raise KeyError(f"Debug job not found: {job_id}")
                 job.status = "failed"
                 job.error_message = error_message
+                job.updated_at = _utc_now_iso()
                 session.commit()
 
     def release_for_retry(self, job_id: str, error_message: str) -> None:
@@ -87,6 +98,7 @@ class DebugJobRepository:
                     raise KeyError(f"Debug job not found: {job_id}")
                 job.status = "created"
                 job.error_message = error_message
+                job.updated_at = _utc_now_iso()
                 session.commit()
 
     def get_job(self, job_id: str) -> DebugJobRow | None:
@@ -97,7 +109,7 @@ class DebugJobRepository:
     def list_jobs(self, status: str | None = None, limit: int | None = None, offset: int = 0) -> list[DebugJobRow]:
         with self._lock:
             with self._session_factory() as session:
-                query = select(DebugJobRow).order_by(DebugJobRow.job_id)
+                query = select(DebugJobRow).order_by(DebugJobRow.created_at, DebugJobRow.job_id)
                 if status is not None:
                     query = query.where(DebugJobRow.status == status)
                 if offset > 0:
@@ -138,6 +150,7 @@ class DebugJobRepository:
                     return None
                 job.status = "running"
                 job.attempt_count += 1
+                job.updated_at = _utc_now_iso()
                 session.commit()
                 return job
 
@@ -244,4 +257,9 @@ class DebugJobRepository:
                 if job is None:
                     raise KeyError(f"Debug job not found: {job_id}")
                 job.status = status
+                job.updated_at = _utc_now_iso()
                 session.commit()
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(UTC).isoformat(timespec="microseconds")

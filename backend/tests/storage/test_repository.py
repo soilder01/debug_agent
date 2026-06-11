@@ -247,6 +247,57 @@ def test_repository_created_job_starts_with_zero_attempts() -> None:
     assert job.attempt_count == 0
 
 
+def test_repository_sets_job_timestamps_and_updates_updated_at_on_status_change() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+
+    repository.create_job(job_id="job-1", case_id="case-1")
+    created = repository.get_job("job-1")
+    assert created is not None
+    created_at = created.created_at
+    first_updated_at = created.updated_at
+
+    repository.mark_running("job-1")
+
+    running = repository.get_job("job-1")
+    assert running is not None
+    assert created_at != ""
+    assert first_updated_at != ""
+    assert running.created_at == created_at
+    assert running.updated_at >= first_updated_at
+
+
+def test_repository_lists_jobs_by_creation_time_then_job_id() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    with session_factory() as session:
+        session.add(
+            DebugJobRow(
+                job_id="job-b",
+                case_id="case-1",
+                status="created",
+                created_at="2026-06-11T10:00:02+00:00",
+                updated_at="2026-06-11T10:00:02+00:00",
+            )
+        )
+        session.add(
+            DebugJobRow(
+                job_id="job-a",
+                case_id="case-1",
+                status="created",
+                created_at="2026-06-11T10:00:01+00:00",
+                updated_at="2026-06-11T10:00:01+00:00",
+            )
+        )
+        session.commit()
+
+    jobs = repository.list_jobs()
+
+    assert [job.job_id for job in jobs] == ["job-a", "job-b"]
+
+
 def test_repository_marks_job_failed_with_error_message() -> None:
     session_factory, engine = create_sqlite_memory_session_factory()
     Base.metadata.create_all(engine)
@@ -443,6 +494,48 @@ def test_database_schema_migrates_legacy_global_evidence_primary_key() -> None:
         assert legacy_row is not None
         assert session.get(EvidenceRow, ("job-1", "case-1:baseline:0")) is not None
         assert session.get(EvidenceRow, ("job-2", "case-1:baseline:0")) is not None
+
+
+def test_database_schema_adds_missing_debug_job_timestamp_columns() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            """
+            CREATE TABLE debug_jobs (
+                job_id VARCHAR(80) NOT NULL PRIMARY KEY,
+                case_id VARCHAR(120) NOT NULL,
+                status VARCHAR(40) NOT NULL,
+                attempt_count INTEGER NOT NULL DEFAULT 0,
+                error_message TEXT
+            )
+            """
+        )
+        connection.exec_driver_sql(
+            """
+            INSERT INTO debug_jobs (
+                job_id,
+                case_id,
+                status,
+                attempt_count,
+                error_message
+            )
+            VALUES (
+                'job-legacy',
+                'case-1',
+                'created',
+                0,
+                NULL
+            )
+            """
+        )
+
+    ensure_database_schema(engine)
+
+    with session_factory() as session:
+        row = session.get(DebugJobRow, "job-legacy")
+        assert row is not None
+        assert row.created_at != ""
+        assert row.updated_at != ""
 
 
 def test_database_schema_adds_missing_evidence_model_name_column() -> None:

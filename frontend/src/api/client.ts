@@ -33,6 +33,8 @@ export type SubmittedDebugJob = {
   job_id: string;
   case_id: string;
   status: string;
+  created_at?: string;
+  updated_at?: string;
   attempt_count?: number;
   max_attempts?: number;
   remaining_attempts?: number;
@@ -47,6 +49,8 @@ export type DebugJobStatus = {
   job_id: string;
   case_id: string;
   status: string;
+  created_at: string;
+  updated_at: string;
   attempt_count: number;
   max_attempts: number;
   remaining_attempts: number;

@@ -33,6 +33,8 @@ class DebugJobStatus(BaseModel):
     job_id: str
     case_id: str
     status: str
+    created_at: str
+    updated_at: str
     attempt_count: int
     max_attempts: int
     remaining_attempts: int
@@ -278,6 +280,8 @@ def _build_job_status(job: DebugJobRow) -> DebugJobStatus:
         job_id=job.job_id,
         case_id=job.case_id,
         status=job.status,
+        created_at=job.created_at,
+        updated_at=job.updated_at,
         attempt_count=job.attempt_count,
         max_attempts=retry_status.max_attempts,
         remaining_attempts=retry_status.remaining_attempts,

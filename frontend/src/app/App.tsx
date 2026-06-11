@@ -502,6 +502,8 @@ export function App() {
                     <span>
                       {job.job_id}：{job.status}
                     </span>
+                    {job.created_at ? <span> {job.job_id} 创建：{job.created_at}</span> : null}
+                    {job.updated_at ? <span> {job.job_id} 更新：{job.updated_at}</span> : null}
                     {job.error_message ? <span> {job.job_id} 错误：{job.error_message}</span> : null}
                     {job.retry_recommendation_detail ? (
                       <>

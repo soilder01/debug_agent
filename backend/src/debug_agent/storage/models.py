@@ -14,6 +14,8 @@ class DebugJobRow(Base):
     status: Mapped[str] = mapped_column(String(40), index=True)
     attempt_count: Mapped[int] = mapped_column(Integer, default=0)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[str] = mapped_column(String(40), default="", server_default="", index=True)
+    updated_at: Mapped[str] = mapped_column(String(40), default="", server_default="")
 
 
 class DebugCaseRow(Base):

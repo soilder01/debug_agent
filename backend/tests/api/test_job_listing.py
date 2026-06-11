@@ -18,6 +18,8 @@ def test_job_listing_returns_submitted_jobs_with_retry_metadata() -> None:
         job = jobs_by_id[submitted["job_id"]]
         assert job["case_id"] == "handwrite233"
         assert job["status"] == "created"
+        assert job["created_at"] != ""
+        assert job["updated_at"] != ""
         assert job["max_attempts"] == 2
         assert job["remaining_attempts"] == 2
         assert job["will_retry"] is False
