@@ -63,8 +63,9 @@ async def run_experiments(
             started_at = perf_counter()
             model_call_error_type = ""
             model_call_error_message = ""
+            prompt = _build_step_prompt(case=case, step_name=step.name)
             try:
-                response = await adapter.generate(prompt=case.prompt, image_uri=case.image_uri)
+                response = await adapter.generate(prompt=prompt, image_uri=case.image_uri)
             except Exception as exc:
                 latency_ms = int((perf_counter() - started_at) * 1000)
                 model_call_error_type = type(exc).__name__
@@ -75,7 +76,7 @@ async def run_experiments(
                         evidence_id=f"{case.case_id}:{step.name}:{trial_index}",
                         step_name=step.name,
                         trial=trial_index,
-                        request_summary=_build_request_summary(prompt=case.prompt, image_uri=case.image_uri),
+                        request_summary=_build_request_summary(prompt=prompt, image_uri=case.image_uri),
                         latency_ms=latency_ms,
                         model_call_error_type=model_call_error_type,
                         model_call_error_message=model_call_error_message,
@@ -107,7 +108,7 @@ async def run_experiments(
                     model_name=response.model_name,
                     model_provider=response.model_provider,
                     model_id=response.model_id,
-                    request_summary=_build_request_summary(prompt=case.prompt, image_uri=case.image_uri),
+                    request_summary=_build_request_summary(prompt=prompt, image_uri=case.image_uri),
                     latency_ms=latency_ms,
                     response_parse_error=response_parse_error,
                     model_call_error_type=model_call_error_type,
@@ -132,6 +133,49 @@ def _build_request_summary(prompt: str, image_uri: str) -> dict[str, object]:
         "has_image": bool(image_uri),
         "image_uri_scheme": parsed_uri.scheme,
     }
+
+
+def _build_step_prompt(case: DebugCase, step_name: str) -> str:
+    if step_name != "localized_observation_request":
+        return case.prompt
+
+    affected_box_ids = _affected_box_ids_from_predictions(case)
+    if not affected_box_ids:
+        return case.prompt
+
+    regions_by_box_id = {region.box_id: region for region in case.box_regions}
+    region_lines: list[str] = []
+    for box_id in affected_box_ids:
+        region = regions_by_box_id.get(box_id)
+        if region is None:
+            region_lines.append(f"- box {box_id}: region unknown")
+            continue
+        region_lines.append(
+            f"- box {box_id}: x={region.x}, y={region.y}, width={region.width}, "
+            f"height={region.height}, unit={region.unit}, label={region.label}"
+        )
+
+    return "\n".join(
+        [
+            case.prompt,
+            "",
+            "localized_observation_request:",
+            "Focus on the following affected answer regions before producing final JSON.",
+            *region_lines,
+        ]
+    )
+
+
+def _affected_box_ids_from_predictions(case: DebugCase) -> list[int]:
+    for prediction in case.predictions:
+        try:
+            predicted = parse_prediction_answer(prediction.raw_output)
+        except Exception:
+            continue
+        diff = compare_answer_sets(case.golden_answer, predicted)
+        if diff.affected_box_ids:
+            return diff.affected_box_ids
+    return []
 
 
 def _build_localized_image_artifacts(

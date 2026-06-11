@@ -70,6 +70,17 @@ class TimeoutModelAdapter:
         raise TimeoutError("model request timed out")
 
 
+class PromptRecordingModelAdapter:
+    def __init__(self, raw_output: str) -> None:
+        self.raw_output = raw_output
+        self.prompts: list[str] = []
+
+    async def generate(self, prompt: str, image_uri: str) -> ModelResponse:
+        del image_uri
+        self.prompts.append(prompt)
+        return ModelResponse(model_name="recording", trial=0, raw_output=self.raw_output)
+
+
 @pytest.mark.asyncio
 async def test_run_experiments_keeps_model_call_error_as_evidence() -> None:
     fixture_path = Path(__file__).parents[1] / "fixtures" / "handwrite233.json"
@@ -153,3 +164,55 @@ async def test_run_experiments_adds_localized_image_artifacts_for_affected_boxes
     assert artifact.region.width == 56
     assert artifact.region.height == 78
     assert artifact.region.label == "box-7"
+
+
+@pytest.mark.asyncio
+async def test_run_experiments_sends_localized_prompt_with_affected_region_context() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "case-localized-prompt",
+            "image_uri": "file:///tmp/case-localized-prompt.png",
+            "prompt": "仅识别题目对应作答区域内的学生全部作答内容。",
+            "golden_answer": {"answers": [{"box_id": 7, "student_answer": "低昷烘干"}]},
+            "scoring_standard": "box_id and student_answer must match.",
+            "predictions": [
+                {
+                    "trial": 0,
+                    "raw_output": "{\"answers\":[{\"box_id\":7,\"student_answer\":\"低温烘干\"}]}",
+                    "score": 0,
+                }
+            ],
+            "avg_score": 0.0,
+            "box_regions": [
+                {
+                    "box_id": 7,
+                    "x": 12,
+                    "y": 34,
+                    "width": 56,
+                    "height": 78,
+                    "unit": "pixel",
+                    "label": "box-7",
+                }
+            ],
+        }
+    )
+    plan = ExperimentPlan(
+        case_id=case.case_id,
+        max_model_calls=1,
+        steps=[
+            ExperimentStep(
+                name="localized_observation_request",
+                description="Ask the model to inspect the affected answer box.",
+                trials=1,
+            )
+        ],
+    )
+    adapter = PromptRecordingModelAdapter(raw_output=case.predictions[0].raw_output)
+
+    await run_experiments(case=case, plan=plan, adapter=adapter)
+
+    assert len(adapter.prompts) == 1
+    assert "仅识别题目对应作答区域内的学生全部作答内容。" in adapter.prompts[0]
+    assert "localized_observation_request" in adapter.prompts[0]
+    assert "box 7" in adapter.prompts[0]
+    assert "x=12, y=34, width=56, height=78, unit=pixel, label=box-7" in adapter.prompts[0]
