@@ -809,3 +809,35 @@ def test_database_schema_adds_missing_case_box_region_count_column() -> None:
         row = session.get(DebugCaseRow, "case-1")
         assert row is not None
         assert row.box_region_count == 0
+
+
+def test_database_schema_backfills_case_box_region_count_from_legacy_json() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            """
+            CREATE TABLE debug_cases (
+                case_id VARCHAR(120) NOT NULL PRIMARY KEY,
+                case_json TEXT NOT NULL
+            )
+            """
+        )
+        connection.exec_driver_sql(
+            """
+            INSERT INTO debug_cases (
+                case_id,
+                case_json
+            )
+            VALUES (
+                'case-with-regions',
+                '{"case_id":"case-with-regions","image_uri":"file://case.png","prompt":"p","golden_answer":{"answers":[]},"scoring_standard":"s","predictions":[],"avg_score":1.0,"box_regions":[{"box_id":1,"x":0,"y":0,"width":10,"height":10},{"box_id":2,"x":10,"y":0,"width":10,"height":10}]}'
+            )
+            """
+        )
+
+    ensure_database_schema(engine)
+
+    repository = DebugJobRepository(session_factory)
+
+    assert repository.count_cases(has_regions=True) == 1
+    assert [case.case_id for case in repository.list_cases(has_regions=True)] == ["case-with-regions"]

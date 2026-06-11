@@ -1,3 +1,4 @@
+import json
 from collections.abc import Callable
 
 from sqlalchemy import create_engine, inspect, text
@@ -94,3 +95,25 @@ def ensure_database_schema(engine: Engine) -> None:
                 connection.execute(
                     text("ALTER TABLE debug_cases ADD COLUMN box_region_count INTEGER NOT NULL DEFAULT 0")
                 )
+                rows = connection.execute(text("SELECT case_id, case_json FROM debug_cases")).mappings()
+                for row in rows:
+                    connection.execute(
+                        text("UPDATE debug_cases SET box_region_count = :box_region_count WHERE case_id = :case_id"),
+                        {
+                            "box_region_count": _count_box_regions(str(row["case_json"])),
+                            "case_id": row["case_id"],
+                        },
+                    )
+
+
+def _count_box_regions(case_json: str) -> int:
+    try:
+        case_data = json.loads(case_json)
+    except json.JSONDecodeError:
+        return 0
+    if not isinstance(case_data, dict):
+        return 0
+    box_regions = case_data.get("box_regions")
+    if not isinstance(box_regions, list):
+        return 0
+    return len(box_regions)
