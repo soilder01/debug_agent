@@ -232,6 +232,50 @@ def test_repository_keeps_same_evidence_ids_for_different_jobs() -> None:
     assert repository.list_evidence_ids("job-2") == ["case-1:baseline:0"]
 
 
+def test_repository_counts_evidence_error_categories() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    repository.create_job(job_id="job-1", case_id="case-1")
+    repository.save_evidence(
+        job_id="job-1",
+        case_id="case-1",
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="case-1:baseline:0",
+                step_name="baseline",
+                trial=0,
+                raw_output="{\"answers\":[]}",
+                judge=JudgeResult(score=0, reasons=["student_answer_mismatch"]),
+            ),
+            ExperimentEvidence(
+                evidence_id="case-1:parse:0",
+                step_name="parse",
+                trial=0,
+                response_parse_error="Expecting value",
+                raw_output="not-json",
+                judge=JudgeResult(score=0, reasons=["response_parse_error"]),
+            ),
+            ExperimentEvidence(
+                evidence_id="case-1:model:0",
+                step_name="model",
+                trial=0,
+                model_call_error_type="TimeoutError",
+                model_call_error_message="model request timed out",
+                raw_output="",
+                judge=JudgeResult(score=0, reasons=["model_call_error"]),
+            ),
+        ],
+    )
+
+    assert repository.count_evidence_errors("job-1") == {
+        "total_evidence": 3,
+        "failed_judgements": 3,
+        "response_parse_errors": 1,
+        "model_call_errors": 1,
+    }
+
+
 def test_database_schema_migrates_legacy_global_evidence_primary_key() -> None:
     session_factory, engine = create_sqlite_memory_session_factory()
     with engine.begin() as connection:

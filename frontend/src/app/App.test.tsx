@@ -34,7 +34,13 @@ describe("App", () => {
             status: "completed",
             attempt_count: 1,
             error_message: null,
-            evidence_ids: ["handwrite233:baseline_replay:0"]
+            evidence_ids: ["handwrite233:baseline_replay:0"],
+            evidence_error_counts: {
+              total_evidence: 1,
+              failed_judgements: 1,
+              response_parse_errors: 0,
+              model_call_errors: 0
+            }
           }),
           { status: 200, headers: { "Content-Type": "application/json" } }
         )
@@ -54,6 +60,9 @@ describe("App", () => {
     expect(await screen.findByText("状态：completed", {}, { timeout: 500 })).toBeInTheDocument();
     expect(screen.getByText("尝试次数：1")).toBeInTheDocument();
     expect(screen.getByText("证据数：1")).toBeInTheDocument();
+    expect(screen.getByText("失败判分：1")).toBeInTheDocument();
+    expect(screen.getByText("解析错误：0")).toBeInTheDocument();
+    expect(screen.getByText("模型调用错误：0")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-123");
   });
 

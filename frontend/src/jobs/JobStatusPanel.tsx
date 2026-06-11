@@ -10,6 +10,7 @@ export function JobStatusPanel({ job, onSelectEvidence }: JobStatusPanelProps) {
   const errorMessage = job.error_message ?? "";
   const evidenceIds = job.evidence_ids ?? [];
   const evidenceCount = evidenceIds.length;
+  const evidenceErrorCounts = "evidence_error_counts" in job ? job.evidence_error_counts : null;
   return (
     <section>
       <h2>Job Status</h2>
@@ -18,6 +19,13 @@ export function JobStatusPanel({ job, onSelectEvidence }: JobStatusPanelProps) {
       <p>状态：{job.status}</p>
       <p>尝试次数：{attemptCount}</p>
       <p>证据数：{evidenceCount}</p>
+      {evidenceErrorCounts ? (
+        <>
+          <p>失败判分：{evidenceErrorCounts.failed_judgements}</p>
+          <p>解析错误：{evidenceErrorCounts.response_parse_errors}</p>
+          <p>模型调用错误：{evidenceErrorCounts.model_call_errors}</p>
+        </>
+      ) : null}
       {evidenceIds.length > 0 ? (
         <ul aria-label="Job evidence ids">
           {evidenceIds.map((evidenceId) => (

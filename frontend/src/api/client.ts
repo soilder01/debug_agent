@@ -37,6 +37,12 @@ export type DebugJobStatus = {
   attempt_count: number;
   error_message: string | null;
   evidence_ids: string[];
+  evidence_error_counts: {
+    total_evidence: number;
+    failed_judgements: number;
+    response_parse_errors: number;
+    model_call_errors: number;
+  };
 };
 
 export type BatchDebugJobResponse = {

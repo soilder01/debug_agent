@@ -35,6 +35,7 @@ class DebugJobStatus(BaseModel):
     attempt_count: int
     error_message: str | None
     evidence_ids: list[str]
+    evidence_error_counts: dict[str, int]
 
 
 class BatchDebugJobRequest(BaseModel):
@@ -241,6 +242,7 @@ def get_job_status(job_id: str) -> DebugJobStatus:
         attempt_count=job.attempt_count,
         error_message=job.error_message,
         evidence_ids=job_repository.list_evidence_ids(job_id),
+        evidence_error_counts=job_repository.count_evidence_errors(job_id),
     )
 
 

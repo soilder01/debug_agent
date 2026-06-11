@@ -20,3 +20,9 @@ def test_debug_case_returns_queryable_completed_job_status() -> None:
     assert body["attempt_count"] == 0
     assert body["error_message"] is None
     assert len(body["evidence_ids"]) == 6
+    assert body["evidence_error_counts"] == {
+        "total_evidence": 6,
+        "failed_judgements": 6,
+        "response_parse_errors": 0,
+        "model_call_errors": 0,
+    }

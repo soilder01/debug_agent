@@ -140,6 +140,23 @@ class DebugJobRepository:
                 )
                 return list(rows)
 
+    def count_evidence_errors(self, job_id: str) -> dict[str, int]:
+        with self._lock:
+            with self._session_factory() as session:
+                rows = list(
+                    session.scalars(
+                        select(EvidenceRow)
+                        .where(EvidenceRow.job_id == job_id)
+                        .order_by(EvidenceRow.evidence_id)
+                    )
+                )
+                return {
+                    "total_evidence": len(rows),
+                    "failed_judgements": sum(1 for row in rows if row.score == 0),
+                    "response_parse_errors": sum(1 for row in rows if row.response_parse_error),
+                    "model_call_errors": sum(1 for row in rows if row.model_call_error_type),
+                }
+
     def get_evidence(self, job_id: str, evidence_id: str) -> ExperimentEvidence | None:
         with self._lock:
             with self._session_factory() as session:
