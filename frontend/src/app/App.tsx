@@ -31,6 +31,8 @@ import { ExperimentTimeline } from "../experiments/ExperimentTimeline";
 import { JobStatusPanel } from "../jobs/JobStatusPanel";
 import { ReportPanel } from "../reports/ReportPanel";
 
+const jobListLimit = 50;
+
 export function App() {
   const [report, setReport] = useState<DebugReport | null>(null);
   const [submittedJob, setSubmittedJob] = useState<SubmittedDebugJob | null>(null);
@@ -171,7 +173,7 @@ export function App() {
   async function loadDebugJobs(status?: string) {
     setError("");
     try {
-      const result = await fetchDebugJobs(status);
+      const result = await fetchDebugJobs(status, jobListLimit);
       setBatchResult({ jobs: result.jobs, rejected_case_ids: [] });
       setJobListSummaryLabel(status === "failed" ? "失败任务" : "队列任务");
       setBatchJobStatuses(Object.fromEntries(result.jobs.map((job) => [job.job_id, job])));

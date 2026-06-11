@@ -234,8 +234,15 @@ export async function fetchJobStatus(jobId: string): Promise<DebugJobStatus> {
   return (await response.json()) as DebugJobStatus;
 }
 
-export async function fetchDebugJobs(status?: string): Promise<DebugJobListResponse> {
-  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+export async function fetchDebugJobs(status?: string, limit?: number): Promise<DebugJobListResponse> {
+  const params = new URLSearchParams();
+  if (status) {
+    params.set("status", status);
+  }
+  if (limit !== undefined) {
+    params.set("limit", String(limit));
+  }
+  const query = params.size > 0 ? `?${params.toString()}` : "";
   const response = await fetch(`/api/jobs${query}`);
   if (!response.ok) {
     throw new Error(`Failed to fetch debug jobs: ${response.status}`);
