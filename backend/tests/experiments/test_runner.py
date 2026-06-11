@@ -114,6 +114,17 @@ async def test_run_experiments_adds_localized_image_artifacts_for_affected_boxes
                 }
             ],
             "avg_score": 0.0,
+            "box_regions": [
+                {
+                    "box_id": 7,
+                    "x": 12,
+                    "y": 34,
+                    "width": 56,
+                    "height": 78,
+                    "unit": "pixel",
+                    "label": "box-7",
+                }
+            ],
         }
     )
     plan = ExperimentPlan(
@@ -136,4 +147,9 @@ async def test_run_experiments_adds_localized_image_artifacts_for_affected_boxes
     assert artifact.kind == "affected_box_candidate"
     assert artifact.source_image_uri == "file:///tmp/case-localized.png"
     assert artifact.derived_image_uri == ""
-    assert artifact.region is None
+    assert artifact.region is not None
+    assert artifact.region.x == 12
+    assert artifact.region.y == 34
+    assert artifact.region.width == 56
+    assert artifact.region.height == 78
+    assert artifact.region.label == "box-7"

@@ -21,6 +21,16 @@ class HumanNotes(BaseModel):
     root_cause: str = ""
 
 
+class BoxRegion(BaseModel):
+    box_id: int
+    x: int
+    y: int
+    width: int
+    height: int
+    unit: str = "pixel"
+    label: str = ""
+
+
 class DebugCase(BaseModel):
     case_id: str
     image_uri: str
@@ -30,3 +40,4 @@ class DebugCase(BaseModel):
     predictions: list[Prediction]
     avg_score: float = Field(ge=0.0, le=1.0)
     human_notes: HumanNotes = Field(default_factory=HumanNotes)
+    box_regions: list[BoxRegion] = Field(default_factory=list)

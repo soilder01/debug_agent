@@ -143,12 +143,23 @@ def _build_localized_image_artifacts(
         return []
 
     diff = compare_answer_sets(case.golden_answer, predicted)
+    regions_by_box_id = {
+        region.box_id: ImageRegion(
+            x=region.x,
+            y=region.y,
+            width=region.width,
+            height=region.height,
+            unit=region.unit,
+            label=region.label,
+        )
+        for region in case.box_regions
+    }
     return [
         ImageArtifact(
             artifact_id=f"{case.case_id}:box-{box_id}:localized-candidate",
             kind="affected_box_candidate",
             source_image_uri=case.image_uri,
-            region=None,
+            region=regions_by_box_id.get(box_id),
             derived_image_uri="",
         )
         for box_id in diff.affected_box_ids
