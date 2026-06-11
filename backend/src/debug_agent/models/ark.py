@@ -1,3 +1,8 @@
+import asyncio
+import json
+from typing import Protocol
+from urllib import request as urllib_request
+
 from pydantic import BaseModel, Field
 
 from debug_agent.models.adapters import ModelResponse
@@ -10,10 +15,41 @@ class ArkRequest(BaseModel):
     json_body: dict[str, object]
 
 
+class ArkTransport(Protocol):
+    async def post(self, request: ArkRequest) -> dict[str, object]:
+        """Post an Ark request and return the decoded JSON response."""
+
+
+class UrllibArkTransport:
+    async def post(self, request: ArkRequest) -> dict[str, object]:
+        return await asyncio.to_thread(self._post_sync, request)
+
+    def _post_sync(self, request: ArkRequest) -> dict[str, object]:
+        payload = json.dumps(request.json_body).encode("utf-8")
+        http_request = urllib_request.Request(
+            request.url,
+            data=payload,
+            headers={**request.headers, "Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib_request.urlopen(http_request, timeout=120) as response:
+            decoded = json.loads(response.read().decode("utf-8"))
+        if not isinstance(decoded, dict):
+            raise ValueError("Ark response must be a JSON object")
+        return decoded
+
+
 class ArkModelAdapter:
-    def __init__(self, settings: ArkSettings, model_id: str) -> None:
+    def __init__(
+        self,
+        settings: ArkSettings,
+        model_id: str,
+        transport: ArkTransport | None = None,
+    ) -> None:
         self._settings = settings
         self._model_id = model_id
+        self._transport = transport or UrllibArkTransport()
+        self._cursor = 0
 
     def build_request(self, prompt: str, image_uri: str) -> ArkRequest:
         content: list[dict[str, object]] = [{"type": "text", "text": prompt}]
@@ -29,5 +65,31 @@ class ArkModelAdapter:
         )
 
     async def generate(self, prompt: str, image_uri: str) -> ModelResponse:
-        del prompt, image_uri
-        raise NotImplementedError("Live Ark generation is not enabled yet")
+        request = self.build_request(prompt=prompt, image_uri=image_uri)
+        response_json = await self._transport.post(request)
+        trial = self._cursor
+        self._cursor += 1
+        return ModelResponse(
+            model_name=self._model_id,
+            trial=trial,
+            raw_output=_extract_response_content(response_json),
+        )
+
+
+def _extract_response_content(response_json: dict[str, object]) -> str:
+    try:
+        choices = response_json["choices"]
+        if not isinstance(choices, list) or not choices:
+            raise KeyError("choices")
+        first_choice = choices[0]
+        if not isinstance(first_choice, dict):
+            raise KeyError("choices[0]")
+        message = first_choice["message"]
+        if not isinstance(message, dict):
+            raise KeyError("message")
+        content = message["content"]
+        if not isinstance(content, str):
+            raise KeyError("content")
+        return content
+    except (KeyError, IndexError) as exc:
+        raise ValueError("Unable to parse Ark response content") from exc
