@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, Field, ValidationError
 
 from debug_agent.artifacts.store import artifact_store
 from debug_agent.cases.fixtures import load_fixture_case
@@ -55,6 +55,7 @@ class DebugJobListResponse(BaseModel):
 
 class BatchDebugJobRequest(BaseModel):
     case_ids: list[str]
+    baseline_trials: int = Field(default=5, ge=0, le=5)
 
 
 class BatchDebugJobResponse(BaseModel):
@@ -65,6 +66,7 @@ class BatchDebugJobResponse(BaseModel):
 class JsonlImportRequest(BaseModel):
     jsonl: str
     create_jobs: bool = True
+    baseline_trials: int = Field(default=5, ge=0, le=5)
 
 
 class JsonlRejectedLine(BaseModel):
@@ -81,6 +83,7 @@ class JsonlImportResponse(BaseModel):
 class CsvImportRequest(BaseModel):
     csv_text: str
     create_jobs: bool = True
+    baseline_trials: int = Field(default=5, ge=0, le=5)
 
 
 class CsvImportResponse(BaseModel):
@@ -186,7 +189,7 @@ def submit_batch_debug_jobs(request: BatchDebugJobRequest) -> BatchDebugJobRespo
     rejected_case_ids: list[str] = []
     for case_id in request.case_ids:
         try:
-            jobs.append(job_service.submit_case_debug(case_id))
+            jobs.append(job_service.submit_case_debug(case_id, baseline_trials=request.baseline_trials))
         except FileNotFoundError:
             rejected_case_ids.append(case_id)
     return BatchDebugJobResponse(jobs=jobs, rejected_case_ids=rejected_case_ids)
@@ -205,7 +208,7 @@ def import_jsonl_cases(request: JsonlImportRequest) -> JsonlImportResponse:
             job_repository.save_case(case)
             imported_case_ids.append(case.case_id)
             if request.create_jobs:
-                jobs.append(job_service.submit_case_debug(case.case_id))
+                jobs.append(job_service.submit_case_debug(case.case_id, baseline_trials=request.baseline_trials))
         except (json.JSONDecodeError, ValidationError, FileNotFoundError) as exc:
             rejected_lines.append(JsonlRejectedLine(line_number=line_number, error_message=str(exc)))
     return JsonlImportResponse(imported_case_ids=imported_case_ids, jobs=jobs, rejected_lines=rejected_lines)
@@ -220,7 +223,7 @@ def import_csv_cases(request: CsvImportRequest) -> CsvImportResponse:
         job_repository.save_case(case)
         imported_case_ids.append(case.case_id)
         if request.create_jobs:
-            jobs.append(job_service.submit_case_debug(case.case_id))
+            jobs.append(job_service.submit_case_debug(case.case_id, baseline_trials=request.baseline_trials))
     return CsvImportResponse(
         imported_case_ids=imported_case_ids,
         jobs=jobs,

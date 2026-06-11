@@ -25,3 +25,6 @@ def test_batch_debug_job_submission_creates_jobs_and_reports_rejections() -> Non
     worker_response = client.post("/jobs/run-next")
     assert worker_response.status_code == 200
     assert worker_response.json()["job_id"] == job_id
+    status = client.get(f"/jobs/{job_id}").json()
+    assert len([evidence_id for evidence_id in status["evidence_ids"] if ":baseline_replay:" in evidence_id]) == 5
+    assert len(status["evidence_ids"]) == 10

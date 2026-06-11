@@ -25,4 +25,7 @@ def test_jsonl_import_persists_cases_and_creates_jobs() -> None:
     worker_response = client.post("/jobs/run-next")
     assert worker_response.status_code == 200
     assert worker_response.json()["job_id"] == job_id
-    assert client.get(f"/jobs/{job_id}").json()["status"] == "completed"
+    status = client.get(f"/jobs/{job_id}").json()
+    assert status["status"] == "completed"
+    assert len([evidence_id for evidence_id in status["evidence_ids"] if ":baseline_replay:" in evidence_id]) == 5
+    assert len(status["evidence_ids"]) == 10

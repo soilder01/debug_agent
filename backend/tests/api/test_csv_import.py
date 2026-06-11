@@ -97,7 +97,8 @@ def test_csv_import_persists_cases_and_creates_jobs() -> None:
     assert worker_response.json()["job_id"] == job_id
     status = client.get(f"/jobs/{job_id}").json()
     assert status["status"] == "completed"
-    assert len(status["evidence_ids"]) == 6
+    assert len([evidence_id for evidence_id in status["evidence_ids"] if ":baseline_replay:" in evidence_id]) == 5
+    assert len(status["evidence_ids"]) == 10
 
 
 def test_csv_import_accepts_alias_columns_and_creates_jobs() -> None:
@@ -118,4 +119,5 @@ def test_csv_import_accepts_alias_columns_and_creates_jobs() -> None:
     assert worker_response.json()["job_id"] == job_id
     status = client.get(f"/jobs/{job_id}").json()
     assert status["status"] == "completed"
-    assert len(status["evidence_ids"]) == 6
+    assert len([evidence_id for evidence_id in status["evidence_ids"] if ":baseline_replay:" in evidence_id]) == 5
+    assert len(status["evidence_ids"]) == 10
