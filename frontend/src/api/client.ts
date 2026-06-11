@@ -44,6 +44,18 @@ export type BatchDebugJobResponse = {
   rejected_case_ids: string[];
 };
 
+export type DebugCaseSummary = {
+  case_id: string;
+  image_uri: string;
+  avg_score: number;
+  debug_status: string;
+  root_cause: string;
+};
+
+export type DebugCaseListResponse = {
+  cases: DebugCaseSummary[];
+};
+
 export type WorkerStatus = {
   running: boolean;
   processed_count: number;
@@ -110,6 +122,14 @@ export async function submitBatchDebugJobs(caseIds: string[]): Promise<BatchDebu
     throw new Error(`Failed to submit batch debug jobs: ${response.status}`);
   }
   return (await response.json()) as BatchDebugJobResponse;
+}
+
+export async function fetchCases(): Promise<DebugCaseListResponse> {
+  const response = await fetch("/api/cases");
+  if (!response.ok) {
+    throw new Error(`Failed to fetch imported cases: ${response.status}`);
+  }
+  return (await response.json()) as DebugCaseListResponse;
 }
 
 export async function importJsonlCases(jsonl: string, createJobs = true): Promise<JsonlImportResponse> {

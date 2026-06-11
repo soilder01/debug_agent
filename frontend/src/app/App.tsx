@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import {
   type BatchDebugJobResponse,
   type CsvImportResponse,
+  type DebugCaseSummary,
+  fetchCases,
   fetchEvidenceDetail,
   fetchJobStatus,
   fetchWorkerStatus,
@@ -32,6 +34,7 @@ export function App() {
   const [batchCaseIds, setBatchCaseIds] = useState("");
   const [batchResult, setBatchResult] = useState<BatchDebugJobResponse | null>(null);
   const [batchJobStatuses, setBatchJobStatuses] = useState<Record<string, DebugJobStatus | SubmittedDebugJob>>({});
+  const [importedCases, setImportedCases] = useState<DebugCaseSummary[]>([]);
   const [jsonlCases, setJsonlCases] = useState("");
   const [jsonlImportResult, setJsonlImportResult] = useState<JsonlImportResponse | null>(null);
   const [csvCases, setCsvCases] = useState("");
@@ -106,6 +109,20 @@ export function App() {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
     }
+  }
+
+  async function loadImportedCases() {
+    setError("");
+    try {
+      const result = await fetchCases();
+      setImportedCases(result.cases);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
+  function useImportedCasesForBatch() {
+    setBatchCaseIds(importedCases.map((caseSummary) => caseSummary.case_id).join("\n"));
   }
 
   async function submitBatchJobs() {
@@ -247,6 +264,28 @@ export function App() {
                     .map((row) => `${row.row_number}:${row.error_message}`)
                     .join(", ")}
             </p>
+          </>
+        ) : null}
+      </section>
+      <section>
+        <h2>Imported Cases</h2>
+        <button type="button" onClick={loadImportedCases}>
+          Load imported cases
+        </button>
+        {importedCases.length > 0 ? (
+          <>
+            <p>已导入样本：{importedCases.length}</p>
+            <button type="button" onClick={useImportedCasesForBatch}>
+              Use imported cases for batch
+            </button>
+            <ul aria-label="Imported case summaries">
+              {importedCases.map((caseSummary) => (
+                <li key={caseSummary.case_id}>
+                  {caseSummary.case_id}｜avg_score {caseSummary.avg_score}｜
+                  {caseSummary.debug_status || "未标记"}｜{caseSummary.root_cause || "未归因"}
+                </li>
+              ))}
+            </ul>
           </>
         ) : null}
       </section>

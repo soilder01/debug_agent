@@ -319,4 +319,42 @@ describe("App", () => {
     expect(screen.getByText("批量创建：1")).toBeInTheDocument();
     expect(screen.getByText("job-csv-1：created")).toBeInTheDocument();
   });
+
+  it("loads imported case summaries and can copy them into batch submission", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          cases: [
+            {
+              case_id: "case-list-1",
+              image_uri: "file://case-list-1.png",
+              avg_score: 0.2,
+              debug_status: "pending",
+              root_cause: "visual_recognition_failure"
+            },
+            {
+              case_id: "case-list-2",
+              image_uri: "file://case-list-2.png",
+              avg_score: 1,
+              debug_status: "",
+              root_cause: ""
+            }
+          ]
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load imported cases" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/cases");
+    expect(await screen.findByText("已导入样本：2")).toBeInTheDocument();
+    expect(screen.getByText("case-list-1｜avg_score 0.2｜pending｜visual_recognition_failure")).toBeInTheDocument();
+    expect(screen.getByText("case-list-2｜avg_score 1｜未标记｜未归因")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Use imported cases for batch" }));
+
+    expect(screen.getByLabelText("Batch case ids")).toHaveValue("case-list-1\ncase-list-2");
+  });
 });
