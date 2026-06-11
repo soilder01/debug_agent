@@ -20,6 +20,8 @@ class ExperimentEvidence(BaseModel):
     request_summary: dict[str, object] = {}
     latency_ms: int = 0
     response_parse_error: str = ""
+    model_call_error_type: str = ""
+    model_call_error_message: str = ""
     raw_output: str
     judge: JudgeResult
 
@@ -41,7 +43,29 @@ async def run_experiments(
     for step in plan.steps:
         for trial_index in range(step.trials):
             started_at = perf_counter()
-            response = await adapter.generate(prompt=case.prompt, image_uri=case.image_uri)
+            model_call_error_type = ""
+            model_call_error_message = ""
+            try:
+                response = await adapter.generate(prompt=case.prompt, image_uri=case.image_uri)
+            except Exception as exc:
+                latency_ms = int((perf_counter() - started_at) * 1000)
+                model_call_error_type = type(exc).__name__
+                model_call_error_message = str(exc)
+                judge = JudgeResult(score=0, reasons=["model_call_error"])
+                evidence.append(
+                    ExperimentEvidence(
+                        evidence_id=f"{case.case_id}:{step.name}:{trial_index}",
+                        step_name=step.name,
+                        trial=trial_index,
+                        request_summary=_build_request_summary(prompt=case.prompt, image_uri=case.image_uri),
+                        latency_ms=latency_ms,
+                        model_call_error_type=model_call_error_type,
+                        model_call_error_message=model_call_error_message,
+                        raw_output="",
+                        judge=judge,
+                    )
+                )
+                continue
             latency_ms = int((perf_counter() - started_at) * 1000)
             response_parse_error = ""
             try:
@@ -62,6 +86,8 @@ async def run_experiments(
                     request_summary=_build_request_summary(prompt=case.prompt, image_uri=case.image_uri),
                     latency_ms=latency_ms,
                     response_parse_error=response_parse_error,
+                    model_call_error_type=model_call_error_type,
+                    model_call_error_message=model_call_error_message,
                     raw_output=response.raw_output,
                     judge=judge,
                 )

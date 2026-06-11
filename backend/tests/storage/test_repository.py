@@ -81,6 +81,8 @@ def test_repository_tracks_job_state_and_evidence() -> None:
         request_summary={"prompt_length": 31, "has_image": True, "image_uri_scheme": "tos"},
         latency_ms=42,
         response_parse_error="Expecting value: line 1 column 1 (char 0)",
+        model_call_error_type="TimeoutError",
+        model_call_error_message="model request timed out",
         raw_output="{\"answers\":[]}",
         judge=JudgeResult(score=0, reasons=["box 1 mismatch"]),
     )
@@ -105,6 +107,8 @@ def test_repository_tracks_job_state_and_evidence() -> None:
         )
         assert row.latency_ms == 42
         assert row.response_parse_error == "Expecting value: line 1 column 1 (char 0)"
+        assert row.model_call_error_type == "TimeoutError"
+        assert row.model_call_error_message == "model request timed out"
 
     restored = repository.get_evidence("job-1", "case-1:baseline:0")
     assert restored is not None
@@ -121,6 +125,8 @@ def test_repository_tracks_job_state_and_evidence() -> None:
     }
     assert restored.latency_ms == 42
     assert restored.response_parse_error == "Expecting value: line 1 column 1 (char 0)"
+    assert restored.model_call_error_type == "TimeoutError"
+    assert restored.model_call_error_message == "model request timed out"
     assert restored.raw_output == "{\"answers\":[]}"
     assert restored.judge.score == 0
     assert restored.judge.reasons == ["box 1 mismatch"]
@@ -507,3 +513,61 @@ def test_database_schema_adds_missing_evidence_parse_error_column() -> None:
         row = session.get(EvidenceRow, ("job-1", "case-1:baseline:0"))
         assert row is not None
         assert row.response_parse_error == ""
+
+
+def test_database_schema_adds_missing_evidence_model_call_error_columns() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            """
+            CREATE TABLE evidence (
+                job_id VARCHAR(80) NOT NULL,
+                evidence_id VARCHAR(200) NOT NULL,
+                case_id VARCHAR(120) NOT NULL,
+                step_name VARCHAR(120) NOT NULL,
+                trial INTEGER NOT NULL,
+                model_name VARCHAR(120) NOT NULL DEFAULT '',
+                model_provider VARCHAR(80) NOT NULL DEFAULT '',
+                model_id VARCHAR(160) NOT NULL DEFAULT '',
+                request_summary_json TEXT NOT NULL DEFAULT '{}',
+                latency_ms INTEGER NOT NULL DEFAULT 0,
+                response_parse_error TEXT NOT NULL DEFAULT '',
+                score INTEGER NOT NULL,
+                reasons_json TEXT NOT NULL,
+                raw_output TEXT NOT NULL,
+                PRIMARY KEY (job_id, evidence_id)
+            )
+            """
+        )
+        connection.exec_driver_sql(
+            """
+            INSERT INTO evidence (
+                job_id,
+                evidence_id,
+                case_id,
+                step_name,
+                trial,
+                score,
+                reasons_json,
+                raw_output
+            )
+            VALUES (
+                'job-1',
+                'case-1:baseline:0',
+                'case-1',
+                'baseline',
+                0,
+                0,
+                '[]',
+                ''
+            )
+            """
+        )
+
+    ensure_database_schema(engine)
+
+    with session_factory() as session:
+        row = session.get(EvidenceRow, ("job-1", "case-1:baseline:0"))
+        assert row is not None
+        assert row.model_call_error_type == ""
+        assert row.model_call_error_message == ""

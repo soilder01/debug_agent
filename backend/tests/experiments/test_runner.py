@@ -7,6 +7,7 @@ import pytest
 from debug_agent.cases.models import DebugCase
 from debug_agent.experiments.planner import ExperimentPlan, ExperimentStep, plan_experiments
 from debug_agent.experiments.runner import run_experiments
+from debug_agent.models.adapters import ModelResponse
 from debug_agent.models.fake import FakeModelAdapter
 
 
@@ -61,3 +62,36 @@ async def test_run_experiments_keeps_malformed_model_output_as_evidence() -> Non
     assert result.evidence[0].response_parse_error
     assert result.evidence[0].judge.score == 0
     assert result.evidence[0].judge.reasons == ["response_parse_error"]
+
+
+class TimeoutModelAdapter:
+    async def generate(self, prompt: str, image_uri: str) -> ModelResponse:
+        del prompt, image_uri
+        raise TimeoutError("model request timed out")
+
+
+@pytest.mark.asyncio
+async def test_run_experiments_keeps_model_call_error_as_evidence() -> None:
+    fixture_path = Path(__file__).parents[1] / "fixtures" / "handwrite233.json"
+    case = DebugCase.model_validate(json.loads(fixture_path.read_text(encoding="utf-8")))
+    plan = ExperimentPlan(
+        case_id=case.case_id,
+        max_model_calls=1,
+        steps=[
+            ExperimentStep(
+                name="timeout_call",
+                description="Keep model timeout as evidence.",
+                trials=1,
+            )
+        ],
+    )
+
+    result = await run_experiments(case=case, plan=plan, adapter=TimeoutModelAdapter())
+
+    assert result.total_trials == 1
+    assert result.success_count == 0
+    assert result.evidence[0].raw_output == ""
+    assert result.evidence[0].model_call_error_type == "TimeoutError"
+    assert result.evidence[0].model_call_error_message == "model request timed out"
+    assert result.evidence[0].judge.score == 0
+    assert result.evidence[0].judge.reasons == ["model_call_error"]

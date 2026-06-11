@@ -72,6 +72,8 @@ def ensure_database_schema(engine: Engine) -> None:
             ("request_summary_json", "TEXT", "'{}'"),
             ("latency_ms", "INTEGER", "0"),
             ("response_parse_error", "TEXT", "''"),
+            ("model_call_error_type", "VARCHAR(120)", "''"),
+            ("model_call_error_message", "TEXT", "''"),
         ]
         with engine.begin() as connection:
             for column_name, column_type, default_value in missing_columns:

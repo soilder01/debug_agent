@@ -121,6 +121,8 @@ class DebugJobRepository:
                             request_summary_json=json.dumps(item.request_summary),
                             latency_ms=item.latency_ms,
                             response_parse_error=item.response_parse_error,
+                            model_call_error_type=item.model_call_error_type,
+                            model_call_error_message=item.model_call_error_message,
                             score=item.judge.score,
                             reasons_json=json.dumps(item.judge.reasons),
                             raw_output=item.raw_output,
@@ -160,6 +162,8 @@ class DebugJobRepository:
                     request_summary=request_summary,
                     latency_ms=row.latency_ms,
                     response_parse_error=row.response_parse_error,
+                    model_call_error_type=row.model_call_error_type,
+                    model_call_error_message=row.model_call_error_message,
                     raw_output=row.raw_output,
                     judge=JudgeResult(
                         score=row.score,
