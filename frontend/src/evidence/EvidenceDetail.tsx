@@ -22,6 +22,7 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
       <p>Prompt 长度：{evidence.request_summary.prompt_length ?? 0}</p>
       <p>包含图片：{String(evidence.request_summary.has_image ?? false)}</p>
       <p>图片 URI Scheme：{evidence.request_summary.image_uri_scheme || "无"}</p>
+      {evidence.response_parse_error ? <p>解析错误：{evidence.response_parse_error}</p> : null}
       <p>Judge Score：{evidence.judge.score}</p>
       <h3>Judge Reasons</h3>
       <ul>

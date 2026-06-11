@@ -121,6 +121,7 @@ export type ExperimentEvidence = {
     image_uri_scheme?: string;
   };
   latency_ms: number;
+  response_parse_error: string;
   raw_output: string;
   judge: {
     score: number;

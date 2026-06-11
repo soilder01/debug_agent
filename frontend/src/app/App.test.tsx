@@ -101,6 +101,7 @@ describe("App", () => {
               image_uri_scheme: ""
             },
             latency_ms: 12,
+            response_parse_error: "Expecting value: line 1 column 1 (char 0)",
             raw_output: "{\"answers\":[]}",
             judge: {
               score: 0,
@@ -125,6 +126,7 @@ describe("App", () => {
     expect(screen.getByText("Prompt 长度：22")).toBeInTheDocument();
     expect(screen.getByText("包含图片：false")).toBeInTheDocument();
     expect(screen.getByText("图片 URI Scheme：无")).toBeInTheDocument();
+    expect(screen.getByText("解析错误：Expecting value: line 1 column 1 (char 0)")).toBeInTheDocument();
     expect(screen.getByText("box 1 student_answer_mismatch")).toBeInTheDocument();
   });
 
