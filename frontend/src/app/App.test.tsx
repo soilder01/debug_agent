@@ -255,8 +255,8 @@ describe("App", () => {
                 job_id: "job-history-1",
                 case_id: "handwrite233",
                 status: "failed",
-                created_at: "2026-06-11T10:00:01+00:00",
-                updated_at: "2026-06-11T10:00:02+00:00",
+                created_at: "2026-06-11T10:00:01",
+                updated_at: "2026-06-11T10:00:02",
                 attempt_count: 2,
                 max_attempts: 2,
                 remaining_attempts: 0,
@@ -319,8 +319,14 @@ describe("App", () => {
     expect(screen.getByText("总任务：5")).toBeInTheDocument();
     expect(screen.getByText("未加载：4")).toBeInTheDocument();
     expect(screen.getByText("job-history-1：failed")).toBeInTheDocument();
-    expect(screen.getByText("job-history-1 创建：2026-06-11T10:00:01+00:00")).toBeInTheDocument();
-    expect(screen.getByText("job-history-1 更新：2026-06-11T10:00:02+00:00")).toBeInTheDocument();
+    expect(screen.getByText("job-history-1 创建：2026-06-11 10:00:01")).toHaveAttribute(
+      "title",
+      "2026-06-11T10:00:01"
+    );
+    expect(screen.getByText("job-history-1 更新：2026-06-11 10:00:02")).toHaveAttribute(
+      "title",
+      "2026-06-11T10:00:02"
+    );
     expect(screen.getByText("job-history-1 错误：fixture failed")).toBeInTheDocument();
     expect(screen.getByText("job-history-1 建议：重试预算已耗尽")).toBeInTheDocument();
     expect(screen.getByText("job-history-1 级别：critical")).toBeInTheDocument();

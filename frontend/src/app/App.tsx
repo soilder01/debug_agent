@@ -502,8 +502,18 @@ export function App() {
                     <span>
                       {job.job_id}：{job.status}
                     </span>
-                    {job.created_at ? <span> {job.job_id} 创建：{job.created_at}</span> : null}
-                    {job.updated_at ? <span> {job.job_id} 更新：{job.updated_at}</span> : null}
+                    {job.created_at ? (
+                      <span title={job.created_at}>
+                        {" "}
+                        {job.job_id} 创建：{formatJobTimestamp(job.created_at)}
+                      </span>
+                    ) : null}
+                    {job.updated_at ? (
+                      <span title={job.updated_at}>
+                        {" "}
+                        {job.job_id} 更新：{formatJobTimestamp(job.updated_at)}
+                      </span>
+                    ) : null}
                     {job.error_message ? <span> {job.job_id} 错误：{job.error_message}</span> : null}
                     {job.retry_recommendation_detail ? (
                       <>
@@ -553,4 +563,20 @@ export function App() {
       )}
     </main>
   );
+}
+
+function formatJobTimestamp(timestamp: string): string {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) {
+    return timestamp;
+  }
+  return [
+    date.getFullYear(),
+    padDatePart(date.getMonth() + 1),
+    padDatePart(date.getDate())
+  ].join("-") + ` ${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}:${padDatePart(date.getSeconds())}`;
+}
+
+function padDatePart(value: number): string {
+  return String(value).padStart(2, "0");
 }
