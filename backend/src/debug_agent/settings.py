@@ -1,6 +1,32 @@
 import os
+from pathlib import Path
 
 from pydantic import BaseModel, SecretStr
+
+_LOCAL_ENV_LOADED = False
+
+
+def load_env_file(path: str | Path, override: bool = False) -> None:
+    env_path = Path(path)
+    if not env_path.exists():
+        return
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        key, value = stripped.split("=", 1)
+        normalized_value = value.strip().strip('"').strip("'")
+        if override or key not in os.environ:
+            os.environ[key] = normalized_value
+
+
+def load_local_env() -> None:
+    global _LOCAL_ENV_LOADED
+    if _LOCAL_ENV_LOADED:
+        return
+    project_root = Path(__file__).resolve().parents[3]
+    load_env_file(project_root / ".env")
+    _LOCAL_ENV_LOADED = True
 
 
 class DebugAgentSettings(BaseModel):
@@ -8,6 +34,7 @@ class DebugAgentSettings(BaseModel):
 
     @classmethod
     def from_env(cls) -> "DebugAgentSettings":
+        load_local_env()
         return cls(
             database_url=os.environ.get(
                 "DEBUG_AGENT_DATABASE_URL",
@@ -21,6 +48,7 @@ class ModelRuntimeSettings(BaseModel):
 
     @classmethod
     def from_env(cls) -> "ModelRuntimeSettings":
+        load_local_env()
         return cls(
             provider=os.environ.get(
                 "DEBUG_AGENT_MODEL_PROVIDER",
@@ -38,6 +66,7 @@ class ArkSettings(BaseModel):
 
     @classmethod
     def from_env(cls) -> "ArkSettings":
+        load_local_env()
         api_key = os.environ.get("ARK_API_KEY", "")
         if not api_key:
             raise RuntimeError("ARK_API_KEY is required for live Ark model calls")

@@ -1,4 +1,6 @@
-from debug_agent.settings import DebugAgentSettings
+from pathlib import Path
+
+from debug_agent.settings import ArkSettings, DebugAgentSettings, load_env_file
 
 
 def test_debug_agent_settings_default_to_in_memory_database(monkeypatch) -> None:
@@ -15,3 +17,55 @@ def test_debug_agent_settings_read_database_url_from_env(monkeypatch) -> None:
     settings = DebugAgentSettings.from_env()
 
     assert settings.database_url == "sqlite+pysqlite:///./debug_agent.db"
+
+
+def test_load_env_file_populates_missing_environment_values(monkeypatch) -> None:
+    monkeypatch.delenv("DEBUG_AGENT_MODEL_PROVIDER", raising=False)
+    env_file = Path(__file__).with_name(".settings-provider-test.env")
+    try:
+        env_file.write_text("DEBUG_AGENT_MODEL_PROVIDER=ark-seed2-lite\n", encoding="utf-8")
+
+        load_env_file(env_file)
+
+        assert DebugAgentSettings.from_env().database_url == "sqlite+pysqlite:///:memory:"
+        from debug_agent.settings import ModelRuntimeSettings
+
+        assert ModelRuntimeSettings.from_env().provider == "ark-seed2-lite"
+    finally:
+        env_file.unlink(missing_ok=True)
+
+
+def test_ark_settings_can_be_built_from_env_file(monkeypatch) -> None:
+    for key in (
+        "ARK_API_KEY",
+        "ARK_BASE_URL",
+        "ARK_CONTENT_TASKS_URL",
+        "ARK_SEED2_LITE_MODEL_ID",
+        "ARK_SEED2_PRO_MODEL_ID",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    env_file = Path(__file__).with_name(".settings-ark-test.env")
+    try:
+        env_file.write_text(
+            "\n".join(
+                [
+                    "ARK_API_KEY=secret-value",
+                    "ARK_BASE_URL=https://ark.example/api/v3",
+                    "ARK_CONTENT_TASKS_URL=https://ark.example/api/v3/contents/generations/tasks",
+                    "ARK_SEED2_LITE_MODEL_ID=lite-model",
+                    "ARK_SEED2_PRO_MODEL_ID=pro-model",
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+        load_env_file(env_file)
+
+        settings = ArkSettings.from_env()
+        assert settings.api_key.get_secret_value() == "secret-value"
+        assert settings.base_url == "https://ark.example/api/v3"
+        assert settings.content_tasks_url == "https://ark.example/api/v3/contents/generations/tasks"
+        assert settings.seed2_lite_model_id == "lite-model"
+        assert settings.seed2_pro_model_id == "pro-model"
+    finally:
+        env_file.unlink(missing_ok=True)

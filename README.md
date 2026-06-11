@@ -18,9 +18,9 @@ Enterprise-grade agent harness for debugging handwriting OCR badcases.
 
 ## Model Configuration
 
-The project reads model credentials from environment variables. Keep real secrets in your shell or local `.env` file only. Use `.env.example` as the committed template.
+The project reads model credentials from environment variables and automatically loads a local `.env` file. Keep real secrets in your shell or local `.env` file only. Use `.env.example` as the committed template, then replace the `ARK_API_KEY` placeholder locally.
 
-Default local verification uses `DEBUG_AGENT_MODEL_PROVIDER=fake` and does not call live models. To intentionally run the gated Ark integration test, set `ARK_API_KEY`, `DEBUG_AGENT_MODEL_PROVIDER=ark-seed2-lite`, and `DEBUG_AGENT_ENABLE_LIVE_MODEL_TESTS=1`, then run:
+`.env.example` is configured for `DEBUG_AGENT_MODEL_PROVIDER=ark-seed2-lite` with the Seed 2.0 Lite endpoint/model id. Default verification still does not call live models because live tests require `DEBUG_AGENT_ENABLE_LIVE_MODEL_TESTS=1`. To intentionally run the gated Ark integration test, set a real `ARK_API_KEY` and run:
 
 ```powershell
 python -m pytest tests/integration/test_live_ark_adapter.py -q
