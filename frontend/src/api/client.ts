@@ -204,8 +204,12 @@ export async function debugFixtureCase(caseId: string): Promise<DebugReport> {
   return (await response.json()) as DebugReport;
 }
 
-export async function submitDebugJob(caseId: string): Promise<SubmittedDebugJob> {
-  const response = await fetch(`/api/cases/${caseId}/debug-jobs?auto_run=true`, { method: "POST" });
+export async function submitDebugJob(caseId: string, baselineTrials = 5): Promise<SubmittedDebugJob> {
+  const params = new URLSearchParams({
+    auto_run: "true",
+    baseline_trials: String(baselineTrials)
+  });
+  const response = await fetch(`/api/cases/${caseId}/debug-jobs?${params.toString()}`, { method: "POST" });
   if (!response.ok) {
     throw new Error(`Failed to submit debug job for case ${caseId}: ${response.status}`);
   }

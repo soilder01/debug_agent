@@ -61,7 +61,7 @@ describe("App", () => {
 
     expect(await screen.findByText("样本 ID：handwrite233")).toBeInTheDocument();
     expect(screen.getByText("Job ID：job-123")).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledWith("/api/cases/handwrite233/debug-jobs?auto_run=true", {
+    expect(fetchMock).toHaveBeenCalledWith("/api/cases/handwrite233/debug-jobs?auto_run=true&baseline_trials=5", {
       method: "POST"
     });
 
@@ -972,7 +972,7 @@ describe("App", () => {
     await userEvent.click(await screen.findByRole("button", { name: "View case detail case-list-1" }));
     await userEvent.click(await screen.findByRole("button", { name: "Create debug job for case-list-1" }));
 
-    expect(fetchMock).toHaveBeenCalledWith("/api/cases/case-list-1/debug-jobs?auto_run=true", {
+    expect(fetchMock).toHaveBeenCalledWith("/api/cases/case-list-1/debug-jobs?auto_run=true&baseline_trials=5", {
       method: "POST"
     });
     expect(await screen.findByText("Job ID：job-case-detail-1")).toBeInTheDocument();
