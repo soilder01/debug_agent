@@ -410,4 +410,68 @@ describe("App", () => {
     expect(screen.getByText("人工状态：pending")).toBeInTheDocument();
     expect(screen.getByText("人工根因：visual_recognition_failure")).toBeInTheDocument();
   });
+
+  it("creates a debug job from the selected case detail", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            cases: [
+              {
+                case_id: "case-list-1",
+                image_uri: "file://case-list-1.png",
+                avg_score: 0.2,
+                debug_status: "pending",
+                root_cause: "visual_recognition_failure"
+              }
+            ]
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            case_id: "case-list-1",
+            image_uri: "file://case-list-1.png",
+            prompt: "Read the handwritten answer",
+            golden_answer: { answers: [{ box_id: 1, student_answer: "42" }] },
+            scoring_standard: "exact match",
+            predictions: [{ trial: 1, raw_output: "{\"answers\":[]}", score: 0 }],
+            avg_score: 0.2,
+            human_notes: {
+              debug_status: "pending",
+              root_cause: "visual_recognition_failure"
+            }
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            job_id: "job-case-detail-1",
+            case_id: "case-list-1",
+            status: "created",
+            attempt_count: 0,
+            error_message: null,
+            evidence_ids: []
+          }),
+          { status: 202, headers: { "Content-Type": "application/json" } }
+        )
+      );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load imported cases" }));
+    await userEvent.click(await screen.findByRole("button", { name: "View case detail case-list-1" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Create debug job for case-list-1" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/cases/case-list-1/debug-jobs?auto_run=true", {
+      method: "POST"
+    });
+    expect(await screen.findByText("Job ID：job-case-detail-1")).toBeInTheDocument();
+    expect(screen.getByText("样本 ID：case-list-1")).toBeInTheDocument();
+    expect(screen.getByText("状态：created")).toBeInTheDocument();
+  });
 });

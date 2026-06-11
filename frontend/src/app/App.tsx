@@ -137,6 +137,18 @@ export function App() {
     }
   }
 
+  async function submitSelectedCaseJob(caseId: string) {
+    setError("");
+    try {
+      setSubmittedJob(await submitDebugJob(caseId));
+      setJobStatus(null);
+      setReport(null);
+      setSelectedEvidence(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
   async function submitBatchJobs() {
     setError("");
     const caseIds = batchCaseIds
@@ -304,6 +316,9 @@ export function App() {
             {selectedCaseDetail ? (
               <section aria-label="Selected case detail">
                 <h3>样本详情：{selectedCaseDetail.case_id}</h3>
+                <button type="button" onClick={() => void submitSelectedCaseJob(selectedCaseDetail.case_id)}>
+                  Create debug job for {selectedCaseDetail.case_id}
+                </button>
                 <p>图片：{selectedCaseDetail.image_uri}</p>
                 <p>Prompt：{selectedCaseDetail.prompt}</p>
                 <p>评分标准：{selectedCaseDetail.scoring_standard}</p>
