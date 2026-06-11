@@ -112,6 +112,9 @@ export type ExperimentEvidence = {
   evidence_id: string;
   step_name: string;
   trial: number;
+  model_name: string;
+  model_provider: string;
+  model_id: string;
   raw_output: string;
   judge: {
     score: number;
@@ -226,6 +229,17 @@ export async function fetchEvidenceDetail(
   const response = await fetch(`/api/cases/${caseId}/evidence/${encodeURIComponent(evidenceId)}`);
   if (!response.ok) {
     throw new Error(`Failed to fetch evidence ${evidenceId}: ${response.status}`);
+  }
+  return (await response.json()) as ExperimentEvidence;
+}
+
+export async function fetchJobEvidenceDetail(
+  jobId: string,
+  evidenceId: string
+): Promise<ExperimentEvidence> {
+  const response = await fetch(`/api/jobs/${jobId}/evidence/${encodeURIComponent(evidenceId)}`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch job evidence ${evidenceId}: ${response.status}`);
   }
   return (await response.json()) as ExperimentEvidence;
 }

@@ -8,6 +8,7 @@ import {
   fetchCaseDetail,
   fetchCases,
   fetchEvidenceDetail,
+  fetchJobEvidenceDetail,
   fetchJobStatus,
   fetchWorkerStatus,
   importCsvCases,
@@ -218,6 +219,19 @@ export function App() {
     }
   }
 
+  async function selectJobEvidence(evidenceId: string) {
+    const currentJob = jobStatus ?? submittedJob;
+    if (!currentJob) {
+      return;
+    }
+    setError("");
+    try {
+      setSelectedEvidence(await fetchJobEvidenceDetail(currentJob.job_id, evidenceId));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
   return (
     <main>
       <h1>Handwriting OCR Debug Agent</h1>
@@ -380,7 +394,12 @@ export function App() {
         ) : null}
       </section>
       {error ? <p role="alert">{error}</p> : null}
-      {submittedJob ? <JobStatusPanel job={jobStatus ?? submittedJob} /> : null}
+      {submittedJob ? (
+        <>
+          <JobStatusPanel job={jobStatus ?? submittedJob} onSelectEvidence={selectJobEvidence} />
+          <EvidenceDetail evidence={selectedEvidence} />
+        </>
+      ) : null}
       {report ? (
         <>
           <CaseDetail jobId={report.job_id} caseId={report.case_id} status={report.status} />

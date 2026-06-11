@@ -2,12 +2,14 @@ import type { DebugJobStatus, SubmittedDebugJob } from "../api/client";
 
 type JobStatusPanelProps = {
   job: DebugJobStatus | SubmittedDebugJob;
+  onSelectEvidence?: (evidenceId: string) => void;
 };
 
-export function JobStatusPanel({ job }: JobStatusPanelProps) {
+export function JobStatusPanel({ job, onSelectEvidence }: JobStatusPanelProps) {
   const attemptCount = job.attempt_count ?? 0;
   const errorMessage = job.error_message ?? "";
-  const evidenceCount = job.evidence_ids?.length ?? 0;
+  const evidenceIds = job.evidence_ids ?? [];
+  const evidenceCount = evidenceIds.length;
   return (
     <section>
       <h2>Job Status</h2>
@@ -16,6 +18,17 @@ export function JobStatusPanel({ job }: JobStatusPanelProps) {
       <p>状态：{job.status}</p>
       <p>尝试次数：{attemptCount}</p>
       <p>证据数：{evidenceCount}</p>
+      {evidenceIds.length > 0 ? (
+        <ul aria-label="Job evidence ids">
+          {evidenceIds.map((evidenceId) => (
+            <li key={evidenceId}>
+              <button type="button" onClick={() => onSelectEvidence?.(evidenceId)}>
+                View evidence {evidenceId}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {errorMessage ? <p role="alert">错误：{errorMessage}</p> : null}
     </section>
   );
