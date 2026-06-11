@@ -11,6 +11,9 @@ export type DebugReport = {
   experiment_summary: {
     total_trials: number;
     success_count: number;
+    failed_trial_count?: number;
+    success_rate?: number;
+    stability_label?: string;
     evidence_ids: string[];
     image_artifact_ids?: string[];
   } | null;

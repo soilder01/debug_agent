@@ -5,7 +5,9 @@ type ReportPanelProps = {
 };
 
 export function ReportPanel({ report }: ReportPanelProps) {
-  const imageArtifactIds = report.experiment_summary?.image_artifact_ids ?? [];
+  const experimentSummary = report.experiment_summary;
+  const imageArtifactIds = experimentSummary?.image_artifact_ids ?? [];
+  const failedTrialCount = experimentSummary?.failed_trial_count ?? 0;
 
   return (
     <section>
@@ -13,6 +15,16 @@ export function ReportPanel({ report }: ReportPanelProps) {
       <p>类型：{report.root_cause.label}</p>
       <p>置信度：{report.root_cause.confidence}</p>
       <p>{report.root_cause.evidence_summary}</p>
+      {experimentSummary ? (
+        <>
+          <h3>Replay Stability</h3>
+          <p>复测稳定性：{experimentSummary.stability_label ?? "unknown"}</p>
+          <p>复测通过率：{formatPercent(experimentSummary.success_rate ?? 0)}</p>
+          <p>
+            失败次数：{failedTrialCount}/{experimentSummary.total_trials}
+          </p>
+        </>
+      ) : null}
       <h3>Visual Evidence</h3>
       <p>可视证据：{imageArtifactIds.length}</p>
       {imageArtifactIds.length > 0 ? (
@@ -33,4 +45,8 @@ export function ReportPanel({ report }: ReportPanelProps) {
       </dl>
     </section>
   );
+}
+
+function formatPercent(value: number): string {
+  return `${Math.round(value * 100)}%`;
 }

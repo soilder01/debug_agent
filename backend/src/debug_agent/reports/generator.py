@@ -20,6 +20,9 @@ class RootCause(BaseModel):
 class ExperimentSummary(BaseModel):
     total_trials: int
     success_count: int
+    failed_trial_count: int = 0
+    success_rate: float = 0.0
+    stability_label: str = "not_run"
     evidence_ids: list[str]
     image_artifact_ids: list[str]
 
@@ -43,9 +46,13 @@ def generate_initial_report(
 ) -> DebugReport:
     experiment_summary = None
     if run_result is not None:
+        failed_trial_count = run_result.total_trials - run_result.success_count
         experiment_summary = ExperimentSummary(
             total_trials=run_result.total_trials,
             success_count=run_result.success_count,
+            failed_trial_count=failed_trial_count,
+            success_rate=_success_rate(run_result.success_count, run_result.total_trials),
+            stability_label=_stability_label(run_result.success_count, failed_trial_count, run_result.total_trials),
             evidence_ids=[evidence.evidence_id for evidence in run_result.evidence],
             image_artifact_ids=[
                 artifact.artifact_id
@@ -75,3 +82,19 @@ def generate_initial_report(
             "错误原因": "模型无法稳定识别涂改后的最终答案，存在语义补全倾向。",
         },
     )
+
+
+def _success_rate(success_count: int, total_trials: int) -> float:
+    if total_trials <= 0:
+        return 0.0
+    return success_count / total_trials
+
+
+def _stability_label(success_count: int, failed_trial_count: int, total_trials: int) -> str:
+    if total_trials <= 0:
+        return "not_run"
+    if success_count == total_trials:
+        return "stable_success"
+    if failed_trial_count == total_trials:
+        return "stable_failure"
+    return "unstable"
