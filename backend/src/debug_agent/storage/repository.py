@@ -35,6 +35,12 @@ class DebugJobRepository:
                     return None
                 return DebugCase.model_validate_json(row.case_json)
 
+    def list_cases(self) -> list[DebugCase]:
+        with self._lock:
+            with self._session_factory() as session:
+                rows = session.scalars(select(DebugCaseRow).order_by(DebugCaseRow.case_id))
+                return [DebugCase.model_validate_json(row.case_json) for row in rows]
+
     def mark_running(self, job_id: str) -> None:
         self._set_status(job_id, "running")
 

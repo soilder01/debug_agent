@@ -73,9 +73,37 @@ class CsvImportResponse(BaseModel):
     rejected_rows: list[CsvRejectedRow]
 
 
+class DebugCaseSummary(BaseModel):
+    case_id: str
+    image_uri: str
+    avg_score: float
+    debug_status: str
+    root_cause: str
+
+
+class DebugCaseListResponse(BaseModel):
+    cases: list[DebugCaseSummary]
+
+
 @router.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "debug-agent-backend"}
+
+
+@router.get("/cases")
+def list_cases() -> DebugCaseListResponse:
+    return DebugCaseListResponse(
+        cases=[
+            DebugCaseSummary(
+                case_id=case.case_id,
+                image_uri=case.image_uri,
+                avg_score=case.avg_score,
+                debug_status=case.human_notes.debug_status,
+                root_cause=case.human_notes.root_cause,
+            )
+            for case in job_repository.list_cases()
+        ]
+    )
 
 
 @router.post("/cases/{case_id}/debug")
