@@ -41,6 +41,9 @@ class DebugJobService:
         self._repository.mark_running(job_id)
         return await self._run_claimed_job(job_id)
 
+    def load_case(self, case_id: str) -> DebugCase:
+        return self._load_case(case_id)
+
     async def _run_claimed_job(self, job_id: str) -> SubmittedDebugJob:
         job = self._repository.get_job(job_id)
         if job is None:

@@ -106,6 +106,14 @@ def list_cases() -> DebugCaseListResponse:
     )
 
 
+@router.get("/cases/{case_id}")
+def get_case_detail(case_id: str) -> DebugCase:
+    try:
+        return job_service.load_case(case_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
 @router.post("/cases/{case_id}/debug")
 async def debug_case(case_id: str) -> DebugReport:
     try:
