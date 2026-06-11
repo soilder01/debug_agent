@@ -386,6 +386,12 @@ export function App() {
                       {job.job_id}：{job.status}
                     </span>
                     {job.error_message ? <span> {job.job_id} 错误：{job.error_message}</span> : null}
+                    {job.retry_recommendation_detail ? (
+                      <>
+                        <span> {job.job_id} 建议：{job.retry_recommendation_detail.label}</span>
+                        <span> {job.job_id} 级别：{job.retry_recommendation_detail.severity}</span>
+                      </>
+                    ) : null}
                   </li>
                 ))}
               </ul>

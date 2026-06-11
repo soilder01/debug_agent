@@ -218,7 +218,13 @@ describe("App", () => {
             status: "failed",
             attempt_count: 2,
             error_message: "fixture failed",
-            evidence_ids: []
+            evidence_ids: [],
+            retry_recommendation_detail: {
+              code: "retry_budget_exhausted",
+              label: "重试预算已耗尽",
+              action: "不要继续自动重试，转人工检查任务错误和证据链。",
+              severity: "critical"
+            }
           }),
           { status: 200, headers: { "Content-Type": "application/json" } }
         )
@@ -234,6 +240,8 @@ describe("App", () => {
     expect(await screen.findByText("job-1：completed", {}, { timeout: 500 })).toBeInTheDocument();
     expect(await screen.findByText("job-2：failed", {}, { timeout: 500 })).toBeInTheDocument();
     expect(screen.getByText("job-2 错误：fixture failed")).toBeInTheDocument();
+    expect(screen.getByText("job-2 建议：重试预算已耗尽")).toBeInTheDocument();
+    expect(screen.getByText("job-2 级别：critical")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1");
     expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-2");
   });
