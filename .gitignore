@@ -21,6 +21,7 @@ coverage/
 .env
 .env.*
 !.env.example
+artifacts/
 
 # IDE / OS
 .vscode/

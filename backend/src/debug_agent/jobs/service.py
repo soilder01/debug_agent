@@ -1,5 +1,6 @@
 from uuid import uuid4
 from collections.abc import Callable
+from pathlib import Path
 
 from pydantic import BaseModel
 
@@ -38,10 +39,12 @@ class DebugJobService:
         repository: DebugJobRepository,
         max_attempts: int = 2,
         model_provider: Callable[[DebugCase], ModelAdapter] = build_model_adapter,
+        image_artifact_dir: Path | None = None,
     ) -> None:
         self._repository = repository
         self._max_attempts = max_attempts
         self._model_provider = model_provider
+        self._image_artifact_dir = image_artifact_dir
 
     def submit_case_debug(self, case_id: str) -> SubmittedDebugJob:
         case = self._load_case(case_id)
@@ -141,7 +144,12 @@ class DebugJobService:
             case = self._load_case(job.case_id)
             plan = plan_experiments(case)
             adapter = self._model_provider(case)
-            run_result = await run_experiments(case=case, plan=plan, adapter=adapter)
+            run_result = await run_experiments(
+                case=case,
+                plan=plan,
+                adapter=adapter,
+                image_artifact_dir=self._image_artifact_dir,
+            )
             artifact_store.save_case_evidence(case.case_id, run_result.evidence)
             self._repository.save_evidence(
                 job_id=job_id,

@@ -19,6 +19,14 @@ def test_debug_agent_settings_read_database_url_from_env(monkeypatch) -> None:
     assert settings.database_url == "sqlite+pysqlite:///./debug_agent.db"
 
 
+def test_debug_agent_settings_read_image_artifact_dir_from_env(monkeypatch) -> None:
+    monkeypatch.setenv("DEBUG_AGENT_IMAGE_ARTIFACT_DIR", "runtime-artifacts/crops")
+
+    settings = DebugAgentSettings.from_env()
+
+    assert settings.image_artifact_dir == Path("runtime-artifacts/crops")
+
+
 def test_load_env_file_populates_missing_environment_values(monkeypatch) -> None:
     monkeypatch.delenv("DEBUG_AGENT_MODEL_PROVIDER", raising=False)
     env_file = Path(__file__).with_name(".settings-provider-test.env")

@@ -1,4 +1,9 @@
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from urllib.parse import unquote, urlparse
+
 import pytest
+from PIL import Image
 
 from debug_agent.cases.fixtures import load_fixture_case
 from debug_agent.cases.models import DebugCase
@@ -117,3 +122,65 @@ async def test_job_service_uses_injected_model_provider() -> None:
     assert selected_case_ids == ["handwrite233"]
     evidence_ids = repository.list_evidence_ids(submitted.job_id)
     assert len(evidence_ids) == 6
+
+
+@pytest.mark.asyncio
+async def test_job_service_writes_localized_crop_artifacts_when_configured() -> None:
+    with TemporaryDirectory(dir=Path.cwd()) as temp_dir:
+        temp_path = Path(temp_dir)
+        source_image_path = temp_path / "case-service-crop.png"
+        Image.new("RGB", (100, 100), color="white").save(source_image_path)
+        session_factory, engine = create_sqlite_memory_session_factory()
+        Base.metadata.create_all(engine)
+        repository = DebugJobRepository(session_factory)
+        case_data = load_fixture_case("handwrite233").model_dump()
+        case_data["case_id"] = "service-crop-case"
+        case_data["image_uri"] = source_image_path.as_uri()
+        case_data["box_regions"] = [
+            {
+                "box_id": 1,
+                "x": 10,
+                "y": 12,
+                "width": 24,
+                "height": 16,
+                "unit": "pixel",
+                "label": "box-1",
+            }
+        ]
+        case = DebugCase.model_validate(case_data)
+        repository.save_case(case)
+        service = DebugJobService(
+            repository,
+            model_provider=lambda debug_case: FakeModelAdapter(outputs=[debug_case.predictions[0].raw_output]),
+            image_artifact_dir=temp_path / "artifacts",
+        )
+        submitted = service.submit_case_debug(case.case_id)
+
+        await service.run_next_job()
+
+        evidence_ids = repository.list_evidence_ids(submitted.job_id)
+        localized_evidence = [
+            repository.get_evidence(submitted.job_id, evidence_id)
+            for evidence_id in evidence_ids
+            if ":localized_observation_request:" in evidence_id
+        ]
+        crop_uris = [
+            artifact.derived_image_uri
+            for evidence in localized_evidence
+            if evidence is not None
+            for artifact in evidence.image_artifacts
+            if artifact.derived_image_uri
+        ]
+        assert crop_uris
+        crop_path = _path_from_file_uri(crop_uris[0])
+        assert crop_path.exists()
+        with Image.open(crop_path) as crop:
+            assert crop.size == (24, 16)
+
+
+def _path_from_file_uri(uri: str) -> Path:
+    parsed = urlparse(uri)
+    path_text = unquote(parsed.path)
+    if len(path_text) >= 3 and path_text[0] == "/" and path_text[2] == ":":
+        path_text = path_text[1:]
+    return Path(path_text)

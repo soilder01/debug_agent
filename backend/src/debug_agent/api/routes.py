@@ -24,7 +24,7 @@ settings = DebugAgentSettings.from_env()
 session_factory, engine = create_sqlite_session_factory(settings.database_url)
 ensure_database_schema(engine)
 job_repository = DebugJobRepository(session_factory)
-job_service = DebugJobService(job_repository)
+job_service = DebugJobService(job_repository, image_artifact_dir=settings.image_artifact_dir)
 job_worker = AsyncJobWorker(job_service)
 
 router = APIRouter()
