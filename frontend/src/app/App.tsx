@@ -40,6 +40,7 @@ export function App() {
   const [batchCaseIds, setBatchCaseIds] = useState("");
   const [batchResult, setBatchResult] = useState<BatchDebugJobResponse | null>(null);
   const [jobListSummaryLabel, setJobListSummaryLabel] = useState("批量创建");
+  const [jobListTotalCount, setJobListTotalCount] = useState<number | null>(null);
   const [batchJobStatuses, setBatchJobStatuses] = useState<Record<string, DebugJobStatus | SubmittedDebugJob>>({});
   const [importedCases, setImportedCases] = useState<DebugCaseSummary[]>([]);
   const [selectedCaseDetail, setSelectedCaseDetail] = useState<DebugCaseDetail | null>(null);
@@ -52,6 +53,8 @@ export function App() {
   const [error, setError] = useState<string>("");
   const batchJobs = Object.values(batchJobStatuses);
   const completedBatchJobs = batchJobs.filter((job) => job.status === "completed").length;
+  const loadedJobCount = batchResult?.jobs.length ?? 0;
+  const unloadedJobCount = Math.max(0, (jobListTotalCount ?? loadedJobCount) - loadedJobCount);
 
   useEffect(() => {
     const currentJob = jobStatus ?? submittedJob;
@@ -164,6 +167,7 @@ export function App() {
       const result = await submitBatchDebugJobs(caseIds);
       setBatchResult(result);
       setJobListSummaryLabel("批量创建");
+      setJobListTotalCount(result.jobs.length);
       setBatchJobStatuses(Object.fromEntries(result.jobs.map((job) => [job.job_id, job])));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
@@ -176,6 +180,7 @@ export function App() {
       const result = await fetchDebugJobs(status, jobListLimit);
       setBatchResult({ jobs: result.jobs, rejected_case_ids: [] });
       setJobListSummaryLabel(status === "failed" ? "失败任务" : "队列任务");
+      setJobListTotalCount(result.total_count);
       setBatchJobStatuses(Object.fromEntries(result.jobs.map((job) => [job.job_id, job])));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
@@ -205,6 +210,7 @@ export function App() {
       setJsonlImportResult(result);
       setBatchResult({ jobs: result.jobs, rejected_case_ids: [] });
       setJobListSummaryLabel("批量创建");
+      setJobListTotalCount(result.jobs.length);
       setBatchJobStatuses(Object.fromEntries(result.jobs.map((job) => [job.job_id, job])));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
@@ -218,6 +224,7 @@ export function App() {
       setCsvImportResult(result);
       setBatchResult({ jobs: result.jobs, rejected_case_ids: [] });
       setJobListSummaryLabel("批量创建");
+      setJobListTotalCount(result.jobs.length);
       setBatchJobStatuses(Object.fromEntries(result.jobs.map((job) => [job.job_id, job])));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
@@ -412,6 +419,8 @@ export function App() {
         {batchResult ? (
           <>
             <p>{jobListSummaryLabel}：{batchResult.jobs.length}</p>
+            <p>总任务：{jobListTotalCount ?? batchResult.jobs.length}</p>
+            <p>未加载：{unloadedJobCount}</p>
             <p>拒绝：{batchResult.rejected_case_ids.join(", ") || "无"}</p>
             <p>
               批量进度：{completedBatchJobs}/{batchResult.jobs.length}

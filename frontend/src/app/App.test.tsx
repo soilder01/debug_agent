@@ -277,7 +277,8 @@ describe("App", () => {
                   model_call_errors: 0
                 }
               }
-            ]
+            ],
+            total_count: 5
           }),
           { status: 200, headers: { "Content-Type": "application/json" } }
         )
@@ -315,6 +316,8 @@ describe("App", () => {
 
     expect(fetchMock).toHaveBeenCalledWith("/api/jobs?limit=50");
     expect(await screen.findByText("队列任务：1")).toBeInTheDocument();
+    expect(screen.getByText("总任务：5")).toBeInTheDocument();
+    expect(screen.getByText("未加载：4")).toBeInTheDocument();
     expect(screen.getByText("job-history-1：failed")).toBeInTheDocument();
     expect(screen.getByText("job-history-1 错误：fixture failed")).toBeInTheDocument();
     expect(screen.getByText("job-history-1 建议：重试预算已耗尽")).toBeInTheDocument();
@@ -363,7 +366,8 @@ describe("App", () => {
                 model_call_errors: 0
               }
             }
-          ]
+          ],
+          total_count: 3
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       )
@@ -374,6 +378,8 @@ describe("App", () => {
 
     expect(fetchMock).toHaveBeenCalledWith("/api/jobs?status=failed&limit=50");
     expect(await screen.findByText("失败任务：1")).toBeInTheDocument();
+    expect(screen.getByText("总任务：3")).toBeInTheDocument();
+    expect(screen.getByText("未加载：2")).toBeInTheDocument();
     expect(await screen.findByText("job-failed-1：failed")).toBeInTheDocument();
     expect(screen.getByText("job-failed-1 建议：重试预算已耗尽")).toBeInTheDocument();
   });

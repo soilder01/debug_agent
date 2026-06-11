@@ -69,6 +69,7 @@ export type BatchDebugJobResponse = {
 
 export type DebugJobListResponse = {
   jobs: DebugJobStatus[];
+  total_count: number;
 };
 
 export type DebugCaseSummary = {
