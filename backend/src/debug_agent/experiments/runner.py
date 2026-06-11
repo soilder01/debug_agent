@@ -3,8 +3,8 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
 
-from debug_agent.cases.comparator import parse_prediction_answer
-from debug_agent.cases.models import DebugCase
+from debug_agent.cases.comparator import compare_answer_sets, parse_prediction_answer
+from debug_agent.cases.models import AnswerSet, DebugCase
 from debug_agent.experiments.planner import ExperimentPlan
 from debug_agent.judging.runner import JudgeResult, judge_answer
 from debug_agent.models.adapters import ModelAdapter
@@ -86,9 +86,15 @@ async def run_experiments(
                 continue
             latency_ms = int((perf_counter() - started_at) * 1000)
             response_parse_error = ""
+            image_artifacts: list[ImageArtifact] = []
             try:
                 predicted = parse_prediction_answer(response.raw_output)
                 judge = judge_answer(case.golden_answer, predicted)
+                image_artifacts = _build_localized_image_artifacts(
+                    case=case,
+                    step_name=step.name,
+                    predicted=predicted,
+                )
             except Exception as exc:
                 response_parse_error = str(exc)
                 judge = JudgeResult(score=0, reasons=["response_parse_error"])
@@ -106,6 +112,7 @@ async def run_experiments(
                     response_parse_error=response_parse_error,
                     model_call_error_type=model_call_error_type,
                     model_call_error_message=model_call_error_message,
+                    image_artifacts=image_artifacts,
                     raw_output=response.raw_output,
                     judge=judge,
                 )
@@ -125,3 +132,24 @@ def _build_request_summary(prompt: str, image_uri: str) -> dict[str, object]:
         "has_image": bool(image_uri),
         "image_uri_scheme": parsed_uri.scheme,
     }
+
+
+def _build_localized_image_artifacts(
+    case: DebugCase,
+    step_name: str,
+    predicted: AnswerSet,
+) -> list[ImageArtifact]:
+    if step_name != "localized_observation_request" or not case.image_uri:
+        return []
+
+    diff = compare_answer_sets(case.golden_answer, predicted)
+    return [
+        ImageArtifact(
+            artifact_id=f"{case.case_id}:box-{box_id}:localized-candidate",
+            kind="affected_box_candidate",
+            source_image_uri=case.image_uri,
+            region=None,
+            derived_image_uri="",
+        )
+        for box_id in diff.affected_box_ids
+    ]

@@ -95,3 +95,45 @@ async def test_run_experiments_keeps_model_call_error_as_evidence() -> None:
     assert result.evidence[0].model_call_error_message == "model request timed out"
     assert result.evidence[0].judge.score == 0
     assert result.evidence[0].judge.reasons == ["model_call_error"]
+
+
+@pytest.mark.asyncio
+async def test_run_experiments_adds_localized_image_artifacts_for_affected_boxes() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "case-localized",
+            "image_uri": "file:///tmp/case-localized.png",
+            "prompt": "识别作答区域。",
+            "golden_answer": {"answers": [{"box_id": 7, "student_answer": "低昷烘干"}]},
+            "scoring_standard": "box_id and student_answer must match.",
+            "predictions": [
+                {
+                    "trial": 0,
+                    "raw_output": "{\"answers\":[{\"box_id\":7,\"student_answer\":\"低温烘干\"}]}",
+                    "score": 0,
+                }
+            ],
+            "avg_score": 0.0,
+        }
+    )
+    plan = ExperimentPlan(
+        case_id=case.case_id,
+        max_model_calls=1,
+        steps=[
+            ExperimentStep(
+                name="localized_observation_request",
+                description="Ask the model to inspect the affected answer box.",
+                trials=1,
+            )
+        ],
+    )
+    adapter = FakeModelAdapter(outputs=[case.predictions[0].raw_output])
+
+    result = await run_experiments(case=case, plan=plan, adapter=adapter)
+
+    artifact = result.evidence[0].image_artifacts[0]
+    assert artifact.artifact_id == "case-localized:box-7:localized-candidate"
+    assert artifact.kind == "affected_box_candidate"
+    assert artifact.source_image_uri == "file:///tmp/case-localized.png"
+    assert artifact.derived_image_uri == ""
+    assert artifact.region is None
