@@ -55,6 +55,10 @@ export function App() {
   const completedBatchJobs = batchJobs.filter((job) => job.status === "completed").length;
   const loadedJobCount = batchResult?.jobs.length ?? 0;
   const unloadedJobCount = Math.max(0, (jobListTotalCount ?? loadedJobCount) - loadedJobCount);
+  const [showOnlyRegionCases, setShowOnlyRegionCases] = useState(false);
+  const visibleImportedCases = showOnlyRegionCases
+    ? importedCases.filter((caseSummary) => (caseSummary.box_region_count ?? 0) > 0)
+    : importedCases;
 
   useEffect(() => {
     const currentJob = jobStatus ?? submittedJob;
@@ -133,7 +137,7 @@ export function App() {
   }
 
   function useImportedCasesForBatch() {
-    setBatchCaseIds(importedCases.map((caseSummary) => caseSummary.case_id).join("\n"));
+    setBatchCaseIds(visibleImportedCases.map((caseSummary) => caseSummary.case_id).join("\n"));
   }
 
   async function loadCaseDetail(caseId: string) {
@@ -355,11 +359,20 @@ export function App() {
         {importedCases.length > 0 ? (
           <>
             <p>已导入样本：{importedCases.length}</p>
+            <p>
+              已显示样本：{visibleImportedCases.length}/{importedCases.length}
+            </p>
+            <button type="button" onClick={() => setShowOnlyRegionCases(true)}>
+              Only cases with regions
+            </button>
+            <button type="button" onClick={() => setShowOnlyRegionCases(false)}>
+              Show all imported cases
+            </button>
             <button type="button" onClick={useImportedCasesForBatch}>
               Use imported cases for batch
             </button>
             <ul aria-label="Imported case summaries">
-              {importedCases.map((caseSummary) => (
+              {visibleImportedCases.map((caseSummary) => (
                 <li key={caseSummary.case_id}>
                   {caseSummary.case_id}｜avg_score {caseSummary.avg_score}｜regions {caseSummary.box_region_count ?? 0}｜
                   {caseSummary.debug_status || "未标记"}｜{caseSummary.root_cause || "未归因"}

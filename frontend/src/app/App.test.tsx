@@ -611,9 +611,15 @@ describe("App", () => {
     expect(screen.getByText("case-list-1｜avg_score 0.2｜regions 2｜pending｜visual_recognition_failure")).toBeInTheDocument();
     expect(screen.getByText("case-list-2｜avg_score 1｜regions 0｜未标记｜未归因")).toBeInTheDocument();
 
+    await userEvent.click(screen.getByRole("button", { name: "Only cases with regions" }));
+
+    expect(screen.getByText("已显示样本：1/2")).toBeInTheDocument();
+    expect(screen.getByText("case-list-1｜avg_score 0.2｜regions 2｜pending｜visual_recognition_failure")).toBeInTheDocument();
+    expect(screen.queryByText("case-list-2｜avg_score 1｜regions 0｜未标记｜未归因")).not.toBeInTheDocument();
+
     await userEvent.click(screen.getByRole("button", { name: "Use imported cases for batch" }));
 
-    expect(screen.getByLabelText("Batch case ids")).toHaveValue("case-list-1\ncase-list-2");
+    expect(screen.getByLabelText("Batch case ids")).toHaveValue("case-list-1");
   });
 
   it("loads and renders imported case detail from the case list", async () => {
