@@ -118,6 +118,8 @@ class DebugJobRepository:
                             model_name=item.model_name,
                             model_provider=item.model_provider,
                             model_id=item.model_id,
+                            request_summary_json=json.dumps(item.request_summary),
+                            latency_ms=item.latency_ms,
                             score=item.judge.score,
                             reasons_json=json.dumps(item.judge.reasons),
                             raw_output=item.raw_output,
@@ -144,6 +146,9 @@ class DebugJobRepository:
                 reasons = json.loads(row.reasons_json)
                 if not isinstance(reasons, list):
                     raise ValueError(f"Evidence reasons must be a list: {evidence_id}")
+                request_summary = json.loads(row.request_summary_json)
+                if not isinstance(request_summary, dict):
+                    raise ValueError(f"Evidence request summary must be an object: {evidence_id}")
                 return ExperimentEvidence(
                     evidence_id=row.evidence_id,
                     step_name=row.step_name,
@@ -151,6 +156,8 @@ class DebugJobRepository:
                     model_name=row.model_name,
                     model_provider=row.model_provider,
                     model_id=row.model_id,
+                    request_summary=request_summary,
+                    latency_ms=row.latency_ms,
                     raw_output=row.raw_output,
                     judge=JudgeResult(
                         score=row.score,

@@ -78,6 +78,8 @@ def test_repository_tracks_job_state_and_evidence() -> None:
         model_name="seed2-lite",
         model_provider="ark",
         model_id="ep-seed2-lite",
+        request_summary={"prompt_length": 31, "has_image": True, "image_uri_scheme": "tos"},
+        latency_ms=42,
         raw_output="{\"answers\":[]}",
         judge=JudgeResult(score=0, reasons=["box 1 mismatch"]),
     )
@@ -97,6 +99,10 @@ def test_repository_tracks_job_state_and_evidence() -> None:
         assert row.model_name == "seed2-lite"
         assert row.model_provider == "ark"
         assert row.model_id == "ep-seed2-lite"
+        assert row.request_summary_json == (
+            "{\"prompt_length\": 31, \"has_image\": true, \"image_uri_scheme\": \"tos\"}"
+        )
+        assert row.latency_ms == 42
 
     restored = repository.get_evidence("job-1", "case-1:baseline:0")
     assert restored is not None
@@ -106,6 +112,12 @@ def test_repository_tracks_job_state_and_evidence() -> None:
     assert restored.model_name == "seed2-lite"
     assert restored.model_provider == "ark"
     assert restored.model_id == "ep-seed2-lite"
+    assert restored.request_summary == {
+        "prompt_length": 31,
+        "has_image": True,
+        "image_uri_scheme": "tos",
+    }
+    assert restored.latency_ms == 42
     assert restored.raw_output == "{\"answers\":[]}"
     assert restored.judge.score == 0
     assert restored.judge.reasons == ["box 1 mismatch"]
@@ -196,6 +208,8 @@ def test_repository_keeps_same_evidence_ids_for_different_jobs() -> None:
         model_name="fake",
         model_provider="fake",
         model_id="fake",
+        request_summary={"prompt_length": 1, "has_image": False, "image_uri_scheme": ""},
+        latency_ms=1,
         raw_output="{\"answers\":[]}",
         judge=JudgeResult(score=0, reasons=["box 1 mismatch"]),
     )
@@ -379,3 +393,58 @@ def test_database_schema_adds_missing_evidence_provider_and_model_id_columns() -
         assert row is not None
         assert row.model_provider == ""
         assert row.model_id == ""
+
+
+def test_database_schema_adds_missing_evidence_request_summary_and_latency_columns() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            """
+            CREATE TABLE evidence (
+                job_id VARCHAR(80) NOT NULL,
+                evidence_id VARCHAR(200) NOT NULL,
+                case_id VARCHAR(120) NOT NULL,
+                step_name VARCHAR(120) NOT NULL,
+                trial INTEGER NOT NULL,
+                model_name VARCHAR(120) NOT NULL DEFAULT '',
+                model_provider VARCHAR(80) NOT NULL DEFAULT '',
+                model_id VARCHAR(160) NOT NULL DEFAULT '',
+                score INTEGER NOT NULL,
+                reasons_json TEXT NOT NULL,
+                raw_output TEXT NOT NULL,
+                PRIMARY KEY (job_id, evidence_id)
+            )
+            """
+        )
+        connection.exec_driver_sql(
+            """
+            INSERT INTO evidence (
+                job_id,
+                evidence_id,
+                case_id,
+                step_name,
+                trial,
+                score,
+                reasons_json,
+                raw_output
+            )
+            VALUES (
+                'job-1',
+                'case-1:baseline:0',
+                'case-1',
+                'baseline',
+                0,
+                0,
+                '[]',
+                '{"answers":[]}'
+            )
+            """
+        )
+
+    ensure_database_schema(engine)
+
+    with session_factory() as session:
+        row = session.get(EvidenceRow, ("job-1", "case-1:baseline:0"))
+        assert row is not None
+        assert row.request_summary_json == "{}"
+        assert row.latency_ms == 0

@@ -1,3 +1,6 @@
+from time import perf_counter
+from urllib.parse import urlparse
+
 from pydantic import BaseModel
 
 from debug_agent.cases.comparator import parse_prediction_answer
@@ -14,6 +17,8 @@ class ExperimentEvidence(BaseModel):
     model_name: str = ""
     model_provider: str = ""
     model_id: str = ""
+    request_summary: dict[str, object] = {}
+    latency_ms: int = 0
     raw_output: str
     judge: JudgeResult
 
@@ -34,7 +39,9 @@ async def run_experiments(
     success_count = 0
     for step in plan.steps:
         for trial_index in range(step.trials):
+            started_at = perf_counter()
             response = await adapter.generate(prompt=case.prompt, image_uri=case.image_uri)
+            latency_ms = int((perf_counter() - started_at) * 1000)
             predicted = parse_prediction_answer(response.raw_output)
             judge = judge_answer(case.golden_answer, predicted)
             success_count += judge.score
@@ -46,6 +53,8 @@ async def run_experiments(
                     model_name=response.model_name,
                     model_provider=response.model_provider,
                     model_id=response.model_id,
+                    request_summary=_build_request_summary(prompt=case.prompt, image_uri=case.image_uri),
+                    latency_ms=latency_ms,
                     raw_output=response.raw_output,
                     judge=judge,
                 )
@@ -56,3 +65,12 @@ async def run_experiments(
         success_count=success_count,
         evidence=evidence,
     )
+
+
+def _build_request_summary(prompt: str, image_uri: str) -> dict[str, object]:
+    parsed_uri = urlparse(image_uri)
+    return {
+        "prompt_length": len(prompt),
+        "has_image": bool(image_uri),
+        "image_uri_scheme": parsed_uri.scheme,
+    }
