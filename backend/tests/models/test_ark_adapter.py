@@ -70,6 +70,8 @@ async def test_ark_adapter_generate_returns_choice_content() -> None:
     response = await adapter.generate(prompt="hello", image_uri="tos://image")
 
     assert response.model_name == "lite-model"
+    assert response.model_provider == "ark"
+    assert response.model_id == "lite-model"
     assert response.trial == 0
     assert response.raw_output == "{\"answers\": []}"
     assert transport.requests[0].json_body["model"] == "lite-model"

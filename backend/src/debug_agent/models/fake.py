@@ -14,4 +14,10 @@ class FakeModelAdapter:
         trial = self._cursor
         output = self._outputs[min(self._cursor, len(self._outputs) - 1)]
         self._cursor += 1
-        return ModelResponse(model_name=self._model_name, trial=trial, raw_output=output)
+        return ModelResponse(
+            model_name=self._model_name,
+            model_provider="fake",
+            model_id=self._model_name,
+            trial=trial,
+            raw_output=output,
+        )

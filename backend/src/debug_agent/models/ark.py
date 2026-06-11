@@ -71,6 +71,8 @@ class ArkModelAdapter:
         self._cursor += 1
         return ModelResponse(
             model_name=self._model_id,
+            model_provider="ark",
+            model_id=self._model_id,
             trial=trial,
             raw_output=_extract_response_content(response_json),
         )

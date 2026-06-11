@@ -65,8 +65,17 @@ def ensure_database_schema(engine: Engine) -> None:
     inspector = inspect(engine)
     if "evidence" in inspector.get_table_names():
         evidence_columns = {column["name"] for column in inspector.get_columns("evidence")}
-        if "model_name" not in evidence_columns:
-            with engine.begin() as connection:
-                connection.execute(
-                    text("ALTER TABLE evidence ADD COLUMN model_name VARCHAR(120) NOT NULL DEFAULT ''")
-                )
+        missing_columns = [
+            ("model_name", "VARCHAR(120)"),
+            ("model_provider", "VARCHAR(80)"),
+            ("model_id", "VARCHAR(160)"),
+        ]
+        with engine.begin() as connection:
+            for column_name, column_type in missing_columns:
+                if column_name not in evidence_columns:
+                    connection.execute(
+                        text(
+                            f"ALTER TABLE evidence ADD COLUMN {column_name} "
+                            f"{column_type} NOT NULL DEFAULT ''"
+                        )
+                    )

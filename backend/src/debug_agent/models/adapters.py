@@ -5,6 +5,8 @@ from pydantic import BaseModel
 
 class ModelResponse(BaseModel):
     model_name: str
+    model_provider: str = ""
+    model_id: str = ""
     trial: int
     raw_output: str
 

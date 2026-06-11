@@ -12,6 +12,8 @@ class ExperimentEvidence(BaseModel):
     step_name: str
     trial: int
     model_name: str = ""
+    model_provider: str = ""
+    model_id: str = ""
     raw_output: str
     judge: JudgeResult
 
@@ -42,6 +44,8 @@ async def run_experiments(
                     step_name=step.name,
                     trial=trial_index,
                     model_name=response.model_name,
+                    model_provider=response.model_provider,
+                    model_id=response.model_id,
                     raw_output=response.raw_output,
                     judge=judge,
                 )
