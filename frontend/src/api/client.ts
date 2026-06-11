@@ -122,6 +122,8 @@ export type ExperimentEvidence = {
   };
   latency_ms: number;
   response_parse_error: string;
+  model_call_error_type: string;
+  model_call_error_message: string;
   raw_output: string;
   judge: {
     score: number;

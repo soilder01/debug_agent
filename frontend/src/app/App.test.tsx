@@ -102,6 +102,8 @@ describe("App", () => {
             },
             latency_ms: 12,
             response_parse_error: "Expecting value: line 1 column 1 (char 0)",
+            model_call_error_type: "TimeoutError",
+            model_call_error_message: "model request timed out",
             raw_output: "{\"answers\":[]}",
             judge: {
               score: 0,
@@ -127,6 +129,8 @@ describe("App", () => {
     expect(screen.getByText("包含图片：false")).toBeInTheDocument();
     expect(screen.getByText("图片 URI Scheme：无")).toBeInTheDocument();
     expect(screen.getByText("解析错误：Expecting value: line 1 column 1 (char 0)")).toBeInTheDocument();
+    expect(screen.getByText("模型调用错误类型：TimeoutError")).toBeInTheDocument();
+    expect(screen.getByText("模型调用错误信息：model request timed out")).toBeInTheDocument();
     expect(screen.getByText("box 1 student_answer_mismatch")).toBeInTheDocument();
   });
 
