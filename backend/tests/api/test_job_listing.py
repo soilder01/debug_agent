@@ -1,0 +1,32 @@
+from fastapi.testclient import TestClient
+
+from debug_agent.api.routes import job_repository
+from debug_agent.main import app
+
+
+def test_job_listing_returns_submitted_jobs_with_retry_metadata() -> None:
+    client = TestClient(app)
+
+    first = client.post("/cases/handwrite233/debug-jobs").json()
+    second = client.post("/cases/handwrite233/debug-jobs").json()
+
+    response = client.get("/jobs")
+
+    assert response.status_code == 200
+    jobs_by_id = {job["job_id"]: job for job in response.json()["jobs"]}
+    for submitted in (first, second):
+        job = jobs_by_id[submitted["job_id"]]
+        assert job["case_id"] == "handwrite233"
+        assert job["status"] == "created"
+        assert job["max_attempts"] == 2
+        assert job["remaining_attempts"] == 2
+        assert job["will_retry"] is False
+        assert job["retry_recommendation"] == "retry_budget_exhausted"
+        assert job["retry_recommendation_detail"]["label"] == "重试预算已耗尽"
+        assert job["evidence_error_counts"] == {
+            "total_evidence": 0,
+            "failed_judgements": 0,
+            "response_parse_errors": 0,
+            "model_call_errors": 0,
+        }
+        job_repository.mark_failed(submitted["job_id"], "test cleanup")

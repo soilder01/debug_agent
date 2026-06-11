@@ -16,6 +16,7 @@ from debug_agent.models.fake import FakeModelAdapter
 from debug_agent.reports.generator import DebugReport, generate_initial_report
 from debug_agent.settings import DebugAgentSettings
 from debug_agent.storage.database import create_sqlite_session_factory, ensure_database_schema
+from debug_agent.storage.models import DebugJobRow
 from debug_agent.storage.repository import DebugJobRepository
 
 settings = DebugAgentSettings.from_env()
@@ -41,6 +42,10 @@ class DebugJobStatus(BaseModel):
     error_message: str | None
     evidence_ids: list[str]
     evidence_error_counts: dict[str, int]
+
+
+class DebugJobListResponse(BaseModel):
+    jobs: list[DebugJobStatus]
 
 
 class BatchDebugJobRequest(BaseModel):
@@ -210,6 +215,11 @@ async def run_next_job() -> SubmittedDebugJob | None:
     return await job_service.run_next_job()
 
 
+@router.get("/jobs")
+def list_jobs() -> DebugJobListResponse:
+    return DebugJobListResponse(jobs=[_build_job_status(job) for job in job_repository.list_jobs()])
+
+
 @router.get("/jobs/{job_id}/evidence/{evidence_id:path}")
 def get_job_evidence(job_id: str, evidence_id: str) -> ExperimentEvidence:
     evidence = job_repository.get_evidence(job_id, evidence_id)
@@ -240,8 +250,12 @@ def get_job_status(job_id: str) -> DebugJobStatus:
     job = job_repository.get_job(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail=f"Debug job not found: {job_id}")
+    return _build_job_status(job)
+
+
+def _build_job_status(job: DebugJobRow) -> DebugJobStatus:
     retry_status = job_service.retry_status(attempt_count=job.attempt_count, status=job.status)
-    evidence_error_counts = job_repository.count_evidence_errors(job_id)
+    evidence_error_counts = job_repository.count_evidence_errors(job.job_id)
     retry_recommendation = job_service.retry_recommendation(
         status=job.status,
         attempt_count=job.attempt_count,
@@ -258,7 +272,7 @@ def get_job_status(job_id: str) -> DebugJobStatus:
         retry_recommendation=retry_recommendation,
         retry_recommendation_detail=job_service.retry_recommendation_detail(retry_recommendation),
         error_message=job.error_message,
-        evidence_ids=job_repository.list_evidence_ids(job_id),
+        evidence_ids=job_repository.list_evidence_ids(job.job_id),
         evidence_error_counts=evidence_error_counts,
     )
 
