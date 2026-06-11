@@ -62,3 +62,23 @@ def test_job_listing_limits_number_of_returned_jobs() -> None:
     assert body["total_count"] > len(body["jobs"])
     for submitted in submitted_jobs:
         job_repository.mark_failed(submitted["job_id"], "test cleanup")
+
+
+def test_job_listing_offsets_returned_jobs_without_changing_total_count() -> None:
+    client = TestClient(app)
+
+    submitted_jobs = [client.post("/cases/handwrite233/debug-jobs").json() for _ in range(2)]
+
+    first_page_response = client.get("/jobs?limit=2")
+    second_page_response = client.get("/jobs?offset=1&limit=1")
+
+    assert first_page_response.status_code == 200
+    assert second_page_response.status_code == 200
+    first_page = first_page_response.json()
+    second_page = second_page_response.json()
+    assert len(first_page["jobs"]) == 2
+    assert len(second_page["jobs"]) == 1
+    assert second_page["jobs"][0]["job_id"] == first_page["jobs"][1]["job_id"]
+    assert second_page["total_count"] == first_page["total_count"]
+    for submitted in submitted_jobs:
+        job_repository.mark_failed(submitted["job_id"], "test cleanup")

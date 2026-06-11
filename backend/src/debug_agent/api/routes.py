@@ -226,9 +226,9 @@ async def run_next_job() -> SubmittedDebugJob | None:
 
 
 @router.get("/jobs")
-def list_jobs(status: str | None = None, limit: int | None = None) -> DebugJobListResponse:
+def list_jobs(status: str | None = None, limit: int | None = None, offset: int = 0) -> DebugJobListResponse:
     return DebugJobListResponse(
-        jobs=[_build_job_status(job) for job in job_repository.list_jobs(status=status, limit=limit)],
+        jobs=[_build_job_status(job) for job in job_repository.list_jobs(status=status, limit=limit, offset=offset)],
         total_count=job_repository.count_jobs(status=status),
     )
 

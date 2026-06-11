@@ -382,6 +382,91 @@ describe("App", () => {
     expect(screen.getByText("job-failed-1 建议：重试预算已耗尽")).toBeInTheDocument();
   });
 
+  it("loads more debug jobs after the first page", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jobs: [
+              {
+                job_id: "job-history-page-1",
+                case_id: "handwrite233",
+                status: "created",
+                attempt_count: 0,
+                max_attempts: 2,
+                remaining_attempts: 2,
+                will_retry: false,
+                retry_recommendation: "retry_budget_exhausted",
+                retry_recommendation_detail: {
+                  code: "retry_budget_exhausted",
+                  label: "重试预算已耗尽",
+                  action: "不要继续自动重试，转人工检查任务错误和证据链。",
+                  severity: "critical"
+                },
+                error_message: null,
+                evidence_ids: [],
+                evidence_error_counts: {
+                  total_evidence: 0,
+                  failed_judgements: 0,
+                  response_parse_errors: 0,
+                  model_call_errors: 0
+                }
+              }
+            ],
+            total_count: 2
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jobs: [
+              {
+                job_id: "job-history-page-2",
+                case_id: "handwrite233",
+                status: "failed",
+                attempt_count: 1,
+                max_attempts: 2,
+                remaining_attempts: 1,
+                will_retry: true,
+                retry_recommendation: "retry_model_call_error",
+                retry_recommendation_detail: {
+                  code: "retry_model_call_error",
+                  label: "模型调用错误，建议重试",
+                  action: "重新排队该任务。",
+                  severity: "warning"
+                },
+                error_message: "transient error",
+                evidence_ids: [],
+                evidence_error_counts: {
+                  total_evidence: 0,
+                  failed_judgements: 0,
+                  response_parse_errors: 0,
+                  model_call_errors: 0
+                }
+              }
+            ],
+            total_count: 2
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load debug jobs" }));
+
+    expect(await screen.findByText("未加载：1")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Load more debug jobs" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs?limit=50");
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs?limit=50&offset=1");
+    expect(await screen.findByText("job-history-page-2：failed")).toBeInTheDocument();
+    expect(screen.getByText("队列任务：2")).toBeInTheDocument();
+    expect(screen.getByText("未加载：0")).toBeInTheDocument();
+  });
+
   it("starts, polls, and stops the worker from the UI", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")

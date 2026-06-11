@@ -94,12 +94,14 @@ class DebugJobRepository:
             with self._session_factory() as session:
                 return session.get(DebugJobRow, job_id)
 
-    def list_jobs(self, status: str | None = None, limit: int | None = None) -> list[DebugJobRow]:
+    def list_jobs(self, status: str | None = None, limit: int | None = None, offset: int = 0) -> list[DebugJobRow]:
         with self._lock:
             with self._session_factory() as session:
                 query = select(DebugJobRow).order_by(DebugJobRow.job_id)
                 if status is not None:
                     query = query.where(DebugJobRow.status == status)
+                if offset > 0:
+                    query = query.offset(offset)
                 if limit is not None:
                     query = query.limit(limit)
                 rows = session.scalars(query)

@@ -54,6 +54,7 @@ export function App() {
   const [importedCaseTotalCount, setImportedCaseTotalCount] = useState(0);
   const [importedCaseFilteredCount, setImportedCaseFilteredCount] = useState<number | null>(null);
   const [activeImportedCaseHasRegions, setActiveImportedCaseHasRegions] = useState(false);
+  const [activeJobStatusFilter, setActiveJobStatusFilter] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string>("");
   const batchJobs = Object.values(batchJobStatuses);
   const completedBatchJobs = batchJobs.filter((job) => job.status === "completed").length;
@@ -203,7 +204,21 @@ export function App() {
       setBatchResult({ jobs: result.jobs, rejected_case_ids: [] });
       setJobListSummaryLabel(status === "failed" ? "失败任务" : "队列任务");
       setJobListTotalCount(result.total_count);
+      setActiveJobStatusFilter(status);
       setBatchJobStatuses(Object.fromEntries(result.jobs.map((job) => [job.job_id, job])));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
+  async function loadMoreDebugJobs() {
+    setError("");
+    try {
+      const result = await fetchDebugJobs(activeJobStatusFilter, jobListLimit, batchJobs.length);
+      const jobs = [...batchJobs, ...result.jobs];
+      setBatchResult({ jobs, rejected_case_ids: batchResult?.rejected_case_ids ?? [] });
+      setJobListTotalCount(result.total_count);
+      setBatchJobStatuses(Object.fromEntries(jobs.map((job) => [job.job_id, job])));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
     }
@@ -475,6 +490,11 @@ export function App() {
             <button type="button" onClick={startWorkerLoop}>
               Start worker for batch
             </button>
+            {unloadedJobCount > 0 ? (
+              <button type="button" onClick={() => void loadMoreDebugJobs()}>
+                Load more debug jobs
+              </button>
+            ) : null}
             {batchJobs.length > 0 ? (
               <ul aria-label="Batch job statuses">
                 {batchJobs.map((job) => (
