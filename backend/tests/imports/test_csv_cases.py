@@ -59,6 +59,59 @@ def test_parse_csv_cases_maps_rows_to_debug_cases() -> None:
     assert case.human_notes.debug_status == "pending"
 
 
+def test_parse_csv_cases_imports_box_regions_json() -> None:
+    golden_answer = {"answers": [{"box_id": 7, "student_answer": "低昷烘干"}]}
+    raw_output = json.dumps({"answers": [{"box_id": 7, "student_answer": "低温烘干"}]})
+    predictions = [{"trial": 1, "raw_output": raw_output, "score": 0}]
+    output = io.StringIO()
+    writer = csv.DictWriter(
+        output,
+        fieldnames=[
+            "case_id",
+            "image_uri",
+            "prompt",
+            "golden_answer_json",
+            "scoring_standard",
+            "predictions_json",
+            "avg_score",
+            "box_regions_json",
+        ],
+    )
+    writer.writeheader()
+    writer.writerow(
+        {
+            "case_id": "csv-region-1",
+            "image_uri": "file://region.png",
+            "prompt": "Read the answer",
+            "golden_answer_json": json.dumps(golden_answer),
+            "scoring_standard": "exact match",
+            "predictions_json": json.dumps(predictions),
+            "avg_score": "0.0",
+            "box_regions_json": json.dumps(
+                [
+                    {
+                        "box_id": 7,
+                        "x": 12,
+                        "y": 34,
+                        "width": 56,
+                        "height": 78,
+                        "unit": "pixel",
+                        "label": "box-7",
+                    }
+                ]
+            ),
+        }
+    )
+
+    result = parse_csv_cases(output.getvalue())
+
+    assert result.rejected_rows == []
+    assert len(result.cases) == 1
+    assert result.cases[0].box_regions[0].box_id == 7
+    assert result.cases[0].box_regions[0].x == 12
+    assert result.cases[0].box_regions[0].label == "box-7"
+
+
 def test_parse_csv_cases_reports_invalid_rows() -> None:
     result = parse_csv_cases(
         csv_text(

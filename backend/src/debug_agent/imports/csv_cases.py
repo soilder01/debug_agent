@@ -4,7 +4,7 @@ from io import StringIO
 
 from pydantic import BaseModel, ValidationError
 
-from debug_agent.cases.models import AnswerSet, DebugCase, HumanNotes, Prediction
+from debug_agent.cases.models import AnswerSet, BoxRegion, DebugCase, HumanNotes, Prediction
 
 
 COLUMN_ALIASES: dict[str, str] = {
@@ -39,6 +39,10 @@ COLUMN_ALIASES: dict[str, str] = {
     "avg_score": "avg_score",
     "avg score": "avg_score",
     "平均分": "avg_score",
+    "box_regions_json": "box_regions_json",
+    "box regions json": "box_regions_json",
+    "区域JSON": "box_regions_json",
+    "框坐标JSON": "box_regions_json",
     "debug_status": "debug_status",
     "debug status": "debug_status",
     "debug状态": "debug_status",
@@ -85,6 +89,10 @@ def _row_to_case(row: dict[str, str | None]) -> DebugCase:
             Prediction.model_validate(item) for item in _loads_json_list(predictions_text, "predictions_json")
         ],
         avg_score=float(_required(row, "avg_score")),
+        box_regions=[
+            BoxRegion.model_validate(item)
+            for item in _loads_optional_json_list(row.get("box_regions_json"), "box_regions_json")
+        ],
         human_notes=HumanNotes(
             debug_status=row.get("debug_status") or "",
             root_cause=row.get("root_cause") or "",
@@ -131,3 +139,9 @@ def _loads_json_list(value: str, key: str) -> list[object]:
     if not isinstance(loaded, list):
         raise ValueError(f"Expected JSON list in {key}: {value}")
     return loaded
+
+
+def _loads_optional_json_list(value: str | None, key: str) -> list[object]:
+    if value is None or value == "":
+        return []
+    return _loads_json_list(value, key)
