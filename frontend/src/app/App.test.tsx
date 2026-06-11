@@ -357,4 +357,57 @@ describe("App", () => {
 
     expect(screen.getByLabelText("Batch case ids")).toHaveValue("case-list-1\ncase-list-2");
   });
+
+  it("loads and renders imported case detail from the case list", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            cases: [
+              {
+                case_id: "case-list-1",
+                image_uri: "file://case-list-1.png",
+                avg_score: 0.2,
+                debug_status: "pending",
+                root_cause: "visual_recognition_failure"
+              }
+            ]
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            case_id: "case-list-1",
+            image_uri: "file://case-list-1.png",
+            prompt: "Read the handwritten answer",
+            golden_answer: { answers: [{ box_id: 1, student_answer: "42" }] },
+            scoring_standard: "exact match",
+            predictions: [{ trial: 1, raw_output: "{\"answers\":[]}", score: 0 }],
+            avg_score: 0.2,
+            human_notes: {
+              debug_status: "pending",
+              root_cause: "visual_recognition_failure"
+            }
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load imported cases" }));
+    await userEvent.click(await screen.findByRole("button", { name: "View case detail case-list-1" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/cases/case-list-1");
+    expect(await screen.findByText("样本详情：case-list-1")).toBeInTheDocument();
+    expect(screen.getByText("图片：file://case-list-1.png")).toBeInTheDocument();
+    expect(screen.getByText("Prompt：Read the handwritten answer")).toBeInTheDocument();
+    expect(screen.getByText("评分标准：exact match")).toBeInTheDocument();
+    expect(screen.getByText("标答 1：42")).toBeInTheDocument();
+    expect(screen.getByText("预测 trial 1：score 0")).toBeInTheDocument();
+    expect(screen.getByText("人工状态：pending")).toBeInTheDocument();
+    expect(screen.getByText("人工根因：visual_recognition_failure")).toBeInTheDocument();
+  });
 });

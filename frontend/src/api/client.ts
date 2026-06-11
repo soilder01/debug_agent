@@ -56,6 +56,29 @@ export type DebugCaseListResponse = {
   cases: DebugCaseSummary[];
 };
 
+export type DebugCaseDetail = {
+  case_id: string;
+  image_uri: string;
+  prompt: string;
+  golden_answer: {
+    answers: Array<{
+      box_id: number;
+      student_answer: string;
+    }>;
+  };
+  scoring_standard: string;
+  predictions: Array<{
+    trial: number;
+    raw_output: string;
+    score: number;
+  }>;
+  avg_score: number;
+  human_notes: {
+    debug_status: string;
+    root_cause: string;
+  };
+};
+
 export type WorkerStatus = {
   running: boolean;
   processed_count: number;
@@ -130,6 +153,14 @@ export async function fetchCases(): Promise<DebugCaseListResponse> {
     throw new Error(`Failed to fetch imported cases: ${response.status}`);
   }
   return (await response.json()) as DebugCaseListResponse;
+}
+
+export async function fetchCaseDetail(caseId: string): Promise<DebugCaseDetail> {
+  const response = await fetch(`/api/cases/${encodeURIComponent(caseId)}`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch case ${caseId}: ${response.status}`);
+  }
+  return (await response.json()) as DebugCaseDetail;
 }
 
 export async function importJsonlCases(jsonl: string, createJobs = true): Promise<JsonlImportResponse> {

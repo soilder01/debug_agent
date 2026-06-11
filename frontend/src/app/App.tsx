@@ -3,7 +3,9 @@ import { useEffect, useState } from "react";
 import {
   type BatchDebugJobResponse,
   type CsvImportResponse,
+  type DebugCaseDetail,
   type DebugCaseSummary,
+  fetchCaseDetail,
   fetchCases,
   fetchEvidenceDetail,
   fetchJobStatus,
@@ -35,6 +37,7 @@ export function App() {
   const [batchResult, setBatchResult] = useState<BatchDebugJobResponse | null>(null);
   const [batchJobStatuses, setBatchJobStatuses] = useState<Record<string, DebugJobStatus | SubmittedDebugJob>>({});
   const [importedCases, setImportedCases] = useState<DebugCaseSummary[]>([]);
+  const [selectedCaseDetail, setSelectedCaseDetail] = useState<DebugCaseDetail | null>(null);
   const [jsonlCases, setJsonlCases] = useState("");
   const [jsonlImportResult, setJsonlImportResult] = useState<JsonlImportResponse | null>(null);
   const [csvCases, setCsvCases] = useState("");
@@ -123,6 +126,15 @@ export function App() {
 
   function useImportedCasesForBatch() {
     setBatchCaseIds(importedCases.map((caseSummary) => caseSummary.case_id).join("\n"));
+  }
+
+  async function loadCaseDetail(caseId: string) {
+    setError("");
+    try {
+      setSelectedCaseDetail(await fetchCaseDetail(caseId));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
   }
 
   async function submitBatchJobs() {
@@ -283,9 +295,36 @@ export function App() {
                 <li key={caseSummary.case_id}>
                   {caseSummary.case_id}｜avg_score {caseSummary.avg_score}｜
                   {caseSummary.debug_status || "未标记"}｜{caseSummary.root_cause || "未归因"}
+                  <button type="button" onClick={() => void loadCaseDetail(caseSummary.case_id)}>
+                    View case detail {caseSummary.case_id}
+                  </button>
                 </li>
               ))}
             </ul>
+            {selectedCaseDetail ? (
+              <section aria-label="Selected case detail">
+                <h3>样本详情：{selectedCaseDetail.case_id}</h3>
+                <p>图片：{selectedCaseDetail.image_uri}</p>
+                <p>Prompt：{selectedCaseDetail.prompt}</p>
+                <p>评分标准：{selectedCaseDetail.scoring_standard}</p>
+                <ul aria-label="Golden answers">
+                  {selectedCaseDetail.golden_answer.answers.map((answer) => (
+                    <li key={answer.box_id}>
+                      标答 {answer.box_id}：{answer.student_answer}
+                    </li>
+                  ))}
+                </ul>
+                <ul aria-label="Predictions">
+                  {selectedCaseDetail.predictions.map((prediction) => (
+                    <li key={prediction.trial}>
+                      预测 trial {prediction.trial}：score {prediction.score}
+                    </li>
+                  ))}
+                </ul>
+                <p>人工状态：{selectedCaseDetail.human_notes.debug_status || "未标记"}</p>
+                <p>人工根因：{selectedCaseDetail.human_notes.root_cause || "未归因"}</p>
+              </section>
+            ) : null}
           </>
         ) : null}
       </section>
