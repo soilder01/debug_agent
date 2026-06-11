@@ -582,7 +582,7 @@ describe("App", () => {
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
-            total_count: 2,
+            total_count: 5,
             cases: [
               {
                 case_id: "case-list-1",
@@ -608,7 +608,7 @@ describe("App", () => {
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
-            total_count: 2,
+            total_count: 5,
             cases: [
               {
                 case_id: "case-list-1",
@@ -627,15 +627,18 @@ describe("App", () => {
     render(<App />);
     await userEvent.click(screen.getByRole("button", { name: "Load imported cases" }));
 
-    expect(fetchMock).toHaveBeenCalledWith("/api/cases");
-    expect(await screen.findByText("已导入样本：2")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith("/api/cases?limit=50");
+    expect(await screen.findByText("已导入样本：5")).toBeInTheDocument();
+    expect(screen.getByText("已显示样本：2/5")).toBeInTheDocument();
+    expect(screen.getByText("未加载样本：3")).toBeInTheDocument();
     expect(screen.getByText("case-list-1｜avg_score 0.2｜regions 2｜pending｜visual_recognition_failure")).toBeInTheDocument();
     expect(screen.getByText("case-list-2｜avg_score 1｜regions 0｜未标记｜未归因")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Only cases with regions" }));
 
-    expect(fetchMock).toHaveBeenCalledWith("/api/cases?has_regions=true");
-    expect(await screen.findByText("已显示样本：1/2")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith("/api/cases?has_regions=true&limit=50");
+    expect(await screen.findByText("已显示样本：1/5")).toBeInTheDocument();
+    expect(screen.getByText("未加载样本：4")).toBeInTheDocument();
     expect(screen.getByText("case-list-1｜avg_score 0.2｜regions 2｜pending｜visual_recognition_failure")).toBeInTheDocument();
     expect(screen.queryByText("case-list-2｜avg_score 1｜regions 0｜未标记｜未归因")).not.toBeInTheDocument();
 

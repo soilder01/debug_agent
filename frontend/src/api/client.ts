@@ -215,8 +215,15 @@ export async function submitBatchDebugJobs(caseIds: string[]): Promise<BatchDebu
   return (await response.json()) as BatchDebugJobResponse;
 }
 
-export async function fetchCases(hasRegions?: boolean): Promise<DebugCaseListResponse> {
-  const query = hasRegions ? "?has_regions=true" : "";
+export async function fetchCases(hasRegions?: boolean, limit?: number): Promise<DebugCaseListResponse> {
+  const params = new URLSearchParams();
+  if (hasRegions) {
+    params.set("has_regions", "true");
+  }
+  if (limit !== undefined) {
+    params.set("limit", String(limit));
+  }
+  const query = params.size > 0 ? `?${params.toString()}` : "";
   const response = await fetch(`/api/cases${query}`);
   if (!response.ok) {
     throw new Error(`Failed to fetch imported cases: ${response.status}`);

@@ -32,6 +32,7 @@ import { JobStatusPanel } from "../jobs/JobStatusPanel";
 import { ReportPanel } from "../reports/ReportPanel";
 
 const jobListLimit = 50;
+const caseListLimit = 50;
 
 export function App() {
   const [report, setReport] = useState<DebugReport | null>(null);
@@ -57,6 +58,7 @@ export function App() {
   const loadedJobCount = batchResult?.jobs.length ?? 0;
   const unloadedJobCount = Math.max(0, (jobListTotalCount ?? loadedJobCount) - loadedJobCount);
   const visibleImportedCases = importedCases;
+  const unloadedCaseCount = Math.max(0, importedCaseTotalCount - visibleImportedCases.length);
 
   useEffect(() => {
     const currentJob = jobStatus ?? submittedJob;
@@ -127,7 +129,7 @@ export function App() {
   async function loadImportedCases(hasRegions = false) {
     setError("");
     try {
-      const result = await fetchCases(hasRegions);
+      const result = await fetchCases(hasRegions, caseListLimit);
       setImportedCases(result.cases);
       setImportedCaseTotalCount(result.total_count);
     } catch (caught) {
@@ -361,6 +363,7 @@ export function App() {
             <p>
               已显示样本：{visibleImportedCases.length}/{importedCaseTotalCount}
             </p>
+            <p>未加载样本：{unloadedCaseCount}</p>
             <button type="button" onClick={() => void loadImportedCases(true)}>
               Only cases with regions
             </button>

@@ -110,3 +110,24 @@ def test_case_listing_can_filter_cases_with_regions() -> None:
     assert "case-list-region-filter-jsonl" in case_ids
     assert "case-list-csv-1" not in case_ids
     assert body["total_count"] > len(body["cases"])
+
+
+def test_case_listing_limits_returned_cases_without_changing_total_count() -> None:
+    client = TestClient(app)
+    first_payload = load_fixture_case("handwrite233").model_dump()
+    first_payload["case_id"] = "000-case-list-limit-1"
+    second_payload = load_fixture_case("handwrite233").model_dump()
+    second_payload["case_id"] = "000-case-list-limit-2"
+
+    first_response = client.post("/imports/jsonl", json={"jsonl": json.dumps(first_payload), "create_jobs": False})
+    second_response = client.post("/imports/jsonl", json={"jsonl": json.dumps(second_payload), "create_jobs": False})
+
+    response = client.get("/cases?limit=1")
+
+    assert first_response.status_code == 202
+    assert second_response.status_code == 202
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["cases"]) == 1
+    assert body["total_count"] >= 2
+    assert body["total_count"] > len(body["cases"])
