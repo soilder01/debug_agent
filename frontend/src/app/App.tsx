@@ -55,10 +55,7 @@ export function App() {
   const completedBatchJobs = batchJobs.filter((job) => job.status === "completed").length;
   const loadedJobCount = batchResult?.jobs.length ?? 0;
   const unloadedJobCount = Math.max(0, (jobListTotalCount ?? loadedJobCount) - loadedJobCount);
-  const [showOnlyRegionCases, setShowOnlyRegionCases] = useState(false);
-  const visibleImportedCases = showOnlyRegionCases
-    ? importedCases.filter((caseSummary) => (caseSummary.box_region_count ?? 0) > 0)
-    : importedCases;
+  const visibleImportedCases = importedCases;
 
   useEffect(() => {
     const currentJob = jobStatus ?? submittedJob;
@@ -126,10 +123,10 @@ export function App() {
     }
   }
 
-  async function loadImportedCases() {
+  async function loadImportedCases(hasRegions = false) {
     setError("");
     try {
-      const result = await fetchCases();
+      const result = await fetchCases(hasRegions);
       setImportedCases(result.cases);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
@@ -353,7 +350,7 @@ export function App() {
       </section>
       <section>
         <h2>Imported Cases</h2>
-        <button type="button" onClick={loadImportedCases}>
+        <button type="button" onClick={() => void loadImportedCases(false)}>
           Load imported cases
         </button>
         {importedCases.length > 0 ? (
@@ -362,10 +359,10 @@ export function App() {
             <p>
               已显示样本：{visibleImportedCases.length}/{importedCases.length}
             </p>
-            <button type="button" onClick={() => setShowOnlyRegionCases(true)}>
+            <button type="button" onClick={() => void loadImportedCases(true)}>
               Only cases with regions
             </button>
-            <button type="button" onClick={() => setShowOnlyRegionCases(false)}>
+            <button type="button" onClick={() => void loadImportedCases(false)}>
               Show all imported cases
             </button>
             <button type="button" onClick={useImportedCasesForBatch}>

@@ -577,31 +577,50 @@ describe("App", () => {
   });
 
   it("loads imported case summaries and can copy them into batch submission", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({
-          cases: [
-            {
-              case_id: "case-list-1",
-              image_uri: "file://case-list-1.png",
-              avg_score: 0.2,
-              debug_status: "pending",
-              root_cause: "visual_recognition_failure",
-              box_region_count: 2
-            },
-            {
-              case_id: "case-list-2",
-              image_uri: "file://case-list-2.png",
-              avg_score: 1,
-              debug_status: "",
-              root_cause: "",
-              box_region_count: 0
-            }
-          ]
-        }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            cases: [
+              {
+                case_id: "case-list-1",
+                image_uri: "file://case-list-1.png",
+                avg_score: 0.2,
+                debug_status: "pending",
+                root_cause: "visual_recognition_failure",
+                box_region_count: 2
+              },
+              {
+                case_id: "case-list-2",
+                image_uri: "file://case-list-2.png",
+                avg_score: 1,
+                debug_status: "",
+                root_cause: "",
+                box_region_count: 0
+              }
+            ]
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
       )
-    );
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            cases: [
+              {
+                case_id: "case-list-1",
+                image_uri: "file://case-list-1.png",
+                avg_score: 0.2,
+                debug_status: "pending",
+                root_cause: "visual_recognition_failure",
+                box_region_count: 2
+              }
+            ]
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
 
     render(<App />);
     await userEvent.click(screen.getByRole("button", { name: "Load imported cases" }));
@@ -613,7 +632,8 @@ describe("App", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Only cases with regions" }));
 
-    expect(screen.getByText("已显示样本：1/2")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith("/api/cases?has_regions=true");
+    expect(await screen.findByText("已显示样本：1/1")).toBeInTheDocument();
     expect(screen.getByText("case-list-1｜avg_score 0.2｜regions 2｜pending｜visual_recognition_failure")).toBeInTheDocument();
     expect(screen.queryByText("case-list-2｜avg_score 1｜regions 0｜未标记｜未归因")).not.toBeInTheDocument();
 

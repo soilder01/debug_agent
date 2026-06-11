@@ -80,3 +80,31 @@ def test_case_listing_returns_imported_case_summaries() -> None:
         "root_cause": "visual_recognition_failure",
         "box_region_count": 0,
     }
+
+
+def test_case_listing_can_filter_cases_with_regions() -> None:
+    client = TestClient(app)
+    case_payload = load_fixture_case("handwrite233").model_dump()
+    case_payload["case_id"] = "case-list-region-filter-jsonl"
+    case_payload["box_regions"] = [
+        {
+            "box_id": 1,
+            "x": 12,
+            "y": 34,
+            "width": 56,
+            "height": 78,
+            "unit": "pixel",
+            "label": "box-1",
+        }
+    ]
+    region_response = client.post("/imports/jsonl", json={"jsonl": json.dumps(case_payload), "create_jobs": False})
+    csv_response = client.post("/imports/csv", json={"csv_text": csv_text(), "create_jobs": False})
+
+    response = client.get("/cases?has_regions=true")
+
+    assert region_response.status_code == 202
+    assert csv_response.status_code == 202
+    assert response.status_code == 200
+    case_ids = {case["case_id"] for case in response.json()["cases"]}
+    assert "case-list-region-filter-jsonl" in case_ids
+    assert "case-list-csv-1" not in case_ids

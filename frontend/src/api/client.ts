@@ -214,8 +214,9 @@ export async function submitBatchDebugJobs(caseIds: string[]): Promise<BatchDebu
   return (await response.json()) as BatchDebugJobResponse;
 }
 
-export async function fetchCases(): Promise<DebugCaseListResponse> {
-  const response = await fetch("/api/cases");
+export async function fetchCases(hasRegions?: boolean): Promise<DebugCaseListResponse> {
+  const query = hasRegions ? "?has_regions=true" : "";
+  const response = await fetch(`/api/cases${query}`);
   if (!response.ok) {
     throw new Error(`Failed to fetch imported cases: ${response.status}`);
   }

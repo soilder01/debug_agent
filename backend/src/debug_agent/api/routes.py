@@ -104,7 +104,10 @@ def health() -> dict[str, str]:
 
 
 @router.get("/cases")
-def list_cases() -> DebugCaseListResponse:
+def list_cases(has_regions: bool = False) -> DebugCaseListResponse:
+    cases = job_repository.list_cases()
+    if has_regions:
+        cases = [case for case in cases if len(case.box_regions) > 0]
     return DebugCaseListResponse(
         cases=[
             DebugCaseSummary(
@@ -115,7 +118,7 @@ def list_cases() -> DebugCaseListResponse:
                 root_cause=case.human_notes.root_cause,
                 box_region_count=len(case.box_regions),
             )
-            for case in job_repository.list_cases()
+            for case in cases
         ]
     )
 
