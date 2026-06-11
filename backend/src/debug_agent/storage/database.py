@@ -85,3 +85,12 @@ def ensure_database_schema(engine: Engine) -> None:
                             f"{column_type} NOT NULL DEFAULT {default_value}"
                         )
                     )
+
+    inspector = inspect(engine)
+    if "debug_cases" in inspector.get_table_names():
+        debug_case_columns = {column["name"] for column in inspector.get_columns("debug_cases")}
+        if "box_region_count" not in debug_case_columns:
+            with engine.begin() as connection:
+                connection.execute(
+                    text("ALTER TABLE debug_cases ADD COLUMN box_region_count INTEGER NOT NULL DEFAULT 0")
+                )

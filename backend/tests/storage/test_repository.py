@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from debug_agent.cases.models import AnswerSet, DebugCase, Prediction
 from debug_agent.experiments.runner import ExperimentEvidence
 from debug_agent.judging.runner import JudgeResult
 from debug_agent.storage.database import (
@@ -7,8 +8,32 @@ from debug_agent.storage.database import (
     create_sqlite_session_factory,
     ensure_database_schema,
 )
-from debug_agent.storage.models import Base, DebugJobRow, EvidenceRow
+from debug_agent.storage.models import Base, DebugCaseRow, DebugJobRow, EvidenceRow
 from debug_agent.storage.repository import DebugJobRepository
+
+
+def make_case(case_id: str, box_region_count: int = 0) -> DebugCase:
+    return DebugCase(
+        case_id=case_id,
+        image_uri=f"file://{case_id}.png",
+        prompt="Read the answer.",
+        golden_answer=AnswerSet(answers=[]),
+        scoring_standard="exact match",
+        predictions=[Prediction(trial=0, raw_output="{\"answers\":[]}", score=1)],
+        avg_score=1.0,
+        box_regions=[
+            {
+                "box_id": index + 1,
+                "x": index * 10,
+                "y": 0,
+                "width": 8,
+                "height": 8,
+                "unit": "pixel",
+                "label": f"box-{index + 1}",
+            }
+            for index in range(box_region_count)
+        ],
+    )
 
 
 def test_storage_tables_can_be_created() -> None:
@@ -65,6 +90,36 @@ def test_sqlite_file_session_factory_persists_rows_between_sessions() -> None:
         if engine is not None:
             engine.dispose()
         database_path.unlink(missing_ok=True)
+
+
+def test_repository_pages_cases_before_parsing_json_rows() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    repository.save_case(make_case("case-page-2"))
+    with session_factory() as session:
+        session.add(DebugCaseRow(case_id="case-page-1", case_json="{not valid json"))
+        session.commit()
+
+    cases = repository.list_cases(limit=1, offset=1)
+
+    assert [case.case_id for case in cases] == ["case-page-2"]
+
+
+def test_repository_filters_and_counts_cases_with_regions_without_parsing_non_region_rows() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    repository.save_case(make_case("case-with-region", box_region_count=1))
+    with session_factory() as session:
+        session.add(DebugCaseRow(case_id="case-without-region", case_json="{not valid json", box_region_count=0))
+        session.commit()
+
+    cases = repository.list_cases(has_regions=True)
+
+    assert [case.case_id for case in cases] == ["case-with-region"]
+    assert repository.count_cases() == 2
+    assert repository.count_cases(has_regions=True) == 1
 
 
 def test_repository_tracks_job_state_and_evidence() -> None:
@@ -722,3 +777,35 @@ def test_database_schema_adds_missing_evidence_image_artifacts_column() -> None:
         row = session.get(EvidenceRow, ("job-1", "case-1:baseline:0"))
         assert row is not None
         assert row.image_artifacts_json == "[]"
+
+
+def test_database_schema_adds_missing_case_box_region_count_column() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            """
+            CREATE TABLE debug_cases (
+                case_id VARCHAR(120) NOT NULL PRIMARY KEY,
+                case_json TEXT NOT NULL
+            )
+            """
+        )
+        connection.exec_driver_sql(
+            """
+            INSERT INTO debug_cases (
+                case_id,
+                case_json
+            )
+            VALUES (
+                'case-1',
+                '{"case_id":"case-1","image_uri":"file://case-1.png","prompt":"p","golden_answer":{"answers":[]},"scoring_standard":"s","predictions":[],"avg_score":1.0}'
+            )
+            """
+        )
+
+    ensure_database_schema(engine)
+
+    with session_factory() as session:
+        row = session.get(DebugCaseRow, "case-1")
+        assert row is not None
+        assert row.box_region_count == 0

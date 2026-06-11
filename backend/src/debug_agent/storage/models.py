@@ -21,6 +21,7 @@ class DebugCaseRow(Base):
 
     case_id: Mapped[str] = mapped_column(String(120), primary_key=True)
     case_json: Mapped[str] = mapped_column(Text)
+    box_region_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0", index=True)
 
 
 class EvidenceRow(Base):

@@ -25,7 +25,13 @@ class DebugJobRepository:
     def save_case(self, case: DebugCase) -> None:
         with self._lock:
             with self._session_factory() as session:
-                session.merge(DebugCaseRow(case_id=case.case_id, case_json=case.model_dump_json()))
+                session.merge(
+                    DebugCaseRow(
+                        case_id=case.case_id,
+                        case_json=case.model_dump_json(),
+                        box_region_count=len(case.box_regions),
+                    )
+                )
                 session.commit()
 
     def get_case(self, case_id: str) -> DebugCase | None:
@@ -36,11 +42,26 @@ class DebugJobRepository:
                     return None
                 return DebugCase.model_validate_json(row.case_json)
 
-    def list_cases(self) -> list[DebugCase]:
+    def list_cases(self, has_regions: bool = False, limit: int | None = None, offset: int = 0) -> list[DebugCase]:
         with self._lock:
             with self._session_factory() as session:
-                rows = session.scalars(select(DebugCaseRow).order_by(DebugCaseRow.case_id))
+                query = select(DebugCaseRow).order_by(DebugCaseRow.case_id)
+                if has_regions:
+                    query = query.where(DebugCaseRow.box_region_count > 0)
+                if offset > 0:
+                    query = query.offset(offset)
+                if limit is not None:
+                    query = query.limit(limit)
+                rows = session.scalars(query)
                 return [DebugCase.model_validate_json(row.case_json) for row in rows]
+
+    def count_cases(self, has_regions: bool = False) -> int:
+        with self._lock:
+            with self._session_factory() as session:
+                query = select(func.count()).select_from(DebugCaseRow)
+                if has_regions:
+                    query = query.where(DebugCaseRow.box_region_count > 0)
+                return session.scalar(query) or 0
 
     def mark_running(self, job_id: str) -> None:
         self._set_status(job_id, "running")
