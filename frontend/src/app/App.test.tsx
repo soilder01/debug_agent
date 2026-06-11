@@ -290,6 +290,11 @@ describe("App", () => {
     expect(screen.getByText("job-history-1 错误：fixture failed")).toBeInTheDocument();
     expect(screen.getByText("job-history-1 建议：重试预算已耗尽")).toBeInTheDocument();
     expect(screen.getByText("job-history-1 级别：critical")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Open job job-history-1" }));
+
+    expect(screen.getByText("Job ID：job-history-1")).toBeInTheDocument();
+    expect(screen.getByText("建议动作：不要继续自动重试，转人工检查任务错误和证据链。")).toBeInTheDocument();
   });
 
   it("loads failed debug jobs with a status filter", async () => {

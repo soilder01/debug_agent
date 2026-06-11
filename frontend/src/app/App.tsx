@@ -177,6 +177,13 @@ export function App() {
     }
   }
 
+  function openBatchJob(job: DebugJobStatus | SubmittedDebugJob) {
+    setSubmittedJob(job);
+    setJobStatus("evidence_error_counts" in job ? job : null);
+    setReport(null);
+    setSelectedEvidence(null);
+  }
+
   async function startWorkerLoop() {
     setError("");
     try {
@@ -410,6 +417,9 @@ export function App() {
                         <span> {job.job_id} 级别：{job.retry_recommendation_detail.severity}</span>
                       </>
                     ) : null}
+                    <button type="button" onClick={() => openBatchJob(job)}>
+                      Open job {job.job_id}
+                    </button>
                   </li>
                 ))}
               </ul>
