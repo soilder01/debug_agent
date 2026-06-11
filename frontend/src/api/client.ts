@@ -26,6 +26,9 @@ export type SubmittedDebugJob = {
   case_id: string;
   status: string;
   attempt_count?: number;
+  max_attempts?: number;
+  remaining_attempts?: number;
+  will_retry?: boolean;
   error_message?: string | null;
   evidence_ids?: string[];
 };
@@ -35,6 +38,9 @@ export type DebugJobStatus = {
   case_id: string;
   status: string;
   attempt_count: number;
+  max_attempts: number;
+  remaining_attempts: number;
+  will_retry: boolean;
   error_message: string | null;
   evidence_ids: string[];
   evidence_error_counts: {

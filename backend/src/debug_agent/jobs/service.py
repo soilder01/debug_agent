@@ -19,6 +19,12 @@ class SubmittedDebugJob(BaseModel):
     status: str
 
 
+class RetryStatus(BaseModel):
+    max_attempts: int
+    remaining_attempts: int
+    will_retry: bool
+
+
 class DebugJobService:
     def __init__(
         self,
@@ -51,6 +57,14 @@ class DebugJobService:
 
     def load_case(self, case_id: str) -> DebugCase:
         return self._load_case(case_id)
+
+    def retry_status(self, attempt_count: int, status: str) -> RetryStatus:
+        remaining_attempts = max(0, self._max_attempts - attempt_count)
+        return RetryStatus(
+            max_attempts=self._max_attempts,
+            remaining_attempts=remaining_attempts,
+            will_retry=status == "created" and attempt_count > 0 and remaining_attempts > 0,
+        )
 
     async def _run_claimed_job(self, job_id: str) -> SubmittedDebugJob:
         job = self._repository.get_job(job_id)

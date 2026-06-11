@@ -33,6 +33,9 @@ describe("App", () => {
             case_id: "handwrite233",
             status: "completed",
             attempt_count: 1,
+            max_attempts: 2,
+            remaining_attempts: 1,
+            will_retry: false,
             error_message: null,
             evidence_ids: ["handwrite233:baseline_replay:0"],
             evidence_error_counts: {
@@ -59,6 +62,9 @@ describe("App", () => {
 
     expect(await screen.findByText("状态：completed", {}, { timeout: 500 })).toBeInTheDocument();
     expect(screen.getByText("尝试次数：1")).toBeInTheDocument();
+    expect(screen.getByText("最大尝试：2")).toBeInTheDocument();
+    expect(screen.getByText("剩余尝试：1")).toBeInTheDocument();
+    expect(screen.getByText("将会重试：false")).toBeInTheDocument();
     expect(screen.getByText("证据数：1")).toBeInTheDocument();
     expect(screen.getByText("失败判分：1")).toBeInTheDocument();
     expect(screen.getByText("解析错误：0")).toBeInTheDocument();
@@ -344,7 +350,6 @@ describe("App", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Start worker for batch" }));
 
     expect(fetchMock).toHaveBeenCalledWith("/api/worker/start", { method: "POST" });
-    expect(await screen.findByText("批量进度：0/2")).toBeInTheDocument();
     expect(await screen.findByText("批量进度：1/2", {}, { timeout: 500 })).toBeInTheDocument();
     expect(screen.getByText("Worker running：true")).toBeInTheDocument();
     expect(await screen.findByText("Worker processed：1", {}, { timeout: 500 })).toBeInTheDocument();

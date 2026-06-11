@@ -7,6 +7,9 @@ type JobStatusPanelProps = {
 
 export function JobStatusPanel({ job, onSelectEvidence }: JobStatusPanelProps) {
   const attemptCount = job.attempt_count ?? 0;
+  const maxAttempts = job.max_attempts ?? 0;
+  const remainingAttempts = job.remaining_attempts ?? 0;
+  const willRetry = job.will_retry ?? false;
   const errorMessage = job.error_message ?? "";
   const evidenceIds = job.evidence_ids ?? [];
   const evidenceCount = evidenceIds.length;
@@ -18,6 +21,9 @@ export function JobStatusPanel({ job, onSelectEvidence }: JobStatusPanelProps) {
       <p>样本 ID：{job.case_id}</p>
       <p>状态：{job.status}</p>
       <p>尝试次数：{attemptCount}</p>
+      <p>最大尝试：{maxAttempts}</p>
+      <p>剩余尝试：{remainingAttempts}</p>
+      <p>将会重试：{String(willRetry)}</p>
       <p>证据数：{evidenceCount}</p>
       {evidenceErrorCounts ? (
         <>
