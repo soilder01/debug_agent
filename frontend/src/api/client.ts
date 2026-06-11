@@ -279,7 +279,12 @@ export async function fetchJobStatus(jobId: string): Promise<DebugJobStatus> {
   return (await response.json()) as DebugJobStatus;
 }
 
-export async function fetchDebugJobs(status?: string, limit?: number, offset?: number): Promise<DebugJobListResponse> {
+export async function fetchDebugJobs(
+  status?: string,
+  limit?: number,
+  offset?: number,
+  sort?: string
+): Promise<DebugJobListResponse> {
   const params = new URLSearchParams();
   if (status) {
     params.set("status", status);
@@ -289,6 +294,9 @@ export async function fetchDebugJobs(status?: string, limit?: number, offset?: n
   }
   if (offset !== undefined) {
     params.set("offset", String(offset));
+  }
+  if (sort) {
+    params.set("sort", sort);
   }
   const query = params.size > 0 ? `?${params.toString()}` : "";
   const response = await fetch(`/api/jobs${query}`);

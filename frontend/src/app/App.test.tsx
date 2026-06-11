@@ -392,6 +392,52 @@ describe("App", () => {
     expect(screen.getByText("job-failed-1 建议：重试预算已耗尽")).toBeInTheDocument();
   });
 
+  it("loads newest debug jobs first", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          jobs: [
+            {
+              job_id: "job-newest-1",
+              case_id: "handwrite233",
+              status: "completed",
+              created_at: "2026-06-11T10:00:02",
+              updated_at: "2026-06-11T10:00:02",
+              attempt_count: 0,
+              max_attempts: 2,
+              remaining_attempts: 2,
+              will_retry: false,
+              retry_recommendation: "retry_budget_exhausted",
+              retry_recommendation_detail: {
+                code: "retry_budget_exhausted",
+                label: "重试预算已耗尽",
+                action: "不要继续自动重试，转人工检查任务错误和证据链。",
+                severity: "critical"
+              },
+              error_message: null,
+              evidence_ids: [],
+              evidence_error_counts: {
+                total_evidence: 0,
+                failed_judgements: 0,
+                response_parse_errors: 0,
+                model_call_errors: 0
+              }
+            }
+          ],
+          total_count: 1
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load newest debug jobs" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs?limit=50&sort=created_at_desc");
+    expect(await screen.findByText("最新任务：1")).toBeInTheDocument();
+    expect(screen.getByText("job-newest-1：completed")).toBeInTheDocument();
+  });
+
   it("loads more debug jobs after the first page", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
@@ -402,7 +448,7 @@ describe("App", () => {
               {
                 job_id: "job-history-page-1",
                 case_id: "handwrite233",
-                status: "created",
+                status: "completed",
                 attempt_count: 0,
                 max_attempts: 2,
                 remaining_attempts: 2,

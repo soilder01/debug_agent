@@ -55,6 +55,7 @@ export function App() {
   const [importedCaseFilteredCount, setImportedCaseFilteredCount] = useState<number | null>(null);
   const [activeImportedCaseHasRegions, setActiveImportedCaseHasRegions] = useState(false);
   const [activeJobStatusFilter, setActiveJobStatusFilter] = useState<string | undefined>(undefined);
+  const [activeJobSort, setActiveJobSort] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string>("");
   const batchJobs = Object.values(batchJobStatuses);
   const completedBatchJobs = batchJobs.filter((job) => job.status === "completed").length;
@@ -197,14 +198,15 @@ export function App() {
     }
   }
 
-  async function loadDebugJobs(status?: string) {
+  async function loadDebugJobs(status?: string, sort?: string) {
     setError("");
     try {
-      const result = await fetchDebugJobs(status, jobListLimit);
+      const result = await fetchDebugJobs(status, jobListLimit, undefined, sort);
       setBatchResult({ jobs: result.jobs, rejected_case_ids: [] });
-      setJobListSummaryLabel(status === "failed" ? "失败任务" : "队列任务");
+      setJobListSummaryLabel(sort === "created_at_desc" ? "最新任务" : status === "failed" ? "失败任务" : "队列任务");
       setJobListTotalCount(result.total_count);
       setActiveJobStatusFilter(status);
+      setActiveJobSort(sort);
       setBatchJobStatuses(Object.fromEntries(result.jobs.map((job) => [job.job_id, job])));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
@@ -214,7 +216,7 @@ export function App() {
   async function loadMoreDebugJobs() {
     setError("");
     try {
-      const result = await fetchDebugJobs(activeJobStatusFilter, jobListLimit, batchJobs.length);
+      const result = await fetchDebugJobs(activeJobStatusFilter, jobListLimit, batchJobs.length, activeJobSort);
       const jobs = [...batchJobs, ...result.jobs];
       setBatchResult({ jobs, rejected_case_ids: batchResult?.rejected_case_ids ?? [] });
       setJobListTotalCount(result.total_count);
@@ -477,6 +479,9 @@ export function App() {
         </button>
         <button type="button" onClick={() => void loadDebugJobs("failed")}>
           Load failed jobs
+        </button>
+        <button type="button" onClick={() => void loadDebugJobs(undefined, "created_at_desc")}>
+          Load newest debug jobs
         </button>
         {batchResult ? (
           <>

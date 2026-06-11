@@ -3,7 +3,7 @@ import threading
 from collections.abc import Callable
 from datetime import UTC, datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
 from debug_agent.cases.models import DebugCase
@@ -106,10 +106,19 @@ class DebugJobRepository:
             with self._session_factory() as session:
                 return session.get(DebugJobRow, job_id)
 
-    def list_jobs(self, status: str | None = None, limit: int | None = None, offset: int = 0) -> list[DebugJobRow]:
+    def list_jobs(
+        self,
+        status: str | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+        sort: str = "created_at_asc",
+    ) -> list[DebugJobRow]:
         with self._lock:
             with self._session_factory() as session:
-                query = select(DebugJobRow).order_by(DebugJobRow.created_at, DebugJobRow.job_id)
+                if sort == "created_at_desc":
+                    query = select(DebugJobRow).order_by(desc(DebugJobRow.created_at), desc(DebugJobRow.job_id))
+                else:
+                    query = select(DebugJobRow).order_by(DebugJobRow.created_at, DebugJobRow.job_id)
                 if status is not None:
                     query = query.where(DebugJobRow.status == status)
                 if offset > 0:

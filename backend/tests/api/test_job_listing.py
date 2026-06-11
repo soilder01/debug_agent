@@ -84,3 +84,19 @@ def test_job_listing_offsets_returned_jobs_without_changing_total_count() -> Non
     assert second_page["total_count"] == first_page["total_count"]
     for submitted in submitted_jobs:
         job_repository.mark_failed(submitted["job_id"], "test cleanup")
+
+
+def test_job_listing_can_sort_newest_jobs_first() -> None:
+    client = TestClient(app)
+
+    submitted_jobs = [client.post("/cases/handwrite233/debug-jobs").json() for _ in range(2)]
+
+    response = client.get("/jobs?sort=created_at_desc&limit=2")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["jobs"]) == 2
+    created_at_values = [job["created_at"] for job in body["jobs"]]
+    assert created_at_values == sorted(created_at_values, reverse=True)
+    for submitted in submitted_jobs:
+        job_repository.mark_failed(submitted["job_id"], "test cleanup")
