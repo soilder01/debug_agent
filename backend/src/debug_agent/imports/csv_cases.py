@@ -43,6 +43,26 @@ COLUMN_ALIASES: dict[str, str] = {
     "box regions json": "box_regions_json",
     "区域JSON": "box_regions_json",
     "框坐标JSON": "box_regions_json",
+    "box_region_box_id": "box_region_box_id",
+    "box region box id": "box_region_box_id",
+    "box_id": "box_region_box_id",
+    "框ID": "box_region_box_id",
+    "box_region_x": "box_region_x",
+    "box region x": "box_region_x",
+    "x": "box_region_x",
+    "box_region_y": "box_region_y",
+    "box region y": "box_region_y",
+    "y": "box_region_y",
+    "box_region_width": "box_region_width",
+    "box region width": "box_region_width",
+    "width": "box_region_width",
+    "box_region_height": "box_region_height",
+    "box region height": "box_region_height",
+    "height": "box_region_height",
+    "box_region_label": "box_region_label",
+    "box region label": "box_region_label",
+    "region label": "box_region_label",
+    "区域标签": "box_region_label",
     "debug_status": "debug_status",
     "debug status": "debug_status",
     "debug状态": "debug_status",
@@ -89,14 +109,44 @@ def _row_to_case(row: dict[str, str | None]) -> DebugCase:
             Prediction.model_validate(item) for item in _loads_json_list(predictions_text, "predictions_json")
         ],
         avg_score=float(_required(row, "avg_score")),
-        box_regions=[
-            BoxRegion.model_validate(item)
-            for item in _loads_optional_json_list(row.get("box_regions_json"), "box_regions_json")
-        ],
+        box_regions=_parse_box_regions(row),
         human_notes=HumanNotes(
             debug_status=row.get("debug_status") or "",
             root_cause=row.get("root_cause") or "",
         ),
+    )
+
+
+def _parse_box_regions(row: dict[str, str | None]) -> list[BoxRegion]:
+    json_regions = _loads_optional_json_list(row.get("box_regions_json"), "box_regions_json")
+    if json_regions:
+        return [BoxRegion.model_validate(item) for item in json_regions]
+    flat_region = _parse_flat_box_region(row)
+    if flat_region is None:
+        return []
+    return [flat_region]
+
+
+def _parse_flat_box_region(row: dict[str, str | None]) -> BoxRegion | None:
+    required_keys = [
+        "box_region_box_id",
+        "box_region_x",
+        "box_region_y",
+        "box_region_width",
+        "box_region_height",
+    ]
+    if not any(row.get(key) for key in required_keys):
+        return None
+    missing_keys = [key for key in required_keys if not row.get(key)]
+    if missing_keys:
+        raise ValueError(f"Missing required flat box region column value: {', '.join(missing_keys)}")
+    return BoxRegion(
+        box_id=int(_required(row, "box_region_box_id")),
+        x=int(_required(row, "box_region_x")),
+        y=int(_required(row, "box_region_y")),
+        width=int(_required(row, "box_region_width")),
+        height=int(_required(row, "box_region_height")),
+        label=row.get("box_region_label") or "",
     )
 
 
