@@ -46,7 +46,20 @@ def csv_text() -> str:
 
 def test_case_listing_returns_imported_case_summaries() -> None:
     client = TestClient(app)
-    case_json = load_fixture_case("handwrite233").model_copy(update={"case_id": "case-list-jsonl-1"}).model_dump_json()
+    case_payload = load_fixture_case("handwrite233").model_dump()
+    case_payload["case_id"] = "case-list-jsonl-1"
+    case_payload["box_regions"] = [
+        {
+            "box_id": 1,
+            "x": 12,
+            "y": 34,
+            "width": 56,
+            "height": 78,
+            "unit": "pixel",
+            "label": "box-1",
+        }
+    ]
+    case_json = json.dumps(case_payload)
 
     jsonl_response = client.post("/imports/jsonl", json={"jsonl": case_json, "create_jobs": False})
     csv_response = client.post("/imports/csv", json={"csv_text": csv_text(), "create_jobs": False})
@@ -58,10 +71,12 @@ def test_case_listing_returns_imported_case_summaries() -> None:
     cases = response.json()["cases"]
     by_case_id = {case["case_id"]: case for case in cases}
     assert by_case_id["case-list-jsonl-1"]["avg_score"] == 0.0
+    assert by_case_id["case-list-jsonl-1"]["box_region_count"] == 1
     assert by_case_id["case-list-csv-1"] == {
         "case_id": "case-list-csv-1",
         "image_uri": "file://case-list.png",
         "avg_score": 1.0,
         "debug_status": "pending",
         "root_cause": "visual_recognition_failure",
+        "box_region_count": 0,
     }

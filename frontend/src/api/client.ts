@@ -79,6 +79,7 @@ export type DebugCaseSummary = {
   avg_score: number;
   debug_status: string;
   root_cause: string;
+  box_region_count?: number;
 };
 
 export type DebugCaseListResponse = {

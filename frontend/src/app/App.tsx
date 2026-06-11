@@ -361,7 +361,7 @@ export function App() {
             <ul aria-label="Imported case summaries">
               {importedCases.map((caseSummary) => (
                 <li key={caseSummary.case_id}>
-                  {caseSummary.case_id}｜avg_score {caseSummary.avg_score}｜
+                  {caseSummary.case_id}｜avg_score {caseSummary.avg_score}｜regions {caseSummary.box_region_count ?? 0}｜
                   {caseSummary.debug_status || "未标记"}｜{caseSummary.root_cause || "未归因"}
                   <button type="button" onClick={() => void loadCaseDetail(caseSummary.case_id)}>
                     View case detail {caseSummary.case_id}

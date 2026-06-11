@@ -586,14 +586,16 @@ describe("App", () => {
               image_uri: "file://case-list-1.png",
               avg_score: 0.2,
               debug_status: "pending",
-              root_cause: "visual_recognition_failure"
+              root_cause: "visual_recognition_failure",
+              box_region_count: 2
             },
             {
               case_id: "case-list-2",
               image_uri: "file://case-list-2.png",
               avg_score: 1,
               debug_status: "",
-              root_cause: ""
+              root_cause: "",
+              box_region_count: 0
             }
           ]
         }),
@@ -606,8 +608,8 @@ describe("App", () => {
 
     expect(fetchMock).toHaveBeenCalledWith("/api/cases");
     expect(await screen.findByText("已导入样本：2")).toBeInTheDocument();
-    expect(screen.getByText("case-list-1｜avg_score 0.2｜pending｜visual_recognition_failure")).toBeInTheDocument();
-    expect(screen.getByText("case-list-2｜avg_score 1｜未标记｜未归因")).toBeInTheDocument();
+    expect(screen.getByText("case-list-1｜avg_score 0.2｜regions 2｜pending｜visual_recognition_failure")).toBeInTheDocument();
+    expect(screen.getByText("case-list-2｜avg_score 1｜regions 0｜未标记｜未归因")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Use imported cases for batch" }));
 

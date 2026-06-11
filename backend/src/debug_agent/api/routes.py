@@ -91,6 +91,7 @@ class DebugCaseSummary(BaseModel):
     avg_score: float
     debug_status: str
     root_cause: str
+    box_region_count: int
 
 
 class DebugCaseListResponse(BaseModel):
@@ -112,6 +113,7 @@ def list_cases() -> DebugCaseListResponse:
                 avg_score=case.avg_score,
                 debug_status=case.human_notes.debug_status,
                 root_cause=case.human_notes.root_cause,
+                box_region_count=len(case.box_regions),
             )
             for case in job_repository.list_cases()
         ]
