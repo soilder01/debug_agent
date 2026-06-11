@@ -1,8 +1,10 @@
 import json
+from tempfile import TemporaryDirectory
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 import pytest
+from PIL import Image
 
 from debug_agent.cases.models import DebugCase
 from debug_agent.experiments.planner import ExperimentPlan, ExperimentStep, plan_experiments
@@ -164,6 +166,81 @@ async def test_run_experiments_adds_localized_image_artifacts_for_affected_boxes
     assert artifact.region.width == 56
     assert artifact.region.height == 78
     assert artifact.region.label == "box-7"
+
+
+@pytest.mark.asyncio
+async def test_run_experiments_materializes_localized_crop_artifacts() -> None:
+    with TemporaryDirectory(dir=Path.cwd()) as temp_dir:
+        temp_path = Path(temp_dir)
+        source_image_path = temp_path / "case-localized.png"
+        artifact_dir = temp_path / "artifacts"
+        result = await _run_localized_crop_case(source_image_path=source_image_path, artifact_dir=artifact_dir)
+
+        artifact = result.evidence[0].image_artifacts[0]
+        assert artifact.derived_image_uri
+        crop_path = _path_from_file_uri(artifact.derived_image_uri)
+        assert crop_path.exists()
+        with Image.open(crop_path) as crop:
+            assert crop.size == (56, 20)
+
+
+async def _run_localized_crop_case(source_image_path: Path, artifact_dir: Path):
+    Image.new("RGB", (100, 100), color="white").save(source_image_path)
+    case = DebugCase.model_validate(
+        {
+            "case_id": "case-localized-crop",
+            "image_uri": source_image_path.as_uri(),
+            "prompt": "识别作答区域。",
+            "golden_answer": {"answers": [{"box_id": 7, "student_answer": "低昷烘干"}]},
+            "scoring_standard": "box_id and student_answer must match.",
+            "predictions": [
+                {
+                    "trial": 0,
+                    "raw_output": "{\"answers\":[{\"box_id\":7,\"student_answer\":\"低温烘干\"}]}",
+                    "score": 0,
+                }
+            ],
+            "avg_score": 0.0,
+            "box_regions": [
+                {
+                    "box_id": 7,
+                    "x": 12,
+                    "y": 34,
+                    "width": 56,
+                    "height": 20,
+                    "unit": "pixel",
+                    "label": "box-7",
+                }
+            ],
+        }
+    )
+    plan = ExperimentPlan(
+        case_id=case.case_id,
+        max_model_calls=1,
+        steps=[
+            ExperimentStep(
+                name="localized_observation_request",
+                description="Ask the model to inspect the affected answer box.",
+                trials=1,
+            )
+        ],
+    )
+    adapter = FakeModelAdapter(outputs=[case.predictions[0].raw_output])
+
+    return await run_experiments(
+        case=case,
+        plan=plan,
+        adapter=adapter,
+        image_artifact_dir=artifact_dir,
+    )
+
+
+def _path_from_file_uri(uri: str) -> Path:
+    parsed = urlparse(uri)
+    path_text = unquote(parsed.path)
+    if len(path_text) >= 3 and path_text[0] == "/" and path_text[2] == ":":
+        path_text = path_text[1:]
+    return Path(path_text)
 
 
 @pytest.mark.asyncio

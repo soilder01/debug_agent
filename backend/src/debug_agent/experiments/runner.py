@@ -1,30 +1,15 @@
+from pathlib import Path
 from time import perf_counter
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
 
+from debug_agent.artifacts.images import ImageArtifact, ImageRegion, materialize_image_crop
 from debug_agent.cases.comparator import compare_answer_sets, parse_prediction_answer
 from debug_agent.cases.models import AnswerSet, DebugCase
 from debug_agent.experiments.planner import ExperimentPlan
 from debug_agent.judging.runner import JudgeResult, judge_answer
 from debug_agent.models.adapters import ModelAdapter
-
-
-class ImageRegion(BaseModel):
-    x: int
-    y: int
-    width: int
-    height: int
-    unit: str = "pixel"
-    label: str = ""
-
-
-class ImageArtifact(BaseModel):
-    artifact_id: str
-    kind: str
-    source_image_uri: str
-    region: ImageRegion | None = None
-    derived_image_uri: str = ""
 
 
 class ExperimentEvidence(BaseModel):
@@ -55,6 +40,7 @@ async def run_experiments(
     case: DebugCase,
     plan: ExperimentPlan,
     adapter: ModelAdapter,
+    image_artifact_dir: Path | None = None,
 ) -> ExperimentRunResult:
     evidence: list[ExperimentEvidence] = []
     success_count = 0
@@ -95,6 +81,7 @@ async def run_experiments(
                     case=case,
                     step_name=step.name,
                     predicted=predicted,
+                    image_artifact_dir=image_artifact_dir,
                 )
             except Exception as exc:
                 response_parse_error = str(exc)
@@ -182,6 +169,7 @@ def _build_localized_image_artifacts(
     case: DebugCase,
     step_name: str,
     predicted: AnswerSet,
+    image_artifact_dir: Path | None = None,
 ) -> list[ImageArtifact]:
     if step_name != "localized_observation_request" or not case.image_uri:
         return []
@@ -198,13 +186,28 @@ def _build_localized_image_artifacts(
         )
         for region in case.box_regions
     }
-    return [
-        ImageArtifact(
-            artifact_id=f"{case.case_id}:box-{box_id}:localized-candidate",
-            kind="affected_box_candidate",
-            source_image_uri=case.image_uri,
-            region=regions_by_box_id.get(box_id),
-            derived_image_uri="",
+    artifacts: list[ImageArtifact] = []
+    for box_id in diff.affected_box_ids:
+        artifact_id = f"{case.case_id}:box-{box_id}:localized-candidate"
+        region = regions_by_box_id.get(box_id)
+        derived_image_uri = ""
+        if image_artifact_dir is not None and region is not None:
+            try:
+                derived_image_uri = materialize_image_crop(
+                    source_image_uri=case.image_uri,
+                    region=region,
+                    output_dir=image_artifact_dir,
+                    artifact_id=artifact_id,
+                )
+            except (OSError, ValueError):
+                derived_image_uri = ""
+        artifacts.append(
+            ImageArtifact(
+                artifact_id=artifact_id,
+                kind="affected_box_candidate",
+                source_image_uri=case.image_uri,
+                region=region,
+                derived_image_uri=derived_image_uri,
+            )
         )
-        for box_id in diff.affected_box_ids
-    ]
+    return artifacts
