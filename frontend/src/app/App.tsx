@@ -52,6 +52,7 @@ export function App() {
   const [workerStatus, setWorkerStatus] = useState<WorkerStatus | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<ExperimentEvidence | null>(null);
   const [importedCaseTotalCount, setImportedCaseTotalCount] = useState(0);
+  const [importedCaseFilteredCount, setImportedCaseFilteredCount] = useState<number | null>(null);
   const [activeImportedCaseHasRegions, setActiveImportedCaseHasRegions] = useState(false);
   const [error, setError] = useState<string>("");
   const batchJobs = Object.values(batchJobStatuses);
@@ -59,7 +60,8 @@ export function App() {
   const loadedJobCount = batchResult?.jobs.length ?? 0;
   const unloadedJobCount = Math.max(0, (jobListTotalCount ?? loadedJobCount) - loadedJobCount);
   const visibleImportedCases = importedCases;
-  const unloadedCaseCount = Math.max(0, importedCaseTotalCount - visibleImportedCases.length);
+  const effectiveImportedCaseCount = importedCaseFilteredCount ?? importedCaseTotalCount;
+  const unloadedCaseCount = Math.max(0, effectiveImportedCaseCount - visibleImportedCases.length);
 
   useEffect(() => {
     const currentJob = jobStatus ?? submittedJob;
@@ -133,6 +135,7 @@ export function App() {
       const result = await fetchCases(hasRegions, caseListLimit);
       setImportedCases(result.cases);
       setImportedCaseTotalCount(result.total_count);
+      setImportedCaseFilteredCount(result.filtered_count ?? result.total_count);
       setActiveImportedCaseHasRegions(hasRegions);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
@@ -145,6 +148,7 @@ export function App() {
       const result = await fetchCases(activeImportedCaseHasRegions, caseListLimit, importedCases.length);
       setImportedCases((current) => [...current, ...result.cases]);
       setImportedCaseTotalCount(result.total_count);
+      setImportedCaseFilteredCount(result.filtered_count ?? result.total_count);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
     }
@@ -374,7 +378,7 @@ export function App() {
           <>
             <p>已导入样本：{importedCaseTotalCount}</p>
             <p>
-              已显示样本：{visibleImportedCases.length}/{importedCaseTotalCount}
+              已显示样本：{visibleImportedCases.length}/{effectiveImportedCaseCount}
             </p>
             <p>未加载样本：{unloadedCaseCount}</p>
             <button type="button" onClick={() => void loadImportedCases(true)}>

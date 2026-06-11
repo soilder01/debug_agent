@@ -112,6 +112,50 @@ def test_case_listing_can_filter_cases_with_regions() -> None:
     assert body["total_count"] > len(body["cases"])
 
 
+def test_case_listing_reports_filtered_count_before_paging() -> None:
+    client = TestClient(app)
+    first_payload = load_fixture_case("handwrite233").model_dump()
+    first_payload["case_id"] = "case-list-filtered-count-1"
+    first_payload["box_regions"] = [
+        {
+            "box_id": 1,
+            "x": 12,
+            "y": 34,
+            "width": 56,
+            "height": 78,
+            "unit": "pixel",
+            "label": "box-1",
+        }
+    ]
+    second_payload = load_fixture_case("handwrite233").model_dump()
+    second_payload["case_id"] = "case-list-filtered-count-2"
+    second_payload["box_regions"] = [
+        {
+            "box_id": 2,
+            "x": 90,
+            "y": 34,
+            "width": 56,
+            "height": 78,
+            "unit": "pixel",
+            "label": "box-2",
+        }
+    ]
+
+    first_response = client.post("/imports/jsonl", json={"jsonl": json.dumps(first_payload), "create_jobs": False})
+    second_response = client.post("/imports/jsonl", json={"jsonl": json.dumps(second_payload), "create_jobs": False})
+
+    response = client.get("/cases?has_regions=true&limit=1")
+
+    assert first_response.status_code == 202
+    assert second_response.status_code == 202
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["cases"]) == 1
+    assert body["filtered_count"] >= 2
+    assert body["filtered_count"] > len(body["cases"])
+    assert body["total_count"] >= body["filtered_count"]
+
+
 def test_case_listing_limits_returned_cases_without_changing_total_count() -> None:
     client = TestClient(app)
     first_payload = load_fixture_case("handwrite233").model_dump()

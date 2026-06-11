@@ -97,6 +97,7 @@ class DebugCaseSummary(BaseModel):
 class DebugCaseListResponse(BaseModel):
     cases: list[DebugCaseSummary]
     total_count: int
+    filtered_count: int
 
 
 @router.get("/health")
@@ -110,12 +111,14 @@ def list_cases(has_regions: bool = False, limit: int | None = None, offset: int 
     total_count = len(cases)
     if has_regions:
         cases = [case for case in cases if len(case.box_regions) > 0]
+    filtered_count = len(cases)
     if offset > 0:
         cases = cases[offset:]
     if limit is not None:
         cases = cases[:limit]
     return DebugCaseListResponse(
         total_count=total_count,
+        filtered_count=filtered_count,
         cases=[
             DebugCaseSummary(
                 case_id=case.case_id,

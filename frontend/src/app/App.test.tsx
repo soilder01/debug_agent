@@ -583,6 +583,7 @@ describe("App", () => {
         new Response(
           JSON.stringify({
             total_count: 5,
+            filtered_count: 5,
             cases: [
               {
                 case_id: "case-list-1",
@@ -609,6 +610,7 @@ describe("App", () => {
         new Response(
           JSON.stringify({
             total_count: 5,
+            filtered_count: 1,
             cases: [
               {
                 case_id: "case-list-1",
@@ -637,8 +639,8 @@ describe("App", () => {
     await userEvent.click(screen.getByRole("button", { name: "Only cases with regions" }));
 
     expect(fetchMock).toHaveBeenCalledWith("/api/cases?has_regions=true&limit=50");
-    expect(await screen.findByText("已显示样本：1/5")).toBeInTheDocument();
-    expect(screen.getByText("未加载样本：4")).toBeInTheDocument();
+    expect(await screen.findByText("已显示样本：1/1")).toBeInTheDocument();
+    expect(screen.getByText("未加载样本：0")).toBeInTheDocument();
     expect(screen.getByText("case-list-1｜avg_score 0.2｜regions 2｜pending｜visual_recognition_failure")).toBeInTheDocument();
     expect(screen.queryByText("case-list-2｜avg_score 1｜regions 0｜未标记｜未归因")).not.toBeInTheDocument();
 
