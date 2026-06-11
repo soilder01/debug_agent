@@ -46,3 +46,16 @@ def test_job_listing_filters_jobs_by_status() -> None:
     assert failed["job_id"] in job_ids
     assert created["job_id"] not in job_ids
     job_repository.mark_failed(created["job_id"], "test cleanup")
+
+
+def test_job_listing_limits_number_of_returned_jobs() -> None:
+    client = TestClient(app)
+
+    submitted_jobs = [client.post("/cases/handwrite233/debug-jobs").json() for _ in range(3)]
+
+    response = client.get("/jobs?limit=2")
+
+    assert response.status_code == 200
+    assert len(response.json()["jobs"]) == 2
+    for submitted in submitted_jobs:
+        job_repository.mark_failed(submitted["job_id"], "test cleanup")

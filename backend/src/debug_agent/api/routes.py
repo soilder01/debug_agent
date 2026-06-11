@@ -216,8 +216,10 @@ async def run_next_job() -> SubmittedDebugJob | None:
 
 
 @router.get("/jobs")
-def list_jobs(status: str | None = None) -> DebugJobListResponse:
-    return DebugJobListResponse(jobs=[_build_job_status(job) for job in job_repository.list_jobs(status=status)])
+def list_jobs(status: str | None = None, limit: int | None = None) -> DebugJobListResponse:
+    return DebugJobListResponse(
+        jobs=[_build_job_status(job) for job in job_repository.list_jobs(status=status, limit=limit)]
+    )
 
 
 @router.get("/jobs/{job_id}/evidence/{evidence_id:path}")
