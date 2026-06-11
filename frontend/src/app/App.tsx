@@ -166,10 +166,10 @@ export function App() {
     }
   }
 
-  async function loadDebugJobs() {
+  async function loadDebugJobs(status?: string) {
     setError("");
     try {
-      const result = await fetchDebugJobs();
+      const result = await fetchDebugJobs(status);
       setBatchResult({ jobs: result.jobs, rejected_case_ids: [] });
       setBatchJobStatuses(Object.fromEntries(result.jobs.map((job) => [job.job_id, job])));
     } catch (caught) {
@@ -380,8 +380,11 @@ export function App() {
         <button type="button" onClick={submitBatchJobs}>
           Submit batch jobs
         </button>
-        <button type="button" onClick={loadDebugJobs}>
+        <button type="button" onClick={() => void loadDebugJobs()}>
           Load debug jobs
+        </button>
+        <button type="button" onClick={() => void loadDebugJobs("failed")}>
+          Load failed jobs
         </button>
         {batchResult ? (
           <>

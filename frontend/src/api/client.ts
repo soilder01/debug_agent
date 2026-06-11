@@ -234,8 +234,9 @@ export async function fetchJobStatus(jobId: string): Promise<DebugJobStatus> {
   return (await response.json()) as DebugJobStatus;
 }
 
-export async function fetchDebugJobs(): Promise<DebugJobListResponse> {
-  const response = await fetch("/api/jobs");
+export async function fetchDebugJobs(status?: string): Promise<DebugJobListResponse> {
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  const response = await fetch(`/api/jobs${query}`);
   if (!response.ok) {
     throw new Error(`Failed to fetch debug jobs: ${response.status}`);
   }
