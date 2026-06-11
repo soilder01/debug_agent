@@ -1,4 +1,5 @@
 import json
+from typing import Literal
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException
@@ -232,7 +233,7 @@ def list_jobs(
     status: str | None = None,
     limit: int | None = None,
     offset: int = 0,
-    sort: str = "created_at_asc",
+    sort: Literal["created_at_asc", "created_at_desc"] = "created_at_asc",
 ) -> DebugJobListResponse:
     return DebugJobListResponse(
         jobs=[

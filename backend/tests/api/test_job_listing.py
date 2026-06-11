@@ -100,3 +100,11 @@ def test_job_listing_can_sort_newest_jobs_first() -> None:
     assert created_at_values == sorted(created_at_values, reverse=True)
     for submitted in submitted_jobs:
         job_repository.mark_failed(submitted["job_id"], "test cleanup")
+
+
+def test_job_listing_rejects_unknown_sort_value() -> None:
+    client = TestClient(app)
+
+    response = client.get("/jobs?sort=unknown")
+
+    assert response.status_code == 422
