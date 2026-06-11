@@ -62,5 +62,47 @@ describe("EvidenceDetail", () => {
       "src",
       "/api/artifacts/images/case-1-box-7.png"
     );
+    expect(screen.getByRole("link", { name: "打开裁剪图 case-1:box-7:crop" })).toHaveAttribute(
+      "href",
+      "/api/artifacts/images/case-1-box-7.png"
+    );
+  });
+
+  it("shows a no-preview fallback for image artifacts without preview URLs", () => {
+    const evidence = {
+      evidence_id: "case-1:localized_observation_request:0",
+      step_name: "localized_observation_request",
+      trial: 0,
+      model_name: "ark-seed2-lite",
+      model_provider: "ark",
+      model_id: "ep-seed2-lite",
+      request_summary: {
+        prompt_length: 42,
+        has_image: true,
+        image_uri_scheme: "file"
+      },
+      latency_ms: 25,
+      response_parse_error: "",
+      model_call_error_type: "",
+      model_call_error_message: "",
+      image_artifacts: [
+        {
+          artifact_id: "case-1:box-8:crop",
+          kind: "crop_candidate",
+          source_image_uri: "file:///tmp/case-1.png",
+          derived_image_uri: "",
+          region: null
+        }
+      ],
+      raw_output: "{\"answers\":[]}",
+      judge: {
+        score: 0,
+        reasons: ["box 7 mismatch"]
+      }
+    } satisfies ExperimentEvidence;
+
+    render(<EvidenceDetail evidence={evidence} />);
+
+    expect(screen.getByText("预览图：无")).toBeInTheDocument();
   });
 });

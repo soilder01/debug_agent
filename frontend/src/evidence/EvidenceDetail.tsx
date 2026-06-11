@@ -37,8 +37,17 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
                 <p>源图片：{artifact.source_image_uri}</p>
                 <p>派生图片：{artifact.derived_image_uri || "无"}</p>
                 {artifact.preview_image_url ? (
-                  <img alt={`Crop preview ${artifact.artifact_id}`} src={artifact.preview_image_url} />
-                ) : null}
+                  <>
+                    <p>
+                      <a href={artifact.preview_image_url} target="_blank" rel="noreferrer">
+                        打开裁剪图 {artifact.artifact_id}
+                      </a>
+                    </p>
+                    <img alt={`Crop preview ${artifact.artifact_id}`} src={artifact.preview_image_url} />
+                  </>
+                ) : (
+                  <p>预览图：无</p>
+                )}
                 {artifact.region ? (
                   <p>
                     区域：x={artifact.region.x}, y={artifact.region.y}, width={artifact.region.width}, height=
