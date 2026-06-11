@@ -12,6 +12,7 @@ from debug_agent.cases.models import DebugCase
 from debug_agent.experiments.planner import plan_experiments
 from debug_agent.experiments.runner import ExperimentEvidence, run_experiments
 from debug_agent.imports.csv_cases import CsvRejectedRow, parse_csv_cases
+from debug_agent.imports.spreadsheet_rows import SpreadsheetRejectedRow, parse_spreadsheet_rows
 from debug_agent.jobs.service import DebugJobService, RetryRecommendationDetail, SubmittedDebugJob
 from debug_agent.jobs.worker import AsyncJobWorker, AsyncJobWorkerStatus
 from debug_agent.models.fake import FakeModelAdapter
@@ -90,6 +91,24 @@ class CsvImportResponse(BaseModel):
     imported_case_ids: list[str]
     jobs: list[SubmittedDebugJob]
     rejected_rows: list[CsvRejectedRow]
+
+
+class SpreadsheetRowImportRequest(BaseModel):
+    rows: list[dict[str, object]]
+    create_jobs: bool = True
+    baseline_trials: int = Field(default=5, ge=0, le=5)
+
+
+class SpreadsheetImportedRowResponse(BaseModel):
+    sheet_row_id: str
+    case_id: str
+
+
+class SpreadsheetRowImportResponse(BaseModel):
+    imported_case_ids: list[str]
+    imported_rows: list[SpreadsheetImportedRowResponse]
+    jobs: list[SubmittedDebugJob]
+    rejected_rows: list[SpreadsheetRejectedRow]
 
 
 class DebugCaseSummary(BaseModel):
@@ -226,6 +245,32 @@ def import_csv_cases(request: CsvImportRequest) -> CsvImportResponse:
             jobs.append(job_service.submit_case_debug(case.case_id, baseline_trials=request.baseline_trials))
     return CsvImportResponse(
         imported_case_ids=imported_case_ids,
+        jobs=jobs,
+        rejected_rows=parse_result.rejected_rows,
+    )
+
+
+@router.post("/imports/spreadsheet-rows", status_code=202)
+def import_spreadsheet_rows(request: SpreadsheetRowImportRequest) -> SpreadsheetRowImportResponse:
+    parse_result = parse_spreadsheet_rows(request.rows)
+    imported_case_ids: list[str] = []
+    imported_rows: list[SpreadsheetImportedRowResponse] = []
+    jobs: list[SubmittedDebugJob] = []
+    for imported_row in parse_result.imported_rows:
+        case = imported_row.case
+        job_repository.save_case(case)
+        imported_case_ids.append(case.case_id)
+        imported_rows.append(
+            SpreadsheetImportedRowResponse(
+                sheet_row_id=imported_row.sheet_row_id,
+                case_id=case.case_id,
+            )
+        )
+        if request.create_jobs:
+            jobs.append(job_service.submit_case_debug(case.case_id, baseline_trials=request.baseline_trials))
+    return SpreadsheetRowImportResponse(
+        imported_case_ids=imported_case_ids,
+        imported_rows=imported_rows,
         jobs=jobs,
         rejected_rows=parse_result.rejected_rows,
     )
