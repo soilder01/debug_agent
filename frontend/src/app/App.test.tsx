@@ -436,10 +436,11 @@ describe("App", () => {
   });
 
   it("starts the worker from the batch section and renders batch progress", async () => {
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce(
-        new Response(
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url === "/api/debug-jobs/batch") {
+        return Promise.resolve(
+          new Response(
           JSON.stringify({
             jobs: [
               { job_id: "job-1", case_id: "handwrite233", status: "created" },
@@ -449,9 +450,11 @@ describe("App", () => {
           }),
           { status: 202, headers: { "Content-Type": "application/json" } }
         )
-      )
-      .mockResolvedValueOnce(
-        new Response(
+        );
+      }
+      if (url === "/api/worker/start") {
+        return Promise.resolve(
+          new Response(
           JSON.stringify({
             running: true,
             processed_count: 0,
@@ -460,9 +463,11 @@ describe("App", () => {
           }),
           { status: 202, headers: { "Content-Type": "application/json" } }
         )
-      )
-      .mockResolvedValueOnce(
-        new Response(
+        );
+      }
+      if (url === "/api/jobs/job-1") {
+        return Promise.resolve(
+          new Response(
           JSON.stringify({
             job_id: "job-1",
             case_id: "handwrite233",
@@ -473,9 +478,11 @@ describe("App", () => {
           }),
           { status: 200, headers: { "Content-Type": "application/json" } }
         )
-      )
-      .mockResolvedValueOnce(
-        new Response(
+        );
+      }
+      if (url === "/api/jobs/job-2") {
+        return Promise.resolve(
+          new Response(
           JSON.stringify({
             job_id: "job-2",
             case_id: "handwrite233",
@@ -486,9 +493,11 @@ describe("App", () => {
           }),
           { status: 200, headers: { "Content-Type": "application/json" } }
         )
-      )
-      .mockResolvedValueOnce(
-        new Response(
+        );
+      }
+      if (url === "/api/worker/status") {
+        return Promise.resolve(
+          new Response(
           JSON.stringify({
             running: true,
             processed_count: 1,
@@ -497,7 +506,10 @@ describe("App", () => {
           }),
           { status: 200, headers: { "Content-Type": "application/json" } }
         )
-      );
+        );
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
 
     render(<App />);
     await userEvent.type(screen.getByLabelText("Batch case ids"), "handwrite233 handwrite233");

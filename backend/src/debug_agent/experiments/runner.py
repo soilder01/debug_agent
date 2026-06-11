@@ -1,13 +1,30 @@
 from time import perf_counter
 from urllib.parse import urlparse
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from debug_agent.cases.comparator import parse_prediction_answer
 from debug_agent.cases.models import DebugCase
 from debug_agent.experiments.planner import ExperimentPlan
 from debug_agent.judging.runner import JudgeResult, judge_answer
 from debug_agent.models.adapters import ModelAdapter
+
+
+class ImageRegion(BaseModel):
+    x: int
+    y: int
+    width: int
+    height: int
+    unit: str = "pixel"
+    label: str = ""
+
+
+class ImageArtifact(BaseModel):
+    artifact_id: str
+    kind: str
+    source_image_uri: str
+    region: ImageRegion | None = None
+    derived_image_uri: str = ""
 
 
 class ExperimentEvidence(BaseModel):
@@ -22,6 +39,7 @@ class ExperimentEvidence(BaseModel):
     response_parse_error: str = ""
     model_call_error_type: str = ""
     model_call_error_message: str = ""
+    image_artifacts: list[ImageArtifact] = Field(default_factory=list)
     raw_output: str
     judge: JudgeResult
 

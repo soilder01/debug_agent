@@ -84,6 +84,21 @@ export type DebugCaseListResponse = {
   cases: DebugCaseSummary[];
 };
 
+export type ImageArtifact = {
+  artifact_id: string;
+  kind: string;
+  source_image_uri: string;
+  derived_image_uri: string;
+  region: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    unit: string;
+    label: string;
+  } | null;
+};
+
 export type DebugCaseDetail = {
   case_id: string;
   image_uri: string;
@@ -152,6 +167,7 @@ export type ExperimentEvidence = {
   response_parse_error: string;
   model_call_error_type: string;
   model_call_error_message: string;
+  image_artifacts?: ImageArtifact[];
   raw_output: string;
   judge: {
     score: number;

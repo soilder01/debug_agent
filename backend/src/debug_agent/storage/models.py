@@ -39,6 +39,7 @@ class EvidenceRow(Base):
     response_parse_error: Mapped[str] = mapped_column(Text, default="", server_default="")
     model_call_error_type: Mapped[str] = mapped_column(String(120), default="", server_default="")
     model_call_error_message: Mapped[str] = mapped_column(Text, default="", server_default="")
+    image_artifacts_json: Mapped[str] = mapped_column(Text, default="[]", server_default="[]")
     score: Mapped[int] = mapped_column(Integer)
     reasons_json: Mapped[str] = mapped_column(Text)
     raw_output: Mapped[str] = mapped_column(Text)

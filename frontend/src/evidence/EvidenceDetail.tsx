@@ -8,6 +8,7 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
   if (!evidence) {
     return null;
   }
+  const imageArtifacts = evidence.image_artifacts ?? [];
 
   return (
     <section>
@@ -25,6 +26,29 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
       {evidence.response_parse_error ? <p>解析错误：{evidence.response_parse_error}</p> : null}
       {evidence.model_call_error_type ? <p>模型调用错误类型：{evidence.model_call_error_type}</p> : null}
       {evidence.model_call_error_message ? <p>模型调用错误信息：{evidence.model_call_error_message}</p> : null}
+      {imageArtifacts.length > 0 ? (
+        <>
+          <h3>Image Artifacts</h3>
+          <ul>
+            {imageArtifacts.map((artifact) => (
+              <li key={artifact.artifact_id}>
+                <h4>Artifact {artifact.artifact_id}</h4>
+                <p>类型：{artifact.kind}</p>
+                <p>源图片：{artifact.source_image_uri}</p>
+                <p>派生图片：{artifact.derived_image_uri || "无"}</p>
+                {artifact.region ? (
+                  <p>
+                    区域：x={artifact.region.x}, y={artifact.region.y}, width={artifact.region.width}, height=
+                    {artifact.region.height}, unit={artifact.region.unit}, label={artifact.region.label || "无"}
+                  </p>
+                ) : (
+                  <p>区域：无</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
       <p>Judge Score：{evidence.judge.score}</p>
       <h3>Judge Reasons</h3>
       <ul>
