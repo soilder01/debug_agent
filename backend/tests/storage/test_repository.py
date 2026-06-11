@@ -98,6 +98,18 @@ def test_repository_tracks_job_state_and_evidence() -> None:
         assert row.model_provider == "ark"
         assert row.model_id == "ep-seed2-lite"
 
+    restored = repository.get_evidence("job-1", "case-1:baseline:0")
+    assert restored is not None
+    assert restored.evidence_id == "case-1:baseline:0"
+    assert restored.step_name == "baseline"
+    assert restored.trial == 0
+    assert restored.model_name == "seed2-lite"
+    assert restored.model_provider == "ark"
+    assert restored.model_id == "ep-seed2-lite"
+    assert restored.raw_output == "{\"answers\":[]}"
+    assert restored.judge.score == 0
+    assert restored.judge.reasons == ["box 1 mismatch"]
+
 
 def test_repository_created_job_starts_with_zero_attempts() -> None:
     session_factory, engine = create_sqlite_memory_session_factory()

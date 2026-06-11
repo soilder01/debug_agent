@@ -204,6 +204,14 @@ async def run_next_job() -> SubmittedDebugJob | None:
     return await job_service.run_next_job()
 
 
+@router.get("/jobs/{job_id}/evidence/{evidence_id:path}")
+def get_job_evidence(job_id: str, evidence_id: str) -> ExperimentEvidence:
+    evidence = job_repository.get_evidence(job_id, evidence_id)
+    if evidence is None:
+        raise HTTPException(status_code=404, detail=f"Evidence not found: {evidence_id}")
+    return evidence
+
+
 @router.get("/worker/status")
 def get_worker_status() -> AsyncJobWorkerStatus:
     return job_worker.status()

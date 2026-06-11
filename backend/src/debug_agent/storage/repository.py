@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from debug_agent.cases.models import DebugCase
 from debug_agent.experiments.runner import ExperimentEvidence
+from debug_agent.judging.runner import JudgeResult
 from debug_agent.storage.models import DebugCaseRow, DebugJobRow, EvidenceRow
 
 
@@ -133,6 +134,29 @@ class DebugJobRepository:
                     .order_by(EvidenceRow.evidence_id)
                 )
                 return list(rows)
+
+    def get_evidence(self, job_id: str, evidence_id: str) -> ExperimentEvidence | None:
+        with self._lock:
+            with self._session_factory() as session:
+                row = session.get(EvidenceRow, (job_id, evidence_id))
+                if row is None:
+                    return None
+                reasons = json.loads(row.reasons_json)
+                if not isinstance(reasons, list):
+                    raise ValueError(f"Evidence reasons must be a list: {evidence_id}")
+                return ExperimentEvidence(
+                    evidence_id=row.evidence_id,
+                    step_name=row.step_name,
+                    trial=row.trial,
+                    model_name=row.model_name,
+                    model_provider=row.model_provider,
+                    model_id=row.model_id,
+                    raw_output=row.raw_output,
+                    judge=JudgeResult(
+                        score=row.score,
+                        reasons=[str(reason) for reason in reasons],
+                    ),
+                )
 
     def _set_status(self, job_id: str, status: str) -> None:
         with self._lock:
