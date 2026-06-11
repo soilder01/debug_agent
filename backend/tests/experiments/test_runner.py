@@ -178,6 +178,7 @@ async def test_run_experiments_materializes_localized_crop_artifacts() -> None:
 
         artifact = result.evidence[0].image_artifacts[0]
         assert artifact.derived_image_uri
+        assert artifact.preview_image_url == "/api/artifacts/images/case-localized-crop_box-7_localized-candidate.png"
         crop_path = _path_from_file_uri(artifact.derived_image_uri)
         assert crop_path.exists()
         with Image.open(crop_path) as crop:

@@ -97,6 +97,7 @@ export type ImageArtifact = {
   kind: string;
   source_image_uri: string;
   derived_image_uri: string;
+  preview_image_url?: string;
   region: {
     x: number;
     y: number;

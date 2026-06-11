@@ -20,6 +20,7 @@ class ImageArtifact(BaseModel):
     source_image_uri: str
     region: ImageRegion | None = None
     derived_image_uri: str = ""
+    preview_image_url: str = ""
 
 
 def materialize_image_crop(
@@ -33,11 +34,19 @@ def materialize_image_crop(
 
     source_path = _path_from_file_uri(source_image_uri)
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / f"{_safe_artifact_filename(artifact_id)}.png"
+    output_path = output_dir / image_artifact_filename(artifact_id)
     with Image.open(source_path) as image:
         crop = image.crop((region.x, region.y, region.x + region.width, region.y + region.height))
         crop.save(output_path, format="PNG")
     return output_path.resolve().as_uri()
+
+
+def image_artifact_filename(artifact_id: str) -> str:
+    return f"{_safe_artifact_filename(artifact_id)}.png"
+
+
+def image_artifact_preview_url(artifact_id: str) -> str:
+    return f"/api/artifacts/images/{image_artifact_filename(artifact_id)}"
 
 
 def _path_from_file_uri(uri: str) -> Path:

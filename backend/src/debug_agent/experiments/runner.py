@@ -4,7 +4,12 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
 
-from debug_agent.artifacts.images import ImageArtifact, ImageRegion, materialize_image_crop
+from debug_agent.artifacts.images import (
+    ImageArtifact,
+    ImageRegion,
+    image_artifact_preview_url,
+    materialize_image_crop,
+)
 from debug_agent.cases.comparator import compare_answer_sets, parse_prediction_answer
 from debug_agent.cases.models import AnswerSet, DebugCase
 from debug_agent.experiments.planner import ExperimentPlan
@@ -191,6 +196,7 @@ def _build_localized_image_artifacts(
         artifact_id = f"{case.case_id}:box-{box_id}:localized-candidate"
         region = regions_by_box_id.get(box_id)
         derived_image_uri = ""
+        preview_image_url = ""
         if image_artifact_dir is not None and region is not None:
             try:
                 derived_image_uri = materialize_image_crop(
@@ -199,8 +205,10 @@ def _build_localized_image_artifacts(
                     output_dir=image_artifact_dir,
                     artifact_id=artifact_id,
                 )
+                preview_image_url = image_artifact_preview_url(artifact_id)
             except (OSError, ValueError):
                 derived_image_uri = ""
+                preview_image_url = ""
         artifacts.append(
             ImageArtifact(
                 artifact_id=artifact_id,
@@ -208,6 +216,7 @@ def _build_localized_image_artifacts(
                 source_image_uri=case.image_uri,
                 region=region,
                 derived_image_uri=derived_image_uri,
+                preview_image_url=preview_image_url,
             )
         )
     return artifacts

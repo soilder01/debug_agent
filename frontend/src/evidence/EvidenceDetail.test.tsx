@@ -32,6 +32,7 @@ describe("EvidenceDetail", () => {
           kind: "crop_candidate",
           source_image_uri: "file:///tmp/case-1.png",
           derived_image_uri: "file:///tmp/case-1-box-7.png",
+          preview_image_url: "/api/artifacts/images/case-1-box-7.png",
           region: {
             x: 12,
             y: 34,
@@ -57,5 +58,9 @@ describe("EvidenceDetail", () => {
     expect(screen.getByText("源图片：file:///tmp/case-1.png")).toBeInTheDocument();
     expect(screen.getByText("派生图片：file:///tmp/case-1-box-7.png")).toBeInTheDocument();
     expect(screen.getByText("区域：x=12, y=34, width=56, height=78, unit=pixel, label=box-7")).toBeInTheDocument();
+    expect(screen.getByAltText("Crop preview case-1:box-7:crop")).toHaveAttribute(
+      "src",
+      "/api/artifacts/images/case-1-box-7.png"
+    );
   });
 });

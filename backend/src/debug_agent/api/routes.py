@@ -3,6 +3,7 @@ from typing import Literal
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, ValidationError
 
 from debug_agent.artifacts.store import artifact_store
@@ -255,6 +256,15 @@ def get_job_evidence(job_id: str, evidence_id: str) -> ExperimentEvidence:
 @router.get("/worker/status")
 def get_worker_status() -> AsyncJobWorkerStatus:
     return job_worker.status()
+
+
+@router.get("/artifacts/images/{filename}")
+def get_artifact_image(filename: str) -> FileResponse:
+    artifact_dir = settings.image_artifact_dir.resolve()
+    artifact_path = (artifact_dir / filename).resolve()
+    if artifact_path.parent != artifact_dir or not artifact_path.is_file():
+        raise HTTPException(status_code=404, detail=f"Artifact image not found: {filename}")
+    return FileResponse(artifact_path, media_type="image/png")
 
 
 @router.post("/worker/start", status_code=202)
