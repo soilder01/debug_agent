@@ -115,6 +115,12 @@ export type ExperimentEvidence = {
   model_name: string;
   model_provider: string;
   model_id: string;
+  request_summary: {
+    prompt_length?: number;
+    has_image?: boolean;
+    image_uri_scheme?: string;
+  };
+  latency_ms: number;
   raw_output: string;
   judge: {
     score: number;

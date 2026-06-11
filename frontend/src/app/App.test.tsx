@@ -95,6 +95,12 @@ describe("App", () => {
             model_name: "fake",
             model_provider: "fake",
             model_id: "fake",
+            request_summary: {
+              prompt_length: 22,
+              has_image: false,
+              image_uri_scheme: ""
+            },
+            latency_ms: 12,
             raw_output: "{\"answers\":[]}",
             judge: {
               score: 0,
@@ -115,6 +121,10 @@ describe("App", () => {
     expect(screen.getByText("模型名称：fake")).toBeInTheDocument();
     expect(screen.getByText("模型 Provider：fake")).toBeInTheDocument();
     expect(screen.getByText("模型 ID：fake")).toBeInTheDocument();
+    expect(screen.getByText("调用耗时：12ms")).toBeInTheDocument();
+    expect(screen.getByText("Prompt 长度：22")).toBeInTheDocument();
+    expect(screen.getByText("包含图片：false")).toBeInTheDocument();
+    expect(screen.getByText("图片 URI Scheme：无")).toBeInTheDocument();
     expect(screen.getByText("box 1 student_answer_mismatch")).toBeInTheDocument();
   });
 
