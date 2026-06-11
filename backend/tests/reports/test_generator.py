@@ -34,6 +34,13 @@ def test_generate_report_includes_experiment_summary() -> None:
                 evidence_id="e1",
                 step_name="baseline_replay",
                 trial=0,
+                image_artifacts=[
+                    {
+                        "artifact_id": "case-1:box-7:localized-candidate",
+                        "kind": "affected_box_candidate",
+                        "source_image_uri": "file:///tmp/case-1.png",
+                    }
+                ],
                 raw_output=case.predictions[0].raw_output,
                 judge=JudgeResult(score=0, reasons=["box 1 student_answer_mismatch"]),
             )
@@ -46,3 +53,4 @@ def test_generate_report_includes_experiment_summary() -> None:
     assert report.experiment_summary.total_trials == 1
     assert report.experiment_summary.success_count == 0
     assert report.experiment_summary.evidence_ids == ["e1"]
+    assert report.experiment_summary.image_artifact_ids == ["case-1:box-7:localized-candidate"]

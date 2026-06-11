@@ -21,6 +21,7 @@ class ExperimentSummary(BaseModel):
     total_trials: int
     success_count: int
     evidence_ids: list[str]
+    image_artifact_ids: list[str]
 
 
 class DebugReport(BaseModel):
@@ -46,6 +47,11 @@ def generate_initial_report(
             total_trials=run_result.total_trials,
             success_count=run_result.success_count,
             evidence_ids=[evidence.evidence_id for evidence in run_result.evidence],
+            image_artifact_ids=[
+                artifact.artifact_id
+                for evidence in run_result.evidence
+                for artifact in evidence.image_artifacts
+            ],
         )
     return DebugReport(
         job_id=job_id,

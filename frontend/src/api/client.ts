@@ -12,6 +12,7 @@ export type DebugReport = {
     total_trials: number;
     success_count: number;
     evidence_ids: string[];
+    image_artifact_ids?: string[];
   } | null;
   root_cause: {
     label: string;
