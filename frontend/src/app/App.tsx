@@ -50,6 +50,7 @@ export function App() {
   const [csvImportResult, setCsvImportResult] = useState<CsvImportResponse | null>(null);
   const [workerStatus, setWorkerStatus] = useState<WorkerStatus | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<ExperimentEvidence | null>(null);
+  const [importedCaseTotalCount, setImportedCaseTotalCount] = useState(0);
   const [error, setError] = useState<string>("");
   const batchJobs = Object.values(batchJobStatuses);
   const completedBatchJobs = batchJobs.filter((job) => job.status === "completed").length;
@@ -128,6 +129,7 @@ export function App() {
     try {
       const result = await fetchCases(hasRegions);
       setImportedCases(result.cases);
+      setImportedCaseTotalCount(result.total_count);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
     }
@@ -355,9 +357,9 @@ export function App() {
         </button>
         {importedCases.length > 0 ? (
           <>
-            <p>已导入样本：{importedCases.length}</p>
+            <p>已导入样本：{importedCaseTotalCount}</p>
             <p>
-              已显示样本：{visibleImportedCases.length}/{importedCases.length}
+              已显示样本：{visibleImportedCases.length}/{importedCaseTotalCount}
             </p>
             <button type="button" onClick={() => void loadImportedCases(true)}>
               Only cases with regions

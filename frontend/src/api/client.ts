@@ -84,6 +84,7 @@ export type DebugCaseSummary = {
 
 export type DebugCaseListResponse = {
   cases: DebugCaseSummary[];
+  total_count: number;
 };
 
 export type ImageArtifact = {

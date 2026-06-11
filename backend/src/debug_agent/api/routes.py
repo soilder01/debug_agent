@@ -96,6 +96,7 @@ class DebugCaseSummary(BaseModel):
 
 class DebugCaseListResponse(BaseModel):
     cases: list[DebugCaseSummary]
+    total_count: int
 
 
 @router.get("/health")
@@ -106,9 +107,11 @@ def health() -> dict[str, str]:
 @router.get("/cases")
 def list_cases(has_regions: bool = False) -> DebugCaseListResponse:
     cases = job_repository.list_cases()
+    total_count = len(cases)
     if has_regions:
         cases = [case for case in cases if len(case.box_regions) > 0]
     return DebugCaseListResponse(
+        total_count=total_count,
         cases=[
             DebugCaseSummary(
                 case_id=case.case_id,

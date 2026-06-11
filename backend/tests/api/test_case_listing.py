@@ -105,6 +105,8 @@ def test_case_listing_can_filter_cases_with_regions() -> None:
     assert region_response.status_code == 202
     assert csv_response.status_code == 202
     assert response.status_code == 200
-    case_ids = {case["case_id"] for case in response.json()["cases"]}
+    body = response.json()
+    case_ids = {case["case_id"] for case in body["cases"]}
     assert "case-list-region-filter-jsonl" in case_ids
     assert "case-list-csv-1" not in case_ids
+    assert body["total_count"] > len(body["cases"])
