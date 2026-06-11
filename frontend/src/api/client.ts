@@ -172,6 +172,24 @@ export type CsvImportResponse = {
   rejected_rows: CsvRejectedRow[];
 };
 
+export type SpreadsheetImportedRowResponse = {
+  sheet_row_id: string;
+  case_id: string;
+};
+
+export type SpreadsheetRejectedRow = {
+  row_index: number;
+  sheet_row_id: string;
+  error_message: string;
+};
+
+export type SpreadsheetRowImportResponse = {
+  imported_case_ids: string[];
+  imported_rows: SpreadsheetImportedRowResponse[];
+  jobs: SubmittedDebugJob[];
+  rejected_rows: SpreadsheetRejectedRow[];
+};
+
 export type ExperimentEvidence = {
   evidence_id: string;
   step_name: string;
@@ -277,6 +295,21 @@ export async function importCsvCases(csvText: string, createJobs = true): Promis
     throw new Error(`Failed to import CSV cases: ${response.status}`);
   }
   return (await response.json()) as CsvImportResponse;
+}
+
+export async function importSpreadsheetRows(
+  rows: Array<Record<string, unknown>>,
+  createJobs = true
+): Promise<SpreadsheetRowImportResponse> {
+  const response = await fetch("/api/imports/spreadsheet-rows", {
+    body: JSON.stringify({ rows, create_jobs: createJobs }),
+    headers: { "Content-Type": "application/json" },
+    method: "POST"
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to import spreadsheet rows: ${response.status}`);
+  }
+  return (await response.json()) as SpreadsheetRowImportResponse;
 }
 
 export async function fetchJobStatus(jobId: string): Promise<DebugJobStatus> {

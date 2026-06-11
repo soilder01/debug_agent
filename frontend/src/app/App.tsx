@@ -14,10 +14,12 @@ import {
   fetchWorkerStatus,
   importCsvCases,
   importJsonlCases,
+  importSpreadsheetRows,
   type JsonlImportResponse,
   startWorker,
   submitBatchDebugJobs,
   submitDebugJob,
+  type SpreadsheetRowImportResponse,
   stopWorker,
   type DebugJobStatus,
   type DebugReport,
@@ -49,6 +51,8 @@ export function App() {
   const [jsonlImportResult, setJsonlImportResult] = useState<JsonlImportResponse | null>(null);
   const [csvCases, setCsvCases] = useState("");
   const [csvImportResult, setCsvImportResult] = useState<CsvImportResponse | null>(null);
+  const [spreadsheetRowsJson, setSpreadsheetRowsJson] = useState("");
+  const [spreadsheetImportResult, setSpreadsheetImportResult] = useState<SpreadsheetRowImportResponse | null>(null);
   const [workerStatus, setWorkerStatus] = useState<WorkerStatus | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<ExperimentEvidence | null>(null);
   const [importedCaseTotalCount, setImportedCaseTotalCount] = useState(0);
@@ -270,6 +274,24 @@ export function App() {
     }
   }
 
+  async function importSpreadsheetRowsJson() {
+    setError("");
+    try {
+      const parsedRows = JSON.parse(spreadsheetRowsJson) as unknown;
+      if (!Array.isArray(parsedRows)) {
+        throw new Error("Spreadsheet rows JSON must be an array");
+      }
+      const result = await importSpreadsheetRows(parsedRows as Array<Record<string, unknown>>);
+      setSpreadsheetImportResult(result);
+      setBatchResult({ jobs: result.jobs, rejected_case_ids: [] });
+      setJobListSummaryLabel("批量创建");
+      setJobListTotalCount(result.jobs.length);
+      setBatchJobStatuses(Object.fromEntries(result.jobs.map((job) => [job.job_id, job])));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
   async function stopWorkerLoop() {
     setError("");
     try {
@@ -381,6 +403,39 @@ export function App() {
                 ? "无"
                 : csvImportResult.rejected_rows
                     .map((row) => `${row.row_number}:${row.error_message}`)
+                    .join(", ")}
+            </p>
+          </>
+        ) : null}
+      </section>
+      <section>
+        <h2>Spreadsheet Rows Import</h2>
+        <label htmlFor="spreadsheet-rows-json">Spreadsheet rows JSON</label>
+        <textarea
+          id="spreadsheet-rows-json"
+          value={spreadsheetRowsJson}
+          onChange={(event) => setSpreadsheetRowsJson(event.target.value)}
+        />
+        <button type="button" onClick={importSpreadsheetRowsJson}>
+          Import spreadsheet rows JSON
+        </button>
+        {spreadsheetImportResult ? (
+          <>
+            <p>Spreadsheet 导入样本：{spreadsheetImportResult.imported_case_ids.length}</p>
+            <p>
+              Spreadsheet 导入行：
+              {spreadsheetImportResult.imported_rows.length === 0
+                ? "无"
+                : spreadsheetImportResult.imported_rows
+                    .map((row) => `${row.sheet_row_id}:${row.case_id}`)
+                    .join(", ")}
+            </p>
+            <p>
+              Spreadsheet 导入拒绝：
+              {spreadsheetImportResult.rejected_rows.length === 0
+                ? "无"
+                : spreadsheetImportResult.rejected_rows
+                    .map((row) => `${row.row_index}:${row.sheet_row_id}:${row.error_message}`)
                     .join(", ")}
             </p>
           </>

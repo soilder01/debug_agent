@@ -717,6 +717,47 @@ describe("App", () => {
     expect(screen.getByText("job-csv-1：created")).toBeInTheDocument();
   });
 
+  it("imports spreadsheet rows JSON and renders row sync results", async () => {
+    const rows = [
+      {
+        sheet_row_id: "sheet-row-1",
+        case_id: "spreadsheet-row-1",
+        image_uri: "file://spreadsheet-row-1.png",
+        prompt: "Read the answer",
+        golden_answer_json: { answers: [{ box_id: 1, student_answer: "42" }] },
+        scoring_standard: "exact match",
+        predictions_json: [{ trial: 1, raw_output: "{\"answers\":[{\"box_id\":1,\"student_answer\":\"42\"}]}", score: 1 }],
+        avg_score: 1
+      }
+    ];
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          imported_case_ids: ["spreadsheet-row-1"],
+          imported_rows: [{ sheet_row_id: "sheet-row-1", case_id: "spreadsheet-row-1" }],
+          jobs: [{ job_id: "job-spreadsheet-1", case_id: "spreadsheet-row-1", status: "created" }],
+          rejected_rows: []
+        }),
+        { status: 202, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    render(<App />);
+    fireEvent.change(screen.getByLabelText("Spreadsheet rows JSON"), { target: { value: JSON.stringify(rows) } });
+    await userEvent.click(screen.getByRole("button", { name: "Import spreadsheet rows JSON" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/imports/spreadsheet-rows", {
+      body: JSON.stringify({ rows, create_jobs: true }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST"
+    });
+    expect(await screen.findByText("Spreadsheet 导入样本：1")).toBeInTheDocument();
+    expect(screen.getByText("Spreadsheet 导入行：sheet-row-1:spreadsheet-row-1")).toBeInTheDocument();
+    expect(screen.getByText("Spreadsheet 导入拒绝：无")).toBeInTheDocument();
+    expect(screen.getByText("批量创建：1")).toBeInTheDocument();
+    expect(screen.getByText("job-spreadsheet-1：created")).toBeInTheDocument();
+  });
+
   it("loads imported case summaries and can copy them into batch submission", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
