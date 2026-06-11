@@ -121,6 +121,15 @@ export type DebugCaseDetail = {
     debug_status: string;
     root_cause: string;
   };
+  box_regions?: Array<{
+    box_id: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    unit: string;
+    label: string;
+  }>;
 };
 
 export type WorkerStatus = {

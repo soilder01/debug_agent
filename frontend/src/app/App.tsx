@@ -385,6 +385,16 @@ export function App() {
                     </li>
                   ))}
                 </ul>
+                {(selectedCaseDetail.box_regions ?? []).length > 0 ? (
+                  <ul aria-label="Box regions">
+                    {selectedCaseDetail.box_regions?.map((region) => (
+                      <li key={region.box_id}>
+                        区域 {region.box_id}：x={region.x}, y={region.y}, width={region.width}, height=
+                        {region.height}, unit={region.unit}, label={region.label || "无"}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
                 <ul aria-label="Predictions">
                   {selectedCaseDetail.predictions.map((prediction) => (
                     <li key={prediction.trial}>

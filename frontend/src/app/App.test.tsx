@@ -643,6 +643,17 @@ describe("App", () => {
             scoring_standard: "exact match",
             predictions: [{ trial: 1, raw_output: "{\"answers\":[]}", score: 0 }],
             avg_score: 0.2,
+            box_regions: [
+              {
+                box_id: 1,
+                x: 12,
+                y: 34,
+                width: 56,
+                height: 78,
+                unit: "pixel",
+                label: "answer-1"
+              }
+            ],
             human_notes: {
               debug_status: "pending",
               root_cause: "visual_recognition_failure"
@@ -662,6 +673,7 @@ describe("App", () => {
     expect(screen.getByText("Prompt：Read the handwritten answer")).toBeInTheDocument();
     expect(screen.getByText("评分标准：exact match")).toBeInTheDocument();
     expect(screen.getByText("标答 1：42")).toBeInTheDocument();
+    expect(screen.getByText("区域 1：x=12, y=34, width=56, height=78, unit=pixel, label=answer-1")).toBeInTheDocument();
     expect(screen.getByText("预测 trial 1：score 0")).toBeInTheDocument();
     expect(screen.getByText("人工状态：pending")).toBeInTheDocument();
     expect(screen.getByText("人工根因：visual_recognition_failure")).toBeInTheDocument();
