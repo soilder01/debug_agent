@@ -52,6 +52,7 @@ export function App() {
   const [workerStatus, setWorkerStatus] = useState<WorkerStatus | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<ExperimentEvidence | null>(null);
   const [importedCaseTotalCount, setImportedCaseTotalCount] = useState(0);
+  const [activeImportedCaseHasRegions, setActiveImportedCaseHasRegions] = useState(false);
   const [error, setError] = useState<string>("");
   const batchJobs = Object.values(batchJobStatuses);
   const completedBatchJobs = batchJobs.filter((job) => job.status === "completed").length;
@@ -131,6 +132,18 @@ export function App() {
     try {
       const result = await fetchCases(hasRegions, caseListLimit);
       setImportedCases(result.cases);
+      setImportedCaseTotalCount(result.total_count);
+      setActiveImportedCaseHasRegions(hasRegions);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
+  async function loadMoreImportedCases() {
+    setError("");
+    try {
+      const result = await fetchCases(activeImportedCaseHasRegions, caseListLimit, importedCases.length);
+      setImportedCases((current) => [...current, ...result.cases]);
       setImportedCaseTotalCount(result.total_count);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
@@ -370,6 +383,11 @@ export function App() {
             <button type="button" onClick={() => void loadImportedCases(false)}>
               Show all imported cases
             </button>
+            {unloadedCaseCount > 0 ? (
+              <button type="button" onClick={() => void loadMoreImportedCases()}>
+                Load more imported cases
+              </button>
+            ) : null}
             <button type="button" onClick={useImportedCasesForBatch}>
               Use imported cases for batch
             </button>

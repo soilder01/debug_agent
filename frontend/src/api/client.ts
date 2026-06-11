@@ -215,13 +215,16 @@ export async function submitBatchDebugJobs(caseIds: string[]): Promise<BatchDebu
   return (await response.json()) as BatchDebugJobResponse;
 }
 
-export async function fetchCases(hasRegions?: boolean, limit?: number): Promise<DebugCaseListResponse> {
+export async function fetchCases(hasRegions?: boolean, limit?: number, offset?: number): Promise<DebugCaseListResponse> {
   const params = new URLSearchParams();
   if (hasRegions) {
     params.set("has_regions", "true");
   }
   if (limit !== undefined) {
     params.set("limit", String(limit));
+  }
+  if (offset !== undefined) {
+    params.set("offset", String(offset));
   }
   const query = params.size > 0 ? `?${params.toString()}` : "";
   const response = await fetch(`/api/cases${query}`);

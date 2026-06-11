@@ -647,6 +647,67 @@ describe("App", () => {
     expect(screen.getByLabelText("Batch case ids")).toHaveValue("case-list-1");
   });
 
+  it("loads more imported case summaries after the first page", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            total_count: 3,
+            cases: [
+              {
+                case_id: "case-list-page-1",
+                image_uri: "file://case-list-page-1.png",
+                avg_score: 0.2,
+                debug_status: "pending",
+                root_cause: "visual_recognition_failure",
+                box_region_count: 0
+              },
+              {
+                case_id: "case-list-page-2",
+                image_uri: "file://case-list-page-2.png",
+                avg_score: 0.4,
+                debug_status: "",
+                root_cause: "",
+                box_region_count: 0
+              }
+            ]
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            total_count: 3,
+            cases: [
+              {
+                case_id: "case-list-page-3",
+                image_uri: "file://case-list-page-3.png",
+                avg_score: 1,
+                debug_status: "done",
+                root_cause: "no_issue",
+                box_region_count: 1
+              }
+            ]
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load imported cases" }));
+
+    expect(await screen.findByText("未加载样本：1")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Load more imported cases" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/cases?limit=50");
+    expect(fetchMock).toHaveBeenCalledWith("/api/cases?limit=50&offset=2");
+    expect(await screen.findByText("case-list-page-3｜avg_score 1｜regions 1｜done｜no_issue")).toBeInTheDocument();
+    expect(screen.getByText("已显示样本：3/3")).toBeInTheDocument();
+    expect(screen.getByText("未加载样本：0")).toBeInTheDocument();
+  });
+
   it("loads and renders imported case detail from the case list", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")

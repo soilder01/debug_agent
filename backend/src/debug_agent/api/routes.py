@@ -105,11 +105,13 @@ def health() -> dict[str, str]:
 
 
 @router.get("/cases")
-def list_cases(has_regions: bool = False, limit: int | None = None) -> DebugCaseListResponse:
+def list_cases(has_regions: bool = False, limit: int | None = None, offset: int = 0) -> DebugCaseListResponse:
     cases = job_repository.list_cases()
     total_count = len(cases)
     if has_regions:
         cases = [case for case in cases if len(case.box_regions) > 0]
+    if offset > 0:
+        cases = cases[offset:]
     if limit is not None:
         cases = cases[:limit]
     return DebugCaseListResponse(

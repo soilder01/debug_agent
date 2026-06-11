@@ -131,3 +131,28 @@ def test_case_listing_limits_returned_cases_without_changing_total_count() -> No
     assert len(body["cases"]) == 1
     assert body["total_count"] >= 2
     assert body["total_count"] > len(body["cases"])
+
+
+def test_case_listing_offsets_returned_cases_without_changing_total_count() -> None:
+    client = TestClient(app)
+    first_payload = load_fixture_case("handwrite233").model_dump()
+    first_payload["case_id"] = "000-case-list-offset-1"
+    second_payload = load_fixture_case("handwrite233").model_dump()
+    second_payload["case_id"] = "000-case-list-offset-2"
+
+    first_response = client.post("/imports/jsonl", json={"jsonl": json.dumps(first_payload), "create_jobs": False})
+    second_response = client.post("/imports/jsonl", json={"jsonl": json.dumps(second_payload), "create_jobs": False})
+
+    first_page_response = client.get("/cases?limit=2")
+    second_page_response = client.get("/cases?offset=1&limit=1")
+
+    assert first_response.status_code == 202
+    assert second_response.status_code == 202
+    assert first_page_response.status_code == 200
+    assert second_page_response.status_code == 200
+    first_page = first_page_response.json()
+    second_page = second_page_response.json()
+    assert len(first_page["cases"]) == 2
+    assert len(second_page["cases"]) == 1
+    assert second_page["cases"][0]["case_id"] == first_page["cases"][1]["case_id"]
+    assert second_page["total_count"] == first_page["total_count"]
