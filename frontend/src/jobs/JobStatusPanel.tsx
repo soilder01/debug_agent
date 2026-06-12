@@ -18,6 +18,8 @@ export function JobStatusPanel({ job, onSelectEvidence, onLoadReport }: JobStatu
   const evidenceIds = job.evidence_ids ?? [];
   const evidenceCount = evidenceIds.length;
   const evidenceErrorCounts = "evidence_error_counts" in job ? job.evidence_error_counts : null;
+  const spreadsheetWritebackAudit =
+    "spreadsheet_writeback_audit" in job ? job.spreadsheet_writeback_audit : null;
   return (
     <section>
       <h2>Job Status</h2>
@@ -43,6 +45,15 @@ export function JobStatusPanel({ job, onSelectEvidence, onLoadReport }: JobStatu
           <p>失败判分：{evidenceErrorCounts.failed_judgements}</p>
           <p>解析错误：{evidenceErrorCounts.response_parse_errors}</p>
           <p>模型调用错误：{evidenceErrorCounts.model_call_errors}</p>
+        </>
+      ) : null}
+      {spreadsheetWritebackAudit ? (
+        <>
+          <p>写回状态：{spreadsheetWritebackAudit.status}</p>
+          <p>写回行：{spreadsheetWritebackAudit.row_id}</p>
+          {spreadsheetWritebackAudit.error_message ? (
+            <p role="alert">写回错误：{spreadsheetWritebackAudit.error_message}</p>
+          ) : null}
         </>
       ) : null}
       {evidenceIds.length > 0 ? (

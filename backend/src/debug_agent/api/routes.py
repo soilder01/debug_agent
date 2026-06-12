@@ -103,6 +103,15 @@ class DebugJobStatus(BaseModel):
     error_message: str | None
     evidence_ids: list[str]
     evidence_error_counts: dict[str, int]
+    spreadsheet_writeback_audit: "SpreadsheetWritebackAuditSummary | None" = None
+
+
+class SpreadsheetWritebackAuditSummary(BaseModel):
+    status: str
+    row_id: str
+    report_url: str
+    error_message: str
+    updated_at: str
 
 
 class DebugJobListResponse(BaseModel):
@@ -541,6 +550,7 @@ def _build_job_status(job: DebugJobRow) -> DebugJobStatus:
         attempt_count=job.attempt_count,
         evidence_error_counts=evidence_error_counts,
     )
+    writeback_audit = job_repository.get_spreadsheet_writeback_audit(job.job_id)
     return DebugJobStatus(
         job_id=job.job_id,
         case_id=job.case_id,
@@ -556,6 +566,17 @@ def _build_job_status(job: DebugJobRow) -> DebugJobStatus:
         error_message=job.error_message,
         evidence_ids=job_repository.list_evidence_ids(job.job_id),
         evidence_error_counts=evidence_error_counts,
+        spreadsheet_writeback_audit=(
+            SpreadsheetWritebackAuditSummary(
+                status=writeback_audit.status,
+                row_id=writeback_audit.row_id,
+                report_url=writeback_audit.report_url,
+                error_message=writeback_audit.error_message,
+                updated_at=writeback_audit.updated_at,
+            )
+            if writeback_audit is not None
+            else None
+        ),
     )
 
 

@@ -31,7 +31,31 @@ def test_job_listing_returns_submitted_jobs_with_retry_metadata() -> None:
             "response_parse_errors": 0,
             "model_call_errors": 0,
         }
+        assert job["spreadsheet_writeback_audit"] is None
         job_repository.mark_failed(submitted["job_id"], "test cleanup")
+
+
+def test_job_listing_includes_spreadsheet_writeback_audit_summary() -> None:
+    client = TestClient(app)
+    submitted = client.post("/cases/handwrite233/debug-jobs").json()
+    job_repository.save_spreadsheet_writeback_audit(
+        job_id=submitted["job_id"],
+        status="succeeded",
+        row_id="9",
+        report_url=f"https://debug-agent.local/jobs/{submitted['job_id']}/report",
+        fields={"错误原因": "模型无法稳定识别涂改后的最终答案。"},
+        error_message="",
+    )
+
+    response = client.get("/jobs")
+
+    assert response.status_code == 200
+    job = {item["job_id"]: item for item in response.json()["jobs"]}[submitted["job_id"]]
+    assert job["spreadsheet_writeback_audit"]["status"] == "succeeded"
+    assert job["spreadsheet_writeback_audit"]["row_id"] == "9"
+    assert job["spreadsheet_writeback_audit"]["error_message"] == ""
+    assert job["spreadsheet_writeback_audit"]["updated_at"]
+    job_repository.mark_failed(submitted["job_id"], "test cleanup")
 
 
 def test_job_listing_filters_jobs_by_status() -> None:

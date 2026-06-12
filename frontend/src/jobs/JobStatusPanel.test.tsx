@@ -35,7 +35,8 @@ describe("JobStatusPanel", () => {
         failed_judgements: 0,
         response_parse_errors: 0,
         model_call_errors: 0
-      }
+      },
+      spreadsheet_writeback_audit: null
     } satisfies DebugJobStatus;
 
     render(<JobStatusPanel job={job} />);
@@ -70,12 +71,55 @@ describe("JobStatusPanel", () => {
         failed_judgements: 0,
         response_parse_errors: 0,
         model_call_errors: 0
-      }
+      },
+      spreadsheet_writeback_audit: null
     } satisfies DebugJobStatus;
 
     render(<JobStatusPanel job={job} onLoadReport={onLoadReport} />);
     await userEvent.click(screen.getByRole("button", { name: "Load persisted report" }));
 
     expect(onLoadReport).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders spreadsheet writeback audit summary when present", () => {
+    const job = {
+      job_id: "job-detail-1",
+      case_id: "case-1",
+      status: "completed",
+      created_at: "2026-06-11T10:00:01",
+      updated_at: "2026-06-11T10:00:02",
+      attempt_count: 1,
+      max_attempts: 2,
+      remaining_attempts: 1,
+      will_retry: false,
+      retry_recommendation: "no_retry_needed",
+      retry_recommendation_detail: {
+        code: "no_retry_needed",
+        label: "无需重试",
+        action: "任务已完成，直接查看证据链和结论。",
+        severity: "info"
+      },
+      error_message: null,
+      evidence_ids: [],
+      evidence_error_counts: {
+        total_evidence: 0,
+        failed_judgements: 0,
+        response_parse_errors: 0,
+        model_call_errors: 0
+      },
+      spreadsheet_writeback_audit: {
+        status: "failed",
+        row_id: "7",
+        report_url: "https://debug-agent.local/jobs/job-detail-1/report",
+        error_message: "permission denied",
+        updated_at: "2026-06-12T06:00:01+00:00"
+      }
+    } satisfies DebugJobStatus;
+
+    render(<JobStatusPanel job={job} />);
+
+    expect(screen.getByText("写回状态：failed")).toBeInTheDocument();
+    expect(screen.getByText("写回行：7")).toBeInTheDocument();
+    expect(screen.getByText("写回错误：permission denied")).toBeInTheDocument();
   });
 });

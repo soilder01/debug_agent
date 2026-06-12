@@ -68,6 +68,15 @@ export type DebugJobStatus = {
     response_parse_errors: number;
     model_call_errors: number;
   };
+  spreadsheet_writeback_audit: SpreadsheetWritebackAuditSummary | null;
+};
+
+export type SpreadsheetWritebackAuditSummary = {
+  status: string;
+  row_id: string;
+  report_url: string;
+  error_message: string;
+  updated_at: string;
 };
 
 export type BatchDebugJobResponse = {

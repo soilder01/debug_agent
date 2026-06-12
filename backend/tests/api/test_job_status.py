@@ -38,6 +38,35 @@ def test_debug_case_returns_queryable_completed_job_status() -> None:
         "response_parse_errors": 0,
         "model_call_errors": 0,
     }
+    assert body["spreadsheet_writeback_audit"] is None
+
+
+def test_job_status_includes_spreadsheet_writeback_audit_summary() -> None:
+    client = TestClient(app)
+    from debug_agent.api.routes import job_repository
+
+    job_repository.create_job(job_id="job-status-writeback-audit", case_id="case-1")
+    job_repository.save_spreadsheet_writeback_audit(
+        job_id="job-status-writeback-audit",
+        status="failed",
+        row_id="7",
+        report_url="https://debug-agent.local/jobs/job-status-writeback-audit/report",
+        fields={},
+        error_message="permission denied",
+    )
+
+    response = client.get("/jobs/job-status-writeback-audit")
+
+    assert response.status_code == 200
+    assert response.json()["spreadsheet_writeback_audit"] == {
+        "status": "failed",
+        "row_id": "7",
+        "report_url": "https://debug-agent.local/jobs/job-status-writeback-audit/report",
+        "error_message": "permission denied",
+        "updated_at": response.json()["spreadsheet_writeback_audit"]["updated_at"],
+    }
+    assert response.json()["spreadsheet_writeback_audit"]["updated_at"]
+    job_repository.mark_failed("job-status-writeback-audit", "test cleanup")
 
 
 def test_requeued_failed_job_status_exposes_retry_budget() -> None:
