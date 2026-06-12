@@ -24,6 +24,7 @@ from debug_agent.spreadsheets.writeback import (
     SpreadsheetWritebackResult,
     write_report_for_job,
 )
+from debug_agent.spreadsheets.sync import SpreadsheetClient, SpreadsheetSyncResult, sync_spreadsheet_rows
 from debug_agent.storage.database import create_sqlite_session_factory, ensure_database_schema
 from debug_agent.storage.models import DebugJobRow
 from debug_agent.storage.repository import DebugJobRepository
@@ -35,6 +36,7 @@ job_repository = DebugJobRepository(session_factory)
 job_service = DebugJobService(job_repository, image_artifact_dir=settings.image_artifact_dir)
 job_worker = AsyncJobWorker(job_service)
 spreadsheet_writeback_client: SpreadsheetWritebackClient | None = None
+spreadsheet_sync_client: SpreadsheetClient | None = None
 
 router = APIRouter()
 
@@ -120,6 +122,13 @@ class SpreadsheetRowImportResponse(BaseModel):
 
 class JobReportWritebackRequest(BaseModel):
     report_url: str
+
+
+class SpreadsheetSyncRequest(BaseModel):
+    spreadsheet_id: str
+    sheet_id: str
+    create_jobs: bool = True
+    baseline_trials: int = Field(default=5, ge=0, le=5)
 
 
 class DebugCaseSummary(BaseModel):
@@ -284,6 +293,21 @@ def import_spreadsheet_rows(request: SpreadsheetRowImportRequest) -> Spreadsheet
         imported_rows=imported_rows,
         jobs=jobs,
         rejected_rows=parse_result.rejected_rows,
+    )
+
+
+@router.post("/spreadsheets/sync", status_code=202)
+def sync_spreadsheet(request: SpreadsheetSyncRequest) -> SpreadsheetSyncResult:
+    if spreadsheet_sync_client is None:
+        raise HTTPException(status_code=503, detail="Spreadsheet sync client is not configured")
+    return sync_spreadsheet_rows(
+        client=spreadsheet_sync_client,
+        spreadsheet_id=request.spreadsheet_id,
+        sheet_id=request.sheet_id,
+        repository=job_repository,
+        job_service=job_service,
+        create_jobs=request.create_jobs,
+        baseline_trials=request.baseline_trials,
     )
 
 
