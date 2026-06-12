@@ -1238,6 +1238,35 @@ describe("App", () => {
     expect(reportLink).toHaveAttribute("href", "https://debug-agent.local/jobs/job-failed-writeback-1/report");
   });
 
+  it("loads all spreadsheet writeback audits without a status filter", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          audits: [
+            {
+              job_id: "job-succeeded-writeback-1",
+              status: "succeeded",
+              row_id: "9",
+              report_url: "https://debug-agent.local/jobs/job-succeeded-writeback-1/report",
+              fields: { 错误原因: "model_weakness" },
+              error_message: "",
+              created_at: "2026-06-12T06:00:00+00:00",
+              updated_at: "2026-06-12T06:00:01+00:00"
+            }
+          ],
+          total_count: 1
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load all writeback audits" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/spreadsheets/writeback/audits?limit=50");
+    expect(await screen.findByText("job-succeeded-writeback-1：succeeded｜row 9｜无错误")).toBeInTheDocument();
+  });
+
   it("loads more spreadsheet writeback audits using the current status filter", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")

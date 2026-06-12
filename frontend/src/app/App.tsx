@@ -79,7 +79,7 @@ export function App() {
     useState<SpreadsheetWritebackAuditCounts | null>(null);
   const [spreadsheetWritebackAuditList, setSpreadsheetWritebackAuditList] =
     useState<SpreadsheetWritebackAuditListResponse | null>(null);
-  const [activeWritebackAuditStatus, setActiveWritebackAuditStatus] = useState<string | null>(null);
+  const [activeWritebackAuditStatus, setActiveWritebackAuditStatus] = useState<string | null | undefined>(undefined);
   const [larkSpreadsheetStatus, setLarkSpreadsheetStatus] = useState<LarkSpreadsheetStatus | null>(null);
   const [workerStatus, setWorkerStatus] = useState<WorkerStatus | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<ExperimentEvidence | null>(null);
@@ -370,24 +370,24 @@ export function App() {
     }
   }
 
-  async function loadWritebackAudits(status: string) {
+  async function loadWritebackAudits(status: string | null) {
     setError("");
     try {
       setActiveWritebackAuditStatus(status);
-      setSpreadsheetWritebackAuditList(await fetchSpreadsheetWritebackAudits(status, jobListLimit));
+      setSpreadsheetWritebackAuditList(await fetchSpreadsheetWritebackAudits(status ?? undefined, jobListLimit));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
     }
   }
 
   async function loadMoreWritebackAudits() {
-    if (!activeWritebackAuditStatus || !spreadsheetWritebackAuditList) {
+    if (activeWritebackAuditStatus === undefined || !spreadsheetWritebackAuditList) {
       return;
     }
     setError("");
     try {
       const nextPage = await fetchSpreadsheetWritebackAudits(
-        activeWritebackAuditStatus,
+        activeWritebackAuditStatus ?? undefined,
         jobListLimit,
         spreadsheetWritebackAuditList.audits.length,
       );
@@ -422,8 +422,10 @@ export function App() {
       const result = await writeJobReportToSpreadsheet(audit.job_id, reportUrl);
       setSpreadsheetWritebackResult(result);
       setSpreadsheetWritebackAudit(null);
-      if (activeWritebackAuditStatus) {
-        setSpreadsheetWritebackAuditList(await fetchSpreadsheetWritebackAudits(activeWritebackAuditStatus, jobListLimit));
+      if (activeWritebackAuditStatus !== undefined) {
+        setSpreadsheetWritebackAuditList(
+          await fetchSpreadsheetWritebackAudits(activeWritebackAuditStatus ?? undefined, jobListLimit)
+        );
       }
       setSpreadsheetWritebackAuditSummary(await fetchSpreadsheetWritebackAuditSummary());
     } catch (caught) {
@@ -652,6 +654,9 @@ export function App() {
         </button>
         <button type="button" onClick={() => void loadWritebackAuditSummary()}>
           Load writeback audit summary
+        </button>
+        <button type="button" onClick={() => void loadWritebackAudits(null)}>
+          Load all writeback audits
         </button>
         <button type="button" onClick={() => void loadWritebackAudits("failed")}>
           Load failed writeback audits

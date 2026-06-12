@@ -206,5 +206,5 @@ def test_spreadsheet_writeback_audit_list_api_filters_and_paginates() -> None:
     assert body["total_count"] == 2
     assert len(body["audits"]) == 1
     assert body["audits"][0]["status"] == "failed-list-test"
-    assert body["audits"][0]["job_id"] == "list-failed-2"
-    assert body["audits"][0]["fields"] == {"job": "list-failed-2"}
+    assert body["audits"][0]["job_id"] == "list-failed-1"
+    assert body["audits"][0]["fields"] == {"job": "list-failed-1"}

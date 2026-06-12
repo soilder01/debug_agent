@@ -191,10 +191,19 @@ def test_repository_lists_spreadsheet_writeback_audits_with_status_filter_and_pa
     assert audits[0].fields == {"index": "1"}
 
 
-def test_repository_lists_spreadsheet_writeback_audits_newest_updates_first() -> None:
+def test_repository_lists_spreadsheet_writeback_audits_newest_updates_first(monkeypatch) -> None:
     session_factory, engine = create_sqlite_memory_session_factory()
     Base.metadata.create_all(engine)
     repository = DebugJobRepository(session_factory)
+    timestamps = iter(
+        [
+            "2026-06-12T00:00:00.000001+00:00",
+            "2026-06-12T00:00:00.000002+00:00",
+            "2026-06-12T00:00:00.000003+00:00",
+        ]
+    )
+    monkeypatch.setattr("debug_agent.storage.repository._utc_now_iso", lambda: next(timestamps))
+
     repository.save_spreadsheet_writeback_audit(
         job_id="job-old",
         status="failed",
