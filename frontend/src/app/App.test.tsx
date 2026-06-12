@@ -1209,6 +1209,35 @@ describe("App", () => {
     expect(screen.getByText("Writeback audit succeeded：1")).toBeInTheDocument();
   });
 
+  it("shows report links in spreadsheet writeback audit rows", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          audits: [
+            {
+              job_id: "job-failed-writeback-1",
+              status: "failed",
+              row_id: "7",
+              report_url: "https://debug-agent.local/jobs/job-failed-writeback-1/report",
+              fields: {},
+              error_message: "permission denied",
+              created_at: "2026-06-12T06:00:00+00:00",
+              updated_at: "2026-06-12T06:00:01+00:00"
+            }
+          ],
+          total_count: 1
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load failed writeback audits" }));
+
+    const reportLink = await screen.findByRole("link", { name: "Open report job-failed-writeback-1" });
+    expect(reportLink).toHaveAttribute("href", "https://debug-agent.local/jobs/job-failed-writeback-1/report");
+  });
+
   it("loads more spreadsheet writeback audits using the current status filter", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")

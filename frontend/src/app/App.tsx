@@ -712,6 +712,11 @@ export function App() {
                   <button type="button" onClick={() => void retryWritebackAudit(audit)}>
                     Retry writeback {audit.job_id}
                   </button>
+                  {audit.report_url ? (
+                    <a href={audit.report_url} target="_blank" rel="noreferrer">
+                      Open report {audit.job_id}
+                    </a>
+                  ) : null}
                 </li>
               ))}
             </ul>
