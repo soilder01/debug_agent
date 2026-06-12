@@ -400,6 +400,21 @@ export function App() {
     }
   }
 
+  async function openWritebackAuditJob(jobId: string) {
+    setError("");
+    try {
+      const status = await fetchJobStatus(jobId);
+      setSubmittedJob(status);
+      setJobStatus(status);
+      setReport(null);
+      setSpreadsheetWritebackResult(null);
+      setSpreadsheetWritebackAudit(null);
+      setSelectedEvidence(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
   async function stopWorkerLoop() {
     setError("");
     try {
@@ -675,6 +690,9 @@ export function App() {
               {spreadsheetWritebackAuditList.audits.map((audit) => (
                 <li key={audit.job_id}>
                   {audit.job_id}：{audit.status}｜row {audit.row_id || "无"}｜{audit.error_message || "无错误"}
+                  <button type="button" onClick={() => void openWritebackAuditJob(audit.job_id)}>
+                    Open audit job {audit.job_id}
+                  </button>
                 </li>
               ))}
             </ul>

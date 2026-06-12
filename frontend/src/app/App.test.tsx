@@ -1023,6 +1023,78 @@ describe("App", () => {
     expect(screen.getByText("job-failed-writeback-1：failed｜row 7｜permission denied")).toBeInTheDocument();
   });
 
+  it("opens a job from a spreadsheet writeback audit row", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            audits: [
+              {
+                job_id: "job-failed-writeback-1",
+                status: "failed",
+                row_id: "7",
+                report_url: "https://debug-agent.local/jobs/job-failed-writeback-1/report",
+                fields: {},
+                error_message: "permission denied",
+                created_at: "2026-06-12T06:00:00+00:00",
+                updated_at: "2026-06-12T06:00:01+00:00"
+              }
+            ],
+            total_count: 1
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            job_id: "job-failed-writeback-1",
+            case_id: "handwrite233",
+            status: "completed",
+            created_at: "2026-06-11T10:00:01",
+            updated_at: "2026-06-11T10:00:02",
+            attempt_count: 1,
+            max_attempts: 2,
+            remaining_attempts: 1,
+            will_retry: false,
+            retry_recommendation: "no_retry_needed",
+            retry_recommendation_detail: {
+              code: "no_retry_needed",
+              label: "无需重试",
+              action: "任务已完成，直接查看证据链和结论。",
+              severity: "info"
+            },
+            error_message: null,
+            evidence_ids: [],
+            evidence_error_counts: {
+              total_evidence: 0,
+              failed_judgements: 0,
+              response_parse_errors: 0,
+              model_call_errors: 0
+            },
+            spreadsheet_writeback_audit: {
+              status: "failed",
+              row_id: "7",
+              report_url: "https://debug-agent.local/jobs/job-failed-writeback-1/report",
+              error_message: "permission denied",
+              updated_at: "2026-06-12T06:00:01+00:00"
+            }
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load failed writeback audits" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Open audit job job-failed-writeback-1" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-failed-writeback-1");
+    expect(await screen.findByText("Job ID：job-failed-writeback-1")).toBeInTheDocument();
+    expect(screen.getByText("写回状态：failed")).toBeInTheDocument();
+    expect(screen.getByText("写回错误：permission denied")).toBeInTheDocument();
+  });
+
   it("loads more spreadsheet writeback audits using the current status filter", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
