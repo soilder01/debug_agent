@@ -726,7 +726,7 @@ export function App() {
                   {audit.job_id}：{audit.status}｜row {audit.row_id || "无"}｜{audit.error_message || "无错误"}
                   <span>updated {audit.updated_at}</span>
                   <span>Retry eligibility：{audit.status === "failed" ? "available" : "unavailable"}</span>
-                  <span>Retry reason：{writebackRetryReason(audit.status)}</span>
+                  <span>Retry reason：{writebackRetryReason(audit.status, audit.error_message)}</span>
                   <button type="button" onClick={() => void openWritebackAuditJob(audit.job_id)}>
                     Open audit job {audit.job_id}
                   </button>
@@ -1001,12 +1001,15 @@ function padDatePart(value: number): string {
   return String(value).padStart(2, "0");
 }
 
-function writebackRetryReason(status: string): string {
+function writebackRetryReason(status: string, errorMessage: string): string {
   if (status === "failed") {
     return "last writeback failed";
   }
   if (status === "succeeded") {
     return "already succeeded";
+  }
+  if (errorMessage) {
+    return errorMessage;
   }
   return "missing prerequisites";
 }

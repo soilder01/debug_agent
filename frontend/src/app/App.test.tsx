@@ -1656,7 +1656,7 @@ describe("App", () => {
     render(<App />);
     await userEvent.click(screen.getByRole("button", { name: "Load skipped writeback audits" }));
 
-    expect(await screen.findByText("Retry reason：missing prerequisites")).toBeInTheDocument();
+    expect(await screen.findByText("Retry reason：spreadsheet row mapping not found")).toBeInTheDocument();
   });
 
   it("parses a Lark spreadsheet URL into sync identifiers", async () => {
