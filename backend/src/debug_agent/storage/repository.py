@@ -303,6 +303,14 @@ class DebugJobRepository:
                 )
                 return list(rows)
 
+    def list_evidence(self, job_id: str) -> list[ExperimentEvidence]:
+        evidence: list[ExperimentEvidence] = []
+        for evidence_id in self.list_evidence_ids(job_id):
+            item = self.get_evidence(job_id, evidence_id)
+            if item is not None:
+                evidence.append(item)
+        return evidence
+
     def count_evidence_errors(self, job_id: str) -> dict[str, int]:
         with self._lock:
             with self._session_factory() as session:

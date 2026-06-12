@@ -398,6 +398,35 @@ def test_repository_keeps_same_evidence_ids_for_different_jobs() -> None:
     assert repository.list_evidence_ids("job-2") == ["case-1:baseline:0"]
 
 
+def test_repository_lists_evidence_objects_for_job() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    evidence = [
+        ExperimentEvidence(
+            evidence_id="case-1:baseline:1",
+            step_name="baseline",
+            trial=1,
+            raw_output="{\"answers\":[]}",
+            judge=JudgeResult(score=1, reasons=[]),
+        ),
+        ExperimentEvidence(
+            evidence_id="case-1:baseline:0",
+            step_name="baseline",
+            trial=0,
+            raw_output="{\"answers\":[]}",
+            judge=JudgeResult(score=0, reasons=["student_answer_mismatch"]),
+        ),
+    ]
+    repository.create_job(job_id="job-1", case_id="case-1")
+    repository.save_evidence(job_id="job-1", case_id="case-1", evidence=evidence)
+
+    restored = repository.list_evidence("job-1")
+
+    assert [item.evidence_id for item in restored] == ["case-1:baseline:0", "case-1:baseline:1"]
+    assert [item.judge.score for item in restored] == [0, 1]
+
+
 def test_repository_counts_evidence_error_categories() -> None:
     session_factory, engine = create_sqlite_memory_session_factory()
     Base.metadata.create_all(engine)
