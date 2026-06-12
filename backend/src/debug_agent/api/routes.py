@@ -19,6 +19,11 @@ from debug_agent.models.fake import FakeModelAdapter
 from debug_agent.reports.generator import DebugReport, generate_initial_report
 from debug_agent.reports.job_report import build_report_for_job
 from debug_agent.settings import DebugAgentSettings
+from debug_agent.spreadsheets.writeback import (
+    SpreadsheetWritebackClient,
+    SpreadsheetWritebackResult,
+    write_report_for_job,
+)
 from debug_agent.storage.database import create_sqlite_session_factory, ensure_database_schema
 from debug_agent.storage.models import DebugJobRow
 from debug_agent.storage.repository import DebugJobRepository
@@ -29,6 +34,7 @@ ensure_database_schema(engine)
 job_repository = DebugJobRepository(session_factory)
 job_service = DebugJobService(job_repository, image_artifact_dir=settings.image_artifact_dir)
 job_worker = AsyncJobWorker(job_service)
+spreadsheet_writeback_client: SpreadsheetWritebackClient | None = None
 
 router = APIRouter()
 
@@ -110,6 +116,10 @@ class SpreadsheetRowImportResponse(BaseModel):
     imported_rows: list[SpreadsheetImportedRowResponse]
     jobs: list[SubmittedDebugJob]
     rejected_rows: list[SpreadsheetRejectedRow]
+
+
+class JobReportWritebackRequest(BaseModel):
+    report_url: str
 
 
 class DebugCaseSummary(BaseModel):
@@ -346,6 +356,25 @@ def get_job_report(job_id: str) -> DebugReport:
     if report is None:
         raise HTTPException(status_code=404, detail=f"Debug report not found for job: {job_id}")
     return report
+
+
+@router.post("/jobs/{job_id}/spreadsheet-writeback")
+def write_job_report_to_spreadsheet(job_id: str, request: JobReportWritebackRequest) -> SpreadsheetWritebackResult:
+    if spreadsheet_writeback_client is None:
+        raise HTTPException(status_code=503, detail="Spreadsheet writeback client is not configured")
+    report = build_report_for_job(job_repository, job_id)
+    if report is None:
+        raise HTTPException(status_code=404, detail=f"Debug report not found for job: {job_id}")
+    result = write_report_for_job(
+        repository=job_repository,
+        client=spreadsheet_writeback_client,
+        job_id=job_id,
+        report=report,
+        report_url=request.report_url,
+    )
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"Spreadsheet row mapping not found for job: {job_id}")
+    return result
 
 
 def _build_job_status(job: DebugJobRow) -> DebugJobStatus:
