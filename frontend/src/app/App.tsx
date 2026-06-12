@@ -14,6 +14,7 @@ import {
   fetchJobStatus,
   fetchLarkSpreadsheetStatus,
   fetchSpreadsheetWritebackAudit,
+  fetchSpreadsheetWritebackAuditSummary,
   fetchWorkerStatus,
   importCsvCases,
   importJsonlCases,
@@ -25,6 +26,7 @@ import {
   submitDebugJob,
   type SpreadsheetRowImportResponse,
   type SpreadsheetWritebackAudit,
+  type SpreadsheetWritebackAuditCounts,
   type SpreadsheetSyncResponse,
   type SpreadsheetWritebackResult,
   stopWorker,
@@ -71,6 +73,8 @@ export function App() {
   const [spreadsheetSyncResult, setSpreadsheetSyncResult] = useState<SpreadsheetSyncResponse | null>(null);
   const [spreadsheetWritebackResult, setSpreadsheetWritebackResult] = useState<SpreadsheetWritebackResult | null>(null);
   const [spreadsheetWritebackAudit, setSpreadsheetWritebackAudit] = useState<SpreadsheetWritebackAudit | null>(null);
+  const [spreadsheetWritebackAuditSummary, setSpreadsheetWritebackAuditSummary] =
+    useState<SpreadsheetWritebackAuditCounts | null>(null);
   const [larkSpreadsheetStatus, setLarkSpreadsheetStatus] = useState<LarkSpreadsheetStatus | null>(null);
   const [workerStatus, setWorkerStatus] = useState<WorkerStatus | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<ExperimentEvidence | null>(null);
@@ -352,6 +356,15 @@ export function App() {
     }
   }
 
+  async function loadWritebackAuditSummary() {
+    setError("");
+    try {
+      setSpreadsheetWritebackAuditSummary(await fetchSpreadsheetWritebackAuditSummary());
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
   async function stopWorkerLoop() {
     setError("");
     try {
@@ -571,6 +584,9 @@ export function App() {
         <button type="button" onClick={() => void syncSpreadsheet()}>
           Sync spreadsheet rows
         </button>
+        <button type="button" onClick={() => void loadWritebackAuditSummary()}>
+          Load writeback audit summary
+        </button>
         {larkSpreadsheetStatus ? (
           <>
             <p>Lark 配置状态：{larkSpreadsheetStatus.configured ? "已配置" : "未配置"}</p>
@@ -601,6 +617,14 @@ export function App() {
                     .map((row) => `${row.row_index}:${row.sheet_row_id}:${row.error_message}`)
                     .join(", ")}
             </p>
+          </>
+        ) : null}
+        {spreadsheetWritebackAuditSummary ? (
+          <>
+            <p>Writeback audit total：{spreadsheetWritebackAuditSummary.total_count}</p>
+            <p>Writeback audit succeeded：{spreadsheetWritebackAuditSummary.by_status.succeeded ?? 0}</p>
+            <p>Writeback audit failed：{spreadsheetWritebackAuditSummary.by_status.failed ?? 0}</p>
+            <p>Writeback audit skipped：{spreadsheetWritebackAuditSummary.by_status.skipped ?? 0}</p>
           </>
         ) : null}
       </section>

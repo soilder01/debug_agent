@@ -968,6 +968,31 @@ describe("App", () => {
     expect(screen.getByText("Lark CLI 超时：60s")).toBeInTheDocument();
   });
 
+  it("loads spreadsheet writeback audit summary counts", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          by_status: {
+            succeeded: 8,
+            failed: 2,
+            skipped: 3
+          },
+          total_count: 13
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load writeback audit summary" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/spreadsheets/writeback/audits/summary");
+    expect(await screen.findByText("Writeback audit total：13")).toBeInTheDocument();
+    expect(screen.getByText("Writeback audit succeeded：8")).toBeInTheDocument();
+    expect(screen.getByText("Writeback audit failed：2")).toBeInTheDocument();
+    expect(screen.getByText("Writeback audit skipped：3")).toBeInTheDocument();
+  });
+
   it("parses a Lark spreadsheet URL into sync identifiers", async () => {
     render(<App />);
     fireEvent.change(screen.getByLabelText("Lark spreadsheet URL"), {
