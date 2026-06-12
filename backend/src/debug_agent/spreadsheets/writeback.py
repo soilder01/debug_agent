@@ -3,6 +3,7 @@ from typing import Protocol
 from pydantic import BaseModel
 
 from debug_agent.reports.generator import DebugReport
+from debug_agent.storage.repository import DebugJobRepository
 
 
 class SpreadsheetWritebackClient(Protocol):
@@ -35,6 +36,27 @@ def write_report_to_spreadsheet_row(
     fields = build_report_writeback_fields(report, report_url=report_url)
     client.update_row(spreadsheet_id=spreadsheet_id, sheet_id=sheet_id, row_id=row_id, fields=fields)
     return SpreadsheetWritebackResult(row_id=row_id, fields=fields)
+
+
+def write_report_for_job(
+    *,
+    repository: DebugJobRepository,
+    client: SpreadsheetWritebackClient,
+    job_id: str,
+    report: DebugReport,
+    report_url: str,
+) -> SpreadsheetWritebackResult | None:
+    mapping = repository.get_spreadsheet_row_mapping_by_job_id(job_id)
+    if mapping is None:
+        return None
+    return write_report_to_spreadsheet_row(
+        client=client,
+        spreadsheet_id=mapping.spreadsheet_id,
+        sheet_id=mapping.sheet_id,
+        row_id=mapping.row_id,
+        report=report,
+        report_url=report_url,
+    )
 
 
 def _evaluation_feedback(report: DebugReport) -> str:

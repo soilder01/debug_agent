@@ -127,6 +127,27 @@ class DebugJobRepository:
                     updated_at=row.updated_at,
                 )
 
+    def get_spreadsheet_row_mapping_by_job_id(self, job_id: str) -> SpreadsheetRowMapping | None:
+        with self._lock:
+            with self._session_factory() as session:
+                row = session.scalars(
+                    select(SpreadsheetRowMappingRow)
+                    .where(SpreadsheetRowMappingRow.job_id == job_id)
+                    .order_by(SpreadsheetRowMappingRow.updated_at.desc())
+                    .limit(1)
+                ).first()
+                if row is None:
+                    return None
+                return SpreadsheetRowMapping(
+                    spreadsheet_id=row.spreadsheet_id,
+                    sheet_id=row.sheet_id,
+                    row_id=row.row_id,
+                    case_id=row.case_id,
+                    job_id=row.job_id,
+                    created_at=row.created_at,
+                    updated_at=row.updated_at,
+                )
+
     def list_cases(self, has_regions: bool = False, limit: int | None = None, offset: int = 0) -> list[DebugCase]:
         with self._lock:
             with self._session_factory() as session:

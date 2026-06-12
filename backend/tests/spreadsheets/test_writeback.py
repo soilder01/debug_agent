@@ -6,8 +6,12 @@ from debug_agent.reports.generator import (
 )
 from debug_agent.spreadsheets.writeback import (
     build_report_writeback_fields,
+    write_report_for_job,
     write_report_to_spreadsheet_row,
 )
+from debug_agent.storage.database import create_sqlite_memory_session_factory
+from debug_agent.storage.models import Base
+from debug_agent.storage.repository import DebugJobRepository
 
 
 class RecordingWritebackClient:
@@ -57,6 +61,53 @@ def test_write_report_to_spreadsheet_row_updates_client_with_payload() -> None:
     assert client.fields["错误原因"] == "模型无法稳定识别涂改后的最终答案。"
     assert result.row_id == "row-1"
     assert result.fields == client.fields
+
+
+def test_write_report_for_job_resolves_mapping_and_updates_row() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    repository.save_spreadsheet_row_mapping(
+        spreadsheet_id="spreadsheet-1",
+        sheet_id="sheet-1",
+        row_id="row-1",
+        case_id="case-1",
+        job_id="job-1",
+    )
+    client = RecordingWritebackClient()
+
+    result = write_report_for_job(
+        repository=repository,
+        client=client,
+        job_id="job-1",
+        report=_make_report(),
+        report_url="https://debug-agent.local/reports/job-1",
+    )
+
+    assert result is not None
+    assert result.row_id == "row-1"
+    assert client.spreadsheet_id == "spreadsheet-1"
+    assert client.sheet_id == "sheet-1"
+    assert client.row_id == "row-1"
+    assert client.fields["分析报告链接"] == "https://debug-agent.local/reports/job-1"
+
+
+def test_write_report_for_job_returns_none_when_mapping_is_missing() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    client = RecordingWritebackClient()
+
+    result = write_report_for_job(
+        repository=repository,
+        client=client,
+        job_id="missing-job",
+        report=_make_report(),
+        report_url="https://debug-agent.local/reports/job-1",
+    )
+
+    assert result is None
+    assert client.fields == {}
 
 
 def _make_report() -> DebugReport:

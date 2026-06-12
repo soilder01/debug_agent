@@ -62,3 +62,25 @@ def test_repository_updates_existing_spreadsheet_row_mapping() -> None:
     assert mapping.case_id == "case-new"
     assert mapping.job_id == "job-new"
     assert mapping.updated_at >= mapping.created_at
+
+
+def test_repository_finds_spreadsheet_row_mapping_by_job_id() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+
+    repository.save_spreadsheet_row_mapping(
+        spreadsheet_id="spreadsheet-1",
+        sheet_id="sheet-1",
+        row_id="row-1",
+        case_id="case-1",
+        job_id="job-1",
+    )
+
+    mapping = repository.get_spreadsheet_row_mapping_by_job_id("job-1")
+
+    assert mapping is not None
+    assert mapping.spreadsheet_id == "spreadsheet-1"
+    assert mapping.sheet_id == "sheet-1"
+    assert mapping.row_id == "row-1"
+    assert mapping.case_id == "case-1"
