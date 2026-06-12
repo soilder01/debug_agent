@@ -46,6 +46,7 @@ import { ExperimentTimeline } from "../experiments/ExperimentTimeline";
 import { JobStatusPanel } from "../jobs/JobStatusPanel";
 import { ReportPanel } from "../reports/ReportPanel";
 import { WritebackAuditList } from "../spreadsheets/WritebackAuditList";
+import { WritebackAuditSummary } from "../spreadsheets/WritebackAuditSummary";
 
 const jobListLimit = 50;
 const caseListLimit = 50;
@@ -701,21 +702,10 @@ export function App() {
           </>
         ) : null}
         {spreadsheetWritebackAuditSummary ? (
-          <>
-            <p>Writeback audit total：{spreadsheetWritebackAuditSummary.total_count}</p>
-            <p>Writeback audit succeeded：{spreadsheetWritebackAuditSummary.by_status.succeeded ?? 0}</p>
-            <p>Writeback audit failed：{spreadsheetWritebackAuditSummary.by_status.failed ?? 0}</p>
-            <p>Writeback audit skipped：{spreadsheetWritebackAuditSummary.by_status.skipped ?? 0}</p>
-            <button type="button" onClick={() => void loadWritebackAudits("succeeded")}>
-              View succeeded writeback audits
-            </button>
-            <button type="button" onClick={() => void loadWritebackAudits("failed")}>
-              View failed writeback audits
-            </button>
-            <button type="button" onClick={() => void loadWritebackAudits("skipped")}>
-              View skipped writeback audits
-            </button>
-          </>
+          <WritebackAuditSummary
+            summary={spreadsheetWritebackAuditSummary}
+            onLoadStatus={(status) => void loadWritebackAudits(status)}
+          />
         ) : null}
         {spreadsheetWritebackAuditList ? (
           <WritebackAuditList
