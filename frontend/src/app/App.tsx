@@ -46,6 +46,7 @@ import { ExperimentTimeline } from "../experiments/ExperimentTimeline";
 import { JobStatusPanel } from "../jobs/JobStatusPanel";
 import { ReportPanel } from "../reports/ReportPanel";
 import { LarkSpreadsheetStatusPanel } from "../spreadsheets/LarkSpreadsheetStatusPanel";
+import { SpreadsheetImportResultPanel } from "../spreadsheets/SpreadsheetImportResultPanel";
 import { SpreadsheetSyncResultPanel } from "../spreadsheets/SpreadsheetSyncResultPanel";
 import { WritebackAuditList } from "../spreadsheets/WritebackAuditList";
 import { WritebackAuditSummary } from "../spreadsheets/WritebackAuditSummary";
@@ -609,27 +610,7 @@ export function App() {
         <button type="button" onClick={importSpreadsheetRowsJson}>
           Import spreadsheet rows JSON
         </button>
-        {spreadsheetImportResult ? (
-          <>
-            <p>Spreadsheet 导入样本：{spreadsheetImportResult.imported_case_ids.length}</p>
-            <p>
-              Spreadsheet 导入行：
-              {spreadsheetImportResult.imported_rows.length === 0
-                ? "无"
-                : spreadsheetImportResult.imported_rows
-                    .map((row) => `${row.sheet_row_id}:${row.case_id}`)
-                    .join(", ")}
-            </p>
-            <p>
-              Spreadsheet 导入拒绝：
-              {spreadsheetImportResult.rejected_rows.length === 0
-                ? "无"
-                : spreadsheetImportResult.rejected_rows
-                    .map((row) => `${row.row_index}:${row.sheet_row_id}:${row.error_message}`)
-                    .join(", ")}
-            </p>
-          </>
-        ) : null}
+        {spreadsheetImportResult ? <SpreadsheetImportResultPanel result={spreadsheetImportResult} /> : null}
       </section>
       <section>
         <h2>Spreadsheet Sync</h2>
