@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+import subprocess
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Protocol
 from urllib.parse import parse_qs, urlparse
 
@@ -20,6 +23,72 @@ class LarkSheetsTransport(Protocol):
 
     def update_row(self, spreadsheet_id: str, sheet_id: str, row_id: str, fields: dict[str, str]) -> None:
         """Update one sheet row with field values."""
+
+
+CommandRunner = Callable[[list[str], str | None], str]
+
+
+class LarkCliError(RuntimeError):
+    """Raised when lark-cli output cannot be used by the transport."""
+
+
+class LarkCliSheetsTransport:
+    def __init__(
+        self,
+        *,
+        command_runner: CommandRunner | None = None,
+        read_range: str = "A1:Z500",
+    ) -> None:
+        self._command_runner = command_runner or _run_lark_cli
+        self._read_range = read_range
+
+    def read_values(self, spreadsheet_id: str, sheet_id: str) -> list[list[object]]:
+        data = self._read_rows_json(spreadsheet_id=spreadsheet_id, sheet_id=sheet_id)
+        return _rows_json_to_matrix(data)
+
+    def update_row(self, spreadsheet_id: str, sheet_id: str, row_id: str, fields: dict[str, str]) -> None:
+        data = self._read_rows_json(spreadsheet_id=spreadsheet_id, sheet_id=sheet_id)
+        header_columns = _header_columns(data)
+        for field_name, field_value in fields.items():
+            column = header_columns.get(field_name)
+            if column is None:
+                raise LarkCliError(f"Spreadsheet header not found: {field_name}")
+            self._run_json_command(
+                [
+                    "lark-cli",
+                    "sheets",
+                    "+cells-set",
+                    "--spreadsheet-token",
+                    spreadsheet_id,
+                    "--sheet-id",
+                    sheet_id,
+                    "--range",
+                    f"{column}{row_id}",
+                    "--cells",
+                    "-",
+                ],
+                stdin=json.dumps([[{"value": field_value}]], ensure_ascii=False),
+            )
+
+    def _read_rows_json(self, *, spreadsheet_id: str, sheet_id: str) -> dict[str, object]:
+        return self._run_json_command(
+            [
+                "lark-cli",
+                "sheets",
+                "+csv-get",
+                "--spreadsheet-token",
+                spreadsheet_id,
+                "--sheet-id",
+                sheet_id,
+                "--range",
+                self._read_range,
+                "--rows-json",
+            ]
+        )
+
+    def _run_json_command(self, args: list[str], stdin: str | None = None) -> dict[str, object]:
+        output = self._command_runner(args, stdin)
+        return _parse_lark_cli_data(output)
 
 
 class LarkSpreadsheetClient:
@@ -79,3 +148,77 @@ def _require_sheet_id(sheet_id: str | None) -> str:
 
 def _is_empty_row(values: list[object]) -> bool:
     return all(value is None or str(value).strip() == "" for value in values)
+
+
+def _run_lark_cli(args: list[str], stdin: str | None = None) -> str:
+    completed = subprocess.run(
+        args,
+        input=stdin,
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+    if completed.returncode != 0:
+        message = completed.stderr.strip() or completed.stdout.strip() or f"lark-cli exited {completed.returncode}"
+        raise LarkCliError(message)
+    return completed.stdout
+
+
+def _parse_lark_cli_data(output: str) -> dict[str, object]:
+    try:
+        envelope = json.loads(output)
+    except json.JSONDecodeError as exc:
+        raise LarkCliError("lark-cli returned invalid JSON") from exc
+    if not isinstance(envelope, dict):
+        raise LarkCliError("lark-cli returned a non-object envelope")
+    if envelope.get("ok") is False:
+        raise LarkCliError(str(envelope.get("error", "lark-cli command failed")))
+    data = envelope.get("data", {})
+    if not isinstance(data, dict):
+        raise LarkCliError("lark-cli returned an invalid data envelope")
+    return data
+
+
+def _rows_json_to_matrix(data: dict[str, object]) -> list[list[object]]:
+    rows = _rows_json_entries(data)
+    column_names: set[str] = set()
+    for _, values in rows:
+        column_names.update(values)
+
+    columns = sorted(column_names, key=_column_index)
+    return [[values.get(column, "") for column in columns] for _, values in sorted(rows)]
+
+
+def _header_columns(data: dict[str, object]) -> dict[str, str]:
+    rows = _rows_json_entries(data)
+    if not rows:
+        raise LarkCliError("Spreadsheet header row is empty")
+    _, first_row = sorted(rows)[0]
+    return {str(value).strip(): column for column, value in first_row.items() if str(value).strip()}
+
+
+def _rows_json_entries(data: dict[str, object]) -> list[tuple[int, dict[str, object]]]:
+    rows_raw = data.get("rows", [])
+    if not isinstance(rows_raw, list):
+        raise LarkCliError("lark-cli rows-json data must contain a rows list")
+
+    rows: list[tuple[int, dict[str, object]]] = []
+    for row_raw in rows_raw:
+        if not isinstance(row_raw, dict):
+            raise LarkCliError("lark-cli rows-json row must be an object")
+        row_number = row_raw.get("row_number")
+        values_raw = row_raw.get("values", {})
+        if not isinstance(row_number, int) or not isinstance(values_raw, dict):
+            raise LarkCliError("lark-cli rows-json row has invalid shape")
+        values = {str(column): value for column, value in values_raw.items()}
+        rows.append((row_number, values))
+    return rows
+
+
+def _column_index(column_name: str) -> int:
+    index = 0
+    for char in column_name.upper():
+        if not char.isalpha():
+            return 1_000_000
+        index = index * 26 + ord(char) - ord("A") + 1
+    return index
