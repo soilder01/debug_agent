@@ -1023,6 +1023,60 @@ describe("App", () => {
     expect(screen.getByText("job-failed-writeback-1：failed｜row 7｜permission denied")).toBeInTheDocument();
   });
 
+  it("loads more spreadsheet writeback audits using the current status filter", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            audits: [
+              {
+                job_id: "job-failed-writeback-1",
+                status: "failed",
+                row_id: "7",
+                report_url: "https://debug-agent.local/jobs/job-failed-writeback-1/report",
+                fields: {},
+                error_message: "permission denied",
+                created_at: "2026-06-12T06:00:00+00:00",
+                updated_at: "2026-06-12T06:00:01+00:00"
+              }
+            ],
+            total_count: 2
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            audits: [
+              {
+                job_id: "job-failed-writeback-2",
+                status: "failed",
+                row_id: "8",
+                report_url: "https://debug-agent.local/jobs/job-failed-writeback-2/report",
+                fields: {},
+                error_message: "sheet header not found",
+                created_at: "2026-06-12T06:00:02+00:00",
+                updated_at: "2026-06-12T06:00:03+00:00"
+              }
+            ],
+            total_count: 2
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load failed writeback audits" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Load more writeback audits" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/spreadsheets/writeback/audits?status=failed&limit=50");
+    expect(fetchMock).toHaveBeenCalledWith("/api/spreadsheets/writeback/audits?status=failed&limit=50&offset=1");
+    expect(screen.getByText("job-failed-writeback-1：failed｜row 7｜permission denied")).toBeInTheDocument();
+    expect(screen.getByText("job-failed-writeback-2：failed｜row 8｜sheet header not found")).toBeInTheDocument();
+  });
+
   it("loads skipped spreadsheet writeback audits for drilldown", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(

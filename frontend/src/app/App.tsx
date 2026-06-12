@@ -79,6 +79,7 @@ export function App() {
     useState<SpreadsheetWritebackAuditCounts | null>(null);
   const [spreadsheetWritebackAuditList, setSpreadsheetWritebackAuditList] =
     useState<SpreadsheetWritebackAuditListResponse | null>(null);
+  const [activeWritebackAuditStatus, setActiveWritebackAuditStatus] = useState<string | null>(null);
   const [larkSpreadsheetStatus, setLarkSpreadsheetStatus] = useState<LarkSpreadsheetStatus | null>(null);
   const [workerStatus, setWorkerStatus] = useState<WorkerStatus | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<ExperimentEvidence | null>(null);
@@ -372,7 +373,28 @@ export function App() {
   async function loadWritebackAudits(status: string) {
     setError("");
     try {
+      setActiveWritebackAuditStatus(status);
       setSpreadsheetWritebackAuditList(await fetchSpreadsheetWritebackAudits(status, jobListLimit));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
+  async function loadMoreWritebackAudits() {
+    if (!activeWritebackAuditStatus || !spreadsheetWritebackAuditList) {
+      return;
+    }
+    setError("");
+    try {
+      const nextPage = await fetchSpreadsheetWritebackAudits(
+        activeWritebackAuditStatus,
+        jobListLimit,
+        spreadsheetWritebackAuditList.audits.length,
+      );
+      setSpreadsheetWritebackAuditList({
+        audits: [...spreadsheetWritebackAuditList.audits, ...nextPage.audits],
+        total_count: nextPage.total_count,
+      });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
     }
@@ -656,6 +678,11 @@ export function App() {
                 </li>
               ))}
             </ul>
+            {spreadsheetWritebackAuditList.audits.length < spreadsheetWritebackAuditList.total_count ? (
+              <button type="button" onClick={() => void loadMoreWritebackAudits()}>
+                Load more writeback audits
+              </button>
+            ) : null}
           </>
         ) : null}
       </section>
