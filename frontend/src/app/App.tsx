@@ -45,6 +45,7 @@ import { EvidenceDetail } from "../evidence/EvidenceDetail";
 import { ExperimentTimeline } from "../experiments/ExperimentTimeline";
 import { JobStatusPanel } from "../jobs/JobStatusPanel";
 import { ReportPanel } from "../reports/ReportPanel";
+import { LarkSpreadsheetStatusPanel } from "../spreadsheets/LarkSpreadsheetStatusPanel";
 import { WritebackAuditList } from "../spreadsheets/WritebackAuditList";
 import { WritebackAuditSummary } from "../spreadsheets/WritebackAuditSummary";
 
@@ -669,17 +670,7 @@ export function App() {
         <button type="button" onClick={() => void loadWritebackAudits("skipped")}>
           Load skipped writeback audits
         </button>
-        {larkSpreadsheetStatus ? (
-          <>
-            <p>Lark 配置状态：{larkSpreadsheetStatus.configured ? "已配置" : "未配置"}</p>
-            <p>Lark 连接状态：{larkSpreadsheetStatus.connectivity_status}</p>
-            <p>
-              Lark 表格：{larkSpreadsheetStatus.spreadsheet_id || "无"} / {larkSpreadsheetStatus.sheet_id || "无"}
-            </p>
-            <p>Lark CLI 超时：{larkSpreadsheetStatus.lark_cli_timeout_seconds}s</p>
-            {larkSpreadsheetStatus.error_message ? <p>Lark 错误：{larkSpreadsheetStatus.error_message}</p> : null}
-          </>
-        ) : null}
+        {larkSpreadsheetStatus ? <LarkSpreadsheetStatusPanel status={larkSpreadsheetStatus} /> : null}
         {spreadsheetSyncResult ? (
           <>
             <p>Spreadsheet 同步样本：{spreadsheetSyncResult.imported_case_ids.length}</p>
