@@ -198,6 +198,11 @@ class LarkSpreadsheetStatusResponse(BaseModel):
     error_message: str = ""
 
 
+class SpreadsheetWritebackAuditSummaryResponse(BaseModel):
+    by_status: dict[str, int]
+    total_count: int
+
+
 class WorkerRuntimeStatus(AsyncJobWorkerStatus):
     report_base_url: str
     auto_writeback_enabled: bool
@@ -424,6 +429,15 @@ def sync_spreadsheet(request: SpreadsheetSyncRequest) -> SpreadsheetSyncResult:
         )
     except LarkCliError as exc:
         raise _lark_spreadsheet_error(exc) from exc
+
+
+@router.get("/spreadsheets/writeback/audits/summary")
+def get_spreadsheet_writeback_audit_summary() -> SpreadsheetWritebackAuditSummaryResponse:
+    by_status = job_repository.count_spreadsheet_writeback_audits_by_status()
+    return SpreadsheetWritebackAuditSummaryResponse(
+        by_status=by_status,
+        total_count=sum(by_status.values()),
+    )
 
 
 @router.post("/jobs/run-next")

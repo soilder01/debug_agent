@@ -153,3 +153,31 @@ def test_job_report_writeback_audit_api_returns_404_when_missing() -> None:
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Spreadsheet writeback audit not found for job: missing-audit"
+
+
+def test_spreadsheet_writeback_audit_summary_api_counts_statuses() -> None:
+    client = TestClient(app)
+    routes.job_repository.save_spreadsheet_writeback_audit(
+        job_id="summary-success",
+        status="succeeded",
+        row_id="7",
+        report_url="https://debug-agent.local/jobs/summary-success/report",
+        fields={},
+        error_message="",
+    )
+    routes.job_repository.save_spreadsheet_writeback_audit(
+        job_id="summary-failed",
+        status="failed",
+        row_id="8",
+        report_url="https://debug-agent.local/jobs/summary-failed/report",
+        fields={},
+        error_message="permission denied",
+    )
+
+    response = client.get("/spreadsheets/writeback/audits/summary")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["by_status"]["succeeded"] >= 1
+    assert body["by_status"]["failed"] >= 1
+    assert body["total_count"] >= 2

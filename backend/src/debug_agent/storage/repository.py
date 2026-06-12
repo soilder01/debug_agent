@@ -214,6 +214,16 @@ class DebugJobRepository:
                     updated_at=row.updated_at,
                 )
 
+    def count_spreadsheet_writeback_audits_by_status(self) -> dict[str, int]:
+        with self._lock:
+            with self._session_factory() as session:
+                rows = session.execute(
+                    select(SpreadsheetWritebackAuditRow.status, func.count())
+                    .group_by(SpreadsheetWritebackAuditRow.status)
+                    .order_by(SpreadsheetWritebackAuditRow.status)
+                )
+                return {str(status): int(count) for status, count in rows}
+
     def list_cases(self, has_regions: bool = False, limit: int | None = None, offset: int = 0) -> list[DebugCase]:
         with self._lock:
             with self._session_factory() as session:

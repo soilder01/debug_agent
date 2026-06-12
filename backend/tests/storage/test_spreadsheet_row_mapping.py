@@ -133,3 +133,37 @@ def test_repository_records_spreadsheet_writeback_failure() -> None:
     assert audit.status == "failed"
     assert audit.fields == {}
     assert audit.error_message == "permission denied"
+
+
+def test_repository_counts_spreadsheet_writeback_audits_by_status() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    repository.save_spreadsheet_writeback_audit(
+        job_id="job-success",
+        status="succeeded",
+        row_id="7",
+        report_url="https://debug-agent.local/jobs/job-success/report",
+        fields={},
+        error_message="",
+    )
+    repository.save_spreadsheet_writeback_audit(
+        job_id="job-failed",
+        status="failed",
+        row_id="8",
+        report_url="https://debug-agent.local/jobs/job-failed/report",
+        fields={},
+        error_message="permission denied",
+    )
+    repository.save_spreadsheet_writeback_audit(
+        job_id="job-skipped",
+        status="skipped",
+        row_id="",
+        report_url="https://debug-agent.local/jobs/job-skipped/report",
+        fields={},
+        error_message="spreadsheet row mapping not found",
+    )
+
+    summary = repository.count_spreadsheet_writeback_audits_by_status()
+
+    assert summary == {"failed": 1, "skipped": 1, "succeeded": 1}
