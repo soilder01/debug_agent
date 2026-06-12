@@ -38,12 +38,14 @@ job_service = DebugJobService(job_repository, image_artifact_dir=settings.image_
 job_worker = AsyncJobWorker(job_service)
 spreadsheet_writeback_client: SpreadsheetWritebackClient | None = None
 spreadsheet_sync_client: SpreadsheetClient | None = None
+lark_spreadsheet_settings = LarkSpreadsheetSettings.from_env()
 
 
 def configure_spreadsheet_clients(lark_settings: LarkSpreadsheetSettings | None = None) -> None:
-    global spreadsheet_sync_client, spreadsheet_writeback_client
+    global lark_spreadsheet_settings, spreadsheet_sync_client, spreadsheet_writeback_client
 
     resolved_settings = lark_settings or LarkSpreadsheetSettings.from_env()
+    lark_spreadsheet_settings = resolved_settings
     if resolved_settings.reference is None:
         spreadsheet_sync_client = None
         spreadsheet_writeback_client = None
@@ -56,7 +58,7 @@ def configure_spreadsheet_clients(lark_settings: LarkSpreadsheetSettings | None 
     spreadsheet_writeback_client = lark_client
 
 
-configure_spreadsheet_clients()
+configure_spreadsheet_clients(lark_spreadsheet_settings)
 
 router = APIRouter()
 
@@ -149,6 +151,15 @@ class SpreadsheetSyncRequest(BaseModel):
     sheet_id: str
     create_jobs: bool = True
     baseline_trials: int = Field(default=5, ge=0, le=5)
+
+
+class LarkSpreadsheetStatusResponse(BaseModel):
+    configured: bool
+    spreadsheet_id: str
+    sheet_id: str
+    lark_cli_timeout_seconds: int
+    connectivity_status: Literal["not_checked", "ok", "failed"] = "not_checked"
+    error_message: str = ""
 
 
 class DebugCaseSummary(BaseModel):
@@ -313,6 +324,46 @@ def import_spreadsheet_rows(request: SpreadsheetRowImportRequest) -> Spreadsheet
         imported_rows=imported_rows,
         jobs=jobs,
         rejected_rows=parse_result.rejected_rows,
+    )
+
+
+
+
+@router.get("/spreadsheets/lark/status")
+def get_lark_spreadsheet_status(check_connectivity: bool = False) -> LarkSpreadsheetStatusResponse:
+    reference = lark_spreadsheet_settings.reference
+    if reference is None:
+        return LarkSpreadsheetStatusResponse(
+            configured=False,
+            spreadsheet_id="",
+            sheet_id="",
+            lark_cli_timeout_seconds=lark_spreadsheet_settings.lark_cli_timeout_seconds,
+        )
+
+    connectivity_status: Literal["not_checked", "ok", "failed"] = "not_checked"
+    error_message = ""
+    if check_connectivity:
+        if spreadsheet_sync_client is None:
+            connectivity_status = "failed"
+            error_message = "Spreadsheet sync client is not configured"
+        else:
+            try:
+                spreadsheet_sync_client.list_rows(
+                    spreadsheet_id=reference.spreadsheet_id,
+                    sheet_id=reference.sheet_id,
+                )
+                connectivity_status = "ok"
+            except LarkCliError as exc:
+                connectivity_status = "failed"
+                error_message = str(exc)
+
+    return LarkSpreadsheetStatusResponse(
+        configured=True,
+        spreadsheet_id=reference.spreadsheet_id,
+        sheet_id=reference.sheet_id,
+        lark_cli_timeout_seconds=lark_spreadsheet_settings.lark_cli_timeout_seconds,
+        connectivity_status=connectivity_status,
+        error_message=error_message,
     )
 
 
