@@ -345,6 +345,93 @@ describe("App", () => {
     expect(screen.getByText("模型 Provider：ark")).toBeInTheDocument();
   });
 
+  it("loads and renders a persisted report for an opened job", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jobs: [
+              {
+                job_id: "job-report-1",
+                case_id: "handwrite233",
+                status: "completed",
+                created_at: "2026-06-11T10:00:01",
+                updated_at: "2026-06-11T10:00:02",
+                attempt_count: 1,
+                max_attempts: 2,
+                remaining_attempts: 1,
+                will_retry: false,
+                retry_recommendation: "no_retry_needed",
+                retry_recommendation_detail: {
+                  code: "no_retry_needed",
+                  label: "无需重试",
+                  action: "任务已完成，直接查看证据链和结论。",
+                  severity: "info"
+                },
+                error_message: null,
+                evidence_ids: ["handwrite233:baseline_replay:0"],
+                evidence_error_counts: {
+                  total_evidence: 1,
+                  failed_judgements: 1,
+                  response_parse_errors: 0,
+                  model_call_errors: 0
+                }
+              }
+            ],
+            total_count: 1
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            job_id: "job-report-1",
+            case_id: "handwrite233",
+            status: "needs_human_review",
+            observed_failure: {
+              type: "erasure_revision_failure",
+              summary: "模型在涂改区域识别不稳定。",
+              affected_box_ids: [1]
+            },
+            planned_experiments: ["baseline_replay"],
+            experiment_summary: {
+              total_trials: 5,
+              success_count: 2,
+              failed_trial_count: 3,
+              success_rate: 0.4,
+              stability_label: "unstable",
+              evidence_ids: ["handwrite233:baseline_replay:0"],
+              image_artifact_ids: []
+            },
+            root_cause: {
+              label: "erasure_revision_failure",
+              confidence: "medium",
+              evidence_summary: "当前样本低分且人工备注指向涂改区域识别失败。"
+            },
+            suggested_sheet_fields: {
+              "debug1状态": "待人工确认",
+              "错误原因": "模型无法稳定识别涂改后的最终答案。"
+            }
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load debug jobs" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Open job job-report-1" }));
+    await userEvent.click(screen.getByRole("button", { name: "Load persisted report" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-report-1/report");
+    expect(await screen.findAllByText("样本 ID：handwrite233")).toHaveLength(2);
+    expect(screen.getByText("类型：erasure_revision_failure")).toBeInTheDocument();
+    expect(screen.getByText("复测稳定性：unstable")).toBeInTheDocument();
+    expect(screen.getByText("错误原因")).toBeInTheDocument();
+    expect(screen.getByText("模型无法稳定识别涂改后的最终答案。")).toBeInTheDocument();
+  });
+
   it("loads failed debug jobs with a status filter", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(

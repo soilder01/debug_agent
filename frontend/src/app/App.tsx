@@ -10,6 +10,7 @@ import {
   fetchDebugJobs,
   fetchEvidenceDetail,
   fetchJobEvidenceDetail,
+  fetchJobReport,
   fetchJobStatus,
   fetchWorkerStatus,
   importCsvCases,
@@ -326,6 +327,20 @@ export function App() {
     }
   }
 
+  async function loadCurrentJobReport() {
+    const currentJob = jobStatus ?? submittedJob;
+    if (!currentJob) {
+      return;
+    }
+    setError("");
+    try {
+      setReport(await fetchJobReport(currentJob.job_id));
+      setSelectedEvidence(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
   async function selectBatchJobEvidence(jobId: string, evidenceId: string) {
     setError("");
     try {
@@ -603,7 +618,11 @@ export function App() {
       {error ? <p role="alert">{error}</p> : null}
       {submittedJob ? (
         <>
-          <JobStatusPanel job={jobStatus ?? submittedJob} onSelectEvidence={selectJobEvidence} />
+          <JobStatusPanel
+            job={jobStatus ?? submittedJob}
+            onSelectEvidence={selectJobEvidence}
+            onLoadReport={() => void loadCurrentJobReport()}
+          />
           <EvidenceDetail evidence={selectedEvidence} />
         </>
       ) : null}

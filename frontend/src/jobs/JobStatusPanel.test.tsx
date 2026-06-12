@@ -1,5 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { DebugJobStatus } from "../api/client";
 import { JobStatusPanel } from "./JobStatusPanel";
@@ -41,5 +42,40 @@ describe("JobStatusPanel", () => {
 
     expect(screen.getByText("创建时间：2026-06-11 10:00:01")).toHaveAttribute("title", "2026-06-11T10:00:01");
     expect(screen.getByText("更新时间：2026-06-11 10:00:02")).toHaveAttribute("title", "2026-06-11T10:00:02");
+  });
+
+  it("renders a persisted report loading action", async () => {
+    const onLoadReport = vi.fn();
+    const job = {
+      job_id: "job-detail-1",
+      case_id: "case-1",
+      status: "completed",
+      created_at: "2026-06-11T10:00:01",
+      updated_at: "2026-06-11T10:00:02",
+      attempt_count: 1,
+      max_attempts: 2,
+      remaining_attempts: 1,
+      will_retry: false,
+      retry_recommendation: "no_retry_needed",
+      retry_recommendation_detail: {
+        code: "no_retry_needed",
+        label: "无需重试",
+        action: "任务已完成，直接查看证据链和结论。",
+        severity: "info"
+      },
+      error_message: null,
+      evidence_ids: [],
+      evidence_error_counts: {
+        total_evidence: 0,
+        failed_judgements: 0,
+        response_parse_errors: 0,
+        model_call_errors: 0
+      }
+    } satisfies DebugJobStatus;
+
+    render(<JobStatusPanel job={job} onLoadReport={onLoadReport} />);
+    await userEvent.click(screen.getByRole("button", { name: "Load persisted report" }));
+
+    expect(onLoadReport).toHaveBeenCalledTimes(1);
   });
 });

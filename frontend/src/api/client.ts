@@ -320,6 +320,14 @@ export async function fetchJobStatus(jobId: string): Promise<DebugJobStatus> {
   return (await response.json()) as DebugJobStatus;
 }
 
+export async function fetchJobReport(jobId: string): Promise<DebugReport> {
+  const response = await fetch(`/api/jobs/${jobId}/report`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch job report ${jobId}: ${response.status}`);
+  }
+  return (await response.json()) as DebugReport;
+}
+
 export async function fetchDebugJobs(
   status?: string,
   limit?: number,

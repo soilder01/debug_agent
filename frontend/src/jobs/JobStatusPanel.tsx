@@ -3,9 +3,10 @@ import type { DebugJobStatus, SubmittedDebugJob } from "../api/client";
 type JobStatusPanelProps = {
   job: DebugJobStatus | SubmittedDebugJob;
   onSelectEvidence?: (evidenceId: string) => void;
+  onLoadReport?: () => void;
 };
 
-export function JobStatusPanel({ job, onSelectEvidence }: JobStatusPanelProps) {
+export function JobStatusPanel({ job, onSelectEvidence, onLoadReport }: JobStatusPanelProps) {
   const attemptCount = job.attempt_count ?? 0;
   const maxAttempts = job.max_attempts ?? 0;
   const remainingAttempts = job.remaining_attempts ?? 0;
@@ -31,6 +32,11 @@ export function JobStatusPanel({ job, onSelectEvidence }: JobStatusPanelProps) {
       <p>将会重试：{String(willRetry)}</p>
       <p>重试建议：{retryRecommendationDetail?.label ?? retryRecommendation}</p>
       {retryRecommendationDetail ? <p>建议动作：{retryRecommendationDetail.action}</p> : null}
+      {onLoadReport ? (
+        <button type="button" onClick={onLoadReport}>
+          Load persisted report
+        </button>
+      ) : null}
       <p>证据数：{evidenceCount}</p>
       {evidenceErrorCounts ? (
         <>
