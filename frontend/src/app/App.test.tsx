@@ -1066,6 +1066,7 @@ describe("App", () => {
 
     expect(fetchMock).toHaveBeenCalledWith("/api/spreadsheets/writeback/audits?status=failed&limit=50");
     expect(await screen.findByText("Writeback audits total：3")).toBeInTheDocument();
+    expect(screen.getByText("Writeback audit filter：failed")).toBeInTheDocument();
     expect(screen.getByText("job-failed-writeback-1：failed｜row 7｜permission denied")).toBeInTheDocument();
   });
 
@@ -1341,6 +1342,7 @@ describe("App", () => {
 
     expect(fetchMock).toHaveBeenCalledWith("/api/spreadsheets/writeback/audits?limit=50");
     expect(await screen.findByText("job-succeeded-writeback-1：succeeded｜row 9｜无错误")).toBeInTheDocument();
+    expect(screen.getByText("Writeback audit filter：all")).toBeInTheDocument();
   });
 
   it("shows update timestamps in spreadsheet writeback audit rows", async () => {

@@ -719,6 +719,7 @@ export function App() {
         {spreadsheetWritebackAuditList ? (
           <>
             <p>Writeback audits total：{spreadsheetWritebackAuditList.total_count}</p>
+            <p>Writeback audit filter：{activeWritebackAuditStatus ?? "all"}</p>
             <ul aria-label="Spreadsheet writeback audits">
               {spreadsheetWritebackAuditList.audits.map((audit) => (
                 <li key={audit.job_id}>
