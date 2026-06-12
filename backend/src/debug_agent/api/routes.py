@@ -18,7 +18,8 @@ from debug_agent.jobs.worker import AsyncJobWorker, AsyncJobWorkerStatus
 from debug_agent.models.fake import FakeModelAdapter
 from debug_agent.reports.generator import DebugReport, generate_initial_report
 from debug_agent.reports.job_report import build_report_for_job
-from debug_agent.settings import DebugAgentSettings
+from debug_agent.settings import DebugAgentSettings, LarkSpreadsheetSettings
+from debug_agent.spreadsheets.lark import LarkCliSheetsTransport, LarkSpreadsheetClient
 from debug_agent.spreadsheets.writeback import (
     SpreadsheetWritebackClient,
     SpreadsheetWritebackResult,
@@ -37,6 +38,23 @@ job_service = DebugJobService(job_repository, image_artifact_dir=settings.image_
 job_worker = AsyncJobWorker(job_service)
 spreadsheet_writeback_client: SpreadsheetWritebackClient | None = None
 spreadsheet_sync_client: SpreadsheetClient | None = None
+
+
+def configure_spreadsheet_clients(lark_settings: LarkSpreadsheetSettings | None = None) -> None:
+    global spreadsheet_sync_client, spreadsheet_writeback_client
+
+    resolved_settings = lark_settings or LarkSpreadsheetSettings.from_env()
+    if resolved_settings.reference is None:
+        spreadsheet_sync_client = None
+        spreadsheet_writeback_client = None
+        return
+
+    lark_client = LarkSpreadsheetClient(LarkCliSheetsTransport())
+    spreadsheet_sync_client = lark_client
+    spreadsheet_writeback_client = lark_client
+
+
+configure_spreadsheet_clients()
 
 router = APIRouter()
 
