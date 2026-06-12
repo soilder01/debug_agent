@@ -43,6 +43,7 @@ import {
 import { CaseDetail } from "../cases/CaseDetail";
 import { EvidenceDetail } from "../evidence/EvidenceDetail";
 import { ExperimentTimeline } from "../experiments/ExperimentTimeline";
+import { JSONLImportResultPanel } from "../imports/JSONLImportResultPanel";
 import { JobStatusPanel } from "../jobs/JobStatusPanel";
 import { ReportPanel } from "../reports/ReportPanel";
 import { LarkSpreadsheetStatusPanel } from "../spreadsheets/LarkSpreadsheetStatusPanel";
@@ -560,19 +561,7 @@ export function App() {
         <button type="button" onClick={importJsonl}>
           Import JSONL cases
         </button>
-        {jsonlImportResult ? (
-          <>
-            <p>导入样本：{jsonlImportResult.imported_case_ids.length}</p>
-            <p>
-              导入拒绝：
-              {jsonlImportResult.rejected_lines.length === 0
-                ? "无"
-                : jsonlImportResult.rejected_lines
-                    .map((line) => `${line.line_number}:${line.error_message}`)
-                    .join(", ")}
-            </p>
-          </>
-        ) : null}
+        {jsonlImportResult ? <JSONLImportResultPanel result={jsonlImportResult} /> : null}
       </section>
       <section>
         <h2>CSV Import</h2>
