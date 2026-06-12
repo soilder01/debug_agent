@@ -148,6 +148,8 @@ export type WorkerStatus = {
   processed_count: number;
   error_count: number;
   last_error: string | null;
+  completion_hook_enabled: boolean;
+  report_base_url: string;
 };
 
 export type JsonlRejectedLine = {

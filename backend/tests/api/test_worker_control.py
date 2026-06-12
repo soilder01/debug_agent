@@ -32,6 +32,8 @@ def test_worker_status_endpoint_reports_lifecycle_state() -> None:
         "processed_count": 0,
         "error_count": 0,
         "last_error": None,
+        "completion_hook_enabled": False,
+        "report_base_url": "http://localhost:8000",
     }
 
 
@@ -105,6 +107,8 @@ async def test_runtime_worker_writes_report_back_after_completed_mapped_job() ->
         writeback_client=writeback_client,
         report_base_url="https://debug-agent.local",
     )
+
+    assert worker.status().completion_hook_enabled is True
 
     await worker.tick()
 

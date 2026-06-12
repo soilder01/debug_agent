@@ -12,6 +12,7 @@ class AsyncJobWorkerStatus(BaseModel):
     processed_count: int
     error_count: int
     last_error: str | None
+    completion_hook_enabled: bool
 
 
 class AsyncJobWorker:
@@ -66,6 +67,7 @@ class AsyncJobWorker:
             processed_count=self._processed_count,
             error_count=self._error_count,
             last_error=self._last_error,
+            completion_hook_enabled=self._on_job_completed is not None,
         )
 
     def _run_in_thread(self) -> None:

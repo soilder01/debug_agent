@@ -187,6 +187,10 @@ class LarkSpreadsheetStatusResponse(BaseModel):
     error_message: str = ""
 
 
+class WorkerRuntimeStatus(AsyncJobWorkerStatus):
+    report_base_url: str
+
+
 class DebugCaseSummary(BaseModel):
     case_id: str
     image_uri: str
@@ -440,8 +444,8 @@ def get_job_evidence(job_id: str, evidence_id: str) -> ExperimentEvidence:
 
 
 @router.get("/worker/status")
-def get_worker_status() -> AsyncJobWorkerStatus:
-    return job_worker.status()
+def get_worker_status() -> WorkerRuntimeStatus:
+    return _build_worker_runtime_status()
 
 
 @router.get("/artifacts/images/{filename}")
@@ -454,15 +458,15 @@ def get_artifact_image(filename: str) -> FileResponse:
 
 
 @router.post("/worker/start", status_code=202)
-async def start_worker() -> AsyncJobWorkerStatus:
+async def start_worker() -> WorkerRuntimeStatus:
     job_worker.start()
-    return job_worker.status()
+    return _build_worker_runtime_status()
 
 
 @router.post("/worker/stop")
-async def stop_worker() -> AsyncJobWorkerStatus:
+async def stop_worker() -> WorkerRuntimeStatus:
     await job_worker.stop()
-    return job_worker.status()
+    return _build_worker_runtime_status()
 
 
 @router.get("/jobs/{job_id}")
@@ -526,6 +530,14 @@ def _build_job_status(job: DebugJobRow) -> DebugJobStatus:
         error_message=job.error_message,
         evidence_ids=job_repository.list_evidence_ids(job.job_id),
         evidence_error_counts=evidence_error_counts,
+    )
+
+
+def _build_worker_runtime_status() -> WorkerRuntimeStatus:
+    status = job_worker.status()
+    return WorkerRuntimeStatus(
+        **status.model_dump(),
+        report_base_url=settings.report_base_url,
     )
 
 

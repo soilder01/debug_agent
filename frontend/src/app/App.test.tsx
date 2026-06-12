@@ -644,7 +644,9 @@ describe("App", () => {
             running: true,
             processed_count: 0,
             error_count: 0,
-            last_error: null
+            last_error: null,
+            completion_hook_enabled: true,
+            report_base_url: "https://debug-agent.local"
           }),
           { status: 202, headers: { "Content-Type": "application/json" } }
         )
@@ -655,7 +657,9 @@ describe("App", () => {
             running: true,
             processed_count: 1,
             error_count: 0,
-            last_error: null
+            last_error: null,
+            completion_hook_enabled: true,
+            report_base_url: "https://debug-agent.local"
           }),
           { status: 200, headers: { "Content-Type": "application/json" } }
         )
@@ -666,7 +670,9 @@ describe("App", () => {
             running: false,
             processed_count: 1,
             error_count: 0,
-            last_error: null
+            last_error: null,
+            completion_hook_enabled: true,
+            report_base_url: "https://debug-agent.local"
           }),
           { status: 200, headers: { "Content-Type": "application/json" } }
         )
@@ -684,6 +690,8 @@ describe("App", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/worker/stop", { method: "POST" });
     expect(await screen.findByText("Worker running：false")).toBeInTheDocument();
     expect(screen.getByText("Worker errors：0")).toBeInTheDocument();
+    expect(screen.getByText("Worker auto writeback：enabled")).toBeInTheDocument();
+    expect(screen.getByText("Worker report base URL：https://debug-agent.local")).toBeInTheDocument();
   });
 
   it("starts the worker from the batch section and renders batch progress", async () => {
