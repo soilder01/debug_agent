@@ -186,6 +186,53 @@ def test_completion_hook_skips_when_report_cannot_be_rebuilt() -> None:
     hook(SubmittedDebugJob(job_id="missing-job", case_id="missing-case", status="completed"))
 
     assert client.fields == {}
+    audit = repository.get_spreadsheet_writeback_audit("missing-job")
+    assert audit is not None
+    assert audit.status == "skipped"
+    assert audit.row_id == ""
+    assert audit.report_url == "https://debug-agent.local/jobs/missing-job/report"
+    assert audit.fields == {}
+    assert audit.error_message == "debug report could not be rebuilt"
+
+
+def test_completion_hook_records_skipped_audit_when_mapping_is_missing() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    case = load_fixture_case("handwrite233").model_copy(update={"case_id": "auto-writeback-unmapped-case"})
+    repository.save_case(case)
+    repository.create_job(job_id="job-unmapped", case_id=case.case_id, baseline_trials=1)
+    repository.save_evidence(
+        job_id="job-unmapped",
+        case_id=case.case_id,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="auto-writeback-unmapped-case:baseline:0",
+                step_name="baseline_replay",
+                trial=0,
+                raw_output=case.predictions[0].raw_output,
+                judge=JudgeResult(score=0, reasons=["student_answer_mismatch"]),
+            )
+        ],
+    )
+    repository.mark_completed("job-unmapped")
+    client = RecordingWritebackClient()
+    hook = make_spreadsheet_writeback_completion_hook(
+        repository=repository,
+        client=client,
+        report_base_url="https://debug-agent.local",
+    )
+
+    hook(SubmittedDebugJob(job_id="job-unmapped", case_id=case.case_id, status="completed"))
+
+    assert client.fields == {}
+    audit = repository.get_spreadsheet_writeback_audit("job-unmapped")
+    assert audit is not None
+    assert audit.status == "skipped"
+    assert audit.row_id == ""
+    assert audit.report_url == "https://debug-agent.local/jobs/job-unmapped/report"
+    assert audit.fields == {}
+    assert audit.error_message == "spreadsheet row mapping not found"
 
 
 def test_completion_hook_records_failed_writeback_audit_before_reraising() -> None:

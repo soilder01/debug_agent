@@ -73,13 +73,29 @@ def make_spreadsheet_writeback_completion_hook(
     def on_job_completed(job: SubmittedDebugJob) -> None:
         if job.status != "completed":
             return
+        report_url = f"{base_url}/jobs/{job.job_id}/report"
         report = build_report_for_job(repository, job.job_id)
         if report is None:
+            repository.save_spreadsheet_writeback_audit(
+                job_id=job.job_id,
+                status="skipped",
+                row_id="",
+                report_url=report_url,
+                fields={},
+                error_message="debug report could not be rebuilt",
+            )
             return
         mapping = repository.get_spreadsheet_row_mapping_by_job_id(job.job_id)
         if mapping is None:
+            repository.save_spreadsheet_writeback_audit(
+                job_id=job.job_id,
+                status="skipped",
+                row_id="",
+                report_url=report_url,
+                fields={},
+                error_message="spreadsheet row mapping not found",
+            )
             return
-        report_url = f"{base_url}/jobs/{job.job_id}/report"
         try:
             result = write_report_to_spreadsheet_row(
                 client=client,
