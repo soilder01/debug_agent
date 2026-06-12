@@ -40,6 +40,7 @@ import { ReportPanel } from "../reports/ReportPanel";
 
 const jobListLimit = 50;
 const caseListLimit = 50;
+const defaultSpreadsheetUrl = "https://bytedance.larkoffice.com/sheets/NLews6C2ShValptV7IdcJ62tnWc?sheet=qJAomX";
 const defaultSpreadsheetId = "NLews6C2ShValptV7IdcJ62tnWc";
 const defaultSheetId = "qJAomX";
 
@@ -60,6 +61,7 @@ export function App() {
   const [csvImportResult, setCsvImportResult] = useState<CsvImportResponse | null>(null);
   const [spreadsheetRowsJson, setSpreadsheetRowsJson] = useState("");
   const [spreadsheetImportResult, setSpreadsheetImportResult] = useState<SpreadsheetRowImportResponse | null>(null);
+  const [spreadsheetUrl, setSpreadsheetUrl] = useState(defaultSpreadsheetUrl);
   const [spreadsheetId, setSpreadsheetId] = useState(defaultSpreadsheetId);
   const [sheetId, setSheetId] = useState(defaultSheetId);
   const [spreadsheetSyncResult, setSpreadsheetSyncResult] = useState<SpreadsheetSyncResponse | null>(null);
@@ -306,6 +308,17 @@ export function App() {
     }
   }
 
+  function useSpreadsheetUrl() {
+    setError("");
+    try {
+      const reference = parseLarkSpreadsheetUrl(spreadsheetUrl);
+      setSpreadsheetId(reference.spreadsheetId);
+      setSheetId(reference.sheetId);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
   async function syncSpreadsheet() {
     setError("");
     try {
@@ -499,6 +512,15 @@ export function App() {
       </section>
       <section>
         <h2>Spreadsheet Sync</h2>
+        <label htmlFor="lark-spreadsheet-url">Lark spreadsheet URL</label>
+        <input
+          id="lark-spreadsheet-url"
+          value={spreadsheetUrl}
+          onChange={(event) => setSpreadsheetUrl(event.target.value)}
+        />
+        <button type="button" onClick={useSpreadsheetUrl}>
+          Use spreadsheet URL
+        </button>
         <label htmlFor="spreadsheet-id">Spreadsheet ID</label>
         <input
           id="spreadsheet-id"
@@ -754,4 +776,17 @@ function formatJobTimestamp(timestamp: string): string {
 
 function padDatePart(value: number): string {
   return String(value).padStart(2, "0");
+}
+
+function parseLarkSpreadsheetUrl(value: string): { spreadsheetId: string; sheetId: string } {
+  const parsed = new URL(value);
+  const pathParts = parsed.pathname.split("/").filter(Boolean);
+  if (pathParts.length < 2 || pathParts[0] !== "sheets") {
+    throw new Error("Lark spreadsheet URL must contain /sheets/{spreadsheet_id}");
+  }
+  const sheetId = parsed.searchParams.get("sheet") ?? "";
+  if (!sheetId) {
+    throw new Error("Lark spreadsheet URL must include a sheet query parameter");
+  }
+  return { spreadsheetId: pathParts[1], sheetId };
 }

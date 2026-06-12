@@ -907,6 +907,19 @@ describe("App", () => {
     expect(screen.getByText("job-synced-sheet-1：created")).toBeInTheDocument();
   });
 
+  it("parses a Lark spreadsheet URL into sync identifiers", async () => {
+    render(<App />);
+    fireEvent.change(screen.getByLabelText("Lark spreadsheet URL"), {
+      target: {
+        value: "https://bytedance.larkoffice.com/sheets/NLews6C2ShValptV7IdcJ62tnWc?sheet=qJAomX"
+      }
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Use spreadsheet URL" }));
+
+    expect(screen.getByLabelText("Spreadsheet ID")).toHaveValue("NLews6C2ShValptV7IdcJ62tnWc");
+    expect(screen.getByLabelText("Sheet ID")).toHaveValue("qJAomX");
+  });
+
   it("loads imported case summaries and can copy them into batch submission", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
