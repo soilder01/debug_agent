@@ -417,6 +417,19 @@ describe("App", () => {
           }),
           { status: 200, headers: { "Content-Type": "application/json" } }
         )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            row_id: "row-42",
+            fields: {
+              "错误原因": "模型无法稳定识别涂改后的最终答案。",
+              "评估问题反馈": "复测稳定性：unstable",
+              "分析报告链接": `${window.location.origin}/api/jobs/job-report-1/report`
+            }
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
       );
 
     render(<App />);
@@ -430,6 +443,18 @@ describe("App", () => {
     expect(screen.getByText("复测稳定性：unstable")).toBeInTheDocument();
     expect(screen.getByText("错误原因")).toBeInTheDocument();
     expect(screen.getByText("模型无法稳定识别涂改后的最终答案。")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Write report to spreadsheet" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-report-1/spreadsheet-writeback", {
+      body: JSON.stringify({ report_url: `${window.location.origin}/api/jobs/job-report-1/report` }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST"
+    });
+    expect(await screen.findByText("Spreadsheet writeback row：row-42")).toBeInTheDocument();
+    expect(
+      screen.getByText(`分析报告链接：${window.location.origin}/api/jobs/job-report-1/report`)
+    ).toBeInTheDocument();
   });
 
   it("loads failed debug jobs with a status filter", async () => {

@@ -21,12 +21,14 @@ import {
   submitBatchDebugJobs,
   submitDebugJob,
   type SpreadsheetRowImportResponse,
+  type SpreadsheetWritebackResult,
   stopWorker,
   type DebugJobStatus,
   type DebugReport,
   type ExperimentEvidence,
   type SubmittedDebugJob,
-  type WorkerStatus
+  type WorkerStatus,
+  writeJobReportToSpreadsheet
 } from "../api/client";
 import { CaseDetail } from "../cases/CaseDetail";
 import { EvidenceDetail } from "../evidence/EvidenceDetail";
@@ -54,6 +56,7 @@ export function App() {
   const [csvImportResult, setCsvImportResult] = useState<CsvImportResponse | null>(null);
   const [spreadsheetRowsJson, setSpreadsheetRowsJson] = useState("");
   const [spreadsheetImportResult, setSpreadsheetImportResult] = useState<SpreadsheetRowImportResponse | null>(null);
+  const [spreadsheetWritebackResult, setSpreadsheetWritebackResult] = useState<SpreadsheetWritebackResult | null>(null);
   const [workerStatus, setWorkerStatus] = useState<WorkerStatus | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<ExperimentEvidence | null>(null);
   const [importedCaseTotalCount, setImportedCaseTotalCount] = useState(0);
@@ -130,6 +133,7 @@ export function App() {
       setSubmittedJob(await submitDebugJob("handwrite233"));
       setJobStatus(null);
       setReport(null);
+      setSpreadsheetWritebackResult(null);
       setSelectedEvidence(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
@@ -180,6 +184,7 @@ export function App() {
       setSubmittedJob(await submitDebugJob(caseId));
       setJobStatus(null);
       setReport(null);
+      setSpreadsheetWritebackResult(null);
       setSelectedEvidence(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
@@ -235,6 +240,7 @@ export function App() {
     setSubmittedJob(job);
     setJobStatus("evidence_error_counts" in job ? job : null);
     setReport(null);
+    setSpreadsheetWritebackResult(null);
     setSelectedEvidence(null);
   }
 
@@ -335,6 +341,7 @@ export function App() {
     setError("");
     try {
       setReport(await fetchJobReport(currentJob.job_id));
+      setSpreadsheetWritebackResult(null);
       setSelectedEvidence(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
@@ -345,6 +352,19 @@ export function App() {
     setError("");
     try {
       setSelectedEvidence(await fetchJobEvidenceDetail(jobId, evidenceId));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
+  async function writeCurrentReportToSpreadsheet() {
+    if (!report?.job_id) {
+      return;
+    }
+    setError("");
+    try {
+      const reportUrl = `${window.location.origin}/api/jobs/${report.job_id}/report`;
+      setSpreadsheetWritebackResult(await writeJobReportToSpreadsheet(report.job_id, reportUrl));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
     }
@@ -636,6 +656,26 @@ export function App() {
           />
           <EvidenceDetail evidence={selectedEvidence} />
           <ReportPanel report={report} />
+          {report.job_id ? (
+            <section>
+              <h2>Spreadsheet Writeback</h2>
+              <button type="button" onClick={() => void writeCurrentReportToSpreadsheet()}>
+                Write report to spreadsheet
+              </button>
+              {spreadsheetWritebackResult ? (
+                <>
+                  <p>Spreadsheet writeback row：{spreadsheetWritebackResult.row_id}</p>
+                  <ul aria-label="Spreadsheet writeback fields">
+                    {Object.entries(spreadsheetWritebackResult.fields).map(([key, value]) => (
+                      <li key={key}>
+                        {key}：{value}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
+            </section>
+          ) : null}
         </>
       ) : submittedJob ? null : (
         <p>点击按钮运行第一条可验证 debug 闭环。</p>

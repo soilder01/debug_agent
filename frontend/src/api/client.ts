@@ -190,6 +190,11 @@ export type SpreadsheetRowImportResponse = {
   rejected_rows: SpreadsheetRejectedRow[];
 };
 
+export type SpreadsheetWritebackResult = {
+  row_id: string;
+  fields: Record<string, string>;
+};
+
 export type ExperimentEvidence = {
   evidence_id: string;
   step_name: string;
@@ -326,6 +331,21 @@ export async function fetchJobReport(jobId: string): Promise<DebugReport> {
     throw new Error(`Failed to fetch job report ${jobId}: ${response.status}`);
   }
   return (await response.json()) as DebugReport;
+}
+
+export async function writeJobReportToSpreadsheet(
+  jobId: string,
+  reportUrl: string
+): Promise<SpreadsheetWritebackResult> {
+  const response = await fetch(`/api/jobs/${jobId}/spreadsheet-writeback`, {
+    body: JSON.stringify({ report_url: reportUrl }),
+    headers: { "Content-Type": "application/json" },
+    method: "POST"
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to write job report ${jobId}: ${response.status}`);
+  }
+  return (await response.json()) as SpreadsheetWritebackResult;
 }
 
 export async function fetchDebugJobs(
