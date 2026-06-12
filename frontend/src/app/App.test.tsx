@@ -1267,6 +1267,34 @@ describe("App", () => {
     expect(await screen.findByText("job-succeeded-writeback-1：succeeded｜row 9｜无错误")).toBeInTheDocument();
   });
 
+  it("shows update timestamps in spreadsheet writeback audit rows", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          audits: [
+            {
+              job_id: "job-failed-writeback-1",
+              status: "failed",
+              row_id: "7",
+              report_url: "https://debug-agent.local/jobs/job-failed-writeback-1/report",
+              fields: {},
+              error_message: "permission denied",
+              created_at: "2026-06-12T06:00:00+00:00",
+              updated_at: "2026-06-12T06:00:01+00:00"
+            }
+          ],
+          total_count: 1
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load failed writeback audits" }));
+
+    expect(await screen.findByText("updated 2026-06-12T06:00:01+00:00")).toBeInTheDocument();
+  });
+
   it("loads more spreadsheet writeback audits using the current status filter", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
