@@ -727,6 +727,7 @@ export function App() {
                   <span>updated {audit.updated_at}</span>
                   <span>Retry eligibility：{audit.status === "failed" ? "available" : "unavailable"}</span>
                   <span>Retry reason：{writebackRetryReason(audit.status, audit.error_message)}</span>
+                  <span>Writeback audit fields：{Object.keys(audit.fields).length}</span>
                   {Object.entries(audit.fields).map(([key, value]) => (
                     <span key={key}>
                       Writeback audit field：{key}={value}
