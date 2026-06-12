@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from debug_agent.settings import ArkSettings, DebugAgentSettings, load_env_file
+from debug_agent.settings import ArkSettings, DebugAgentSettings, LarkSpreadsheetSettings, load_env_file
 
 
 def test_debug_agent_settings_default_to_in_memory_database(monkeypatch) -> None:
@@ -77,3 +77,39 @@ def test_ark_settings_can_be_built_from_env_file(monkeypatch) -> None:
         assert settings.seed2_pro_model_id == "pro-model"
     finally:
         env_file.unlink(missing_ok=True)
+
+
+def test_lark_spreadsheet_settings_are_optional(monkeypatch) -> None:
+    monkeypatch.delenv("LARK_SPREADSHEET_URL", raising=False)
+    monkeypatch.delenv("LARK_SHEET_ID", raising=False)
+
+    settings = LarkSpreadsheetSettings.from_env()
+
+    assert settings.spreadsheet_url == ""
+    assert settings.sheet_id == ""
+    assert settings.reference is None
+
+
+def test_lark_spreadsheet_settings_parse_default_reference(monkeypatch) -> None:
+    monkeypatch.setenv(
+        "LARK_SPREADSHEET_URL",
+        "https://bytedance.larkoffice.com/sheets/N935sK3fzhGDiNtwT3LcRLDTnvb?sheet=wAKHdf",
+    )
+    monkeypatch.delenv("LARK_SHEET_ID", raising=False)
+
+    settings = LarkSpreadsheetSettings.from_env()
+
+    assert settings.reference is not None
+    assert settings.reference.spreadsheet_id == "N935sK3fzhGDiNtwT3LcRLDTnvb"
+    assert settings.reference.sheet_id == "wAKHdf"
+
+
+def test_lark_spreadsheet_settings_allow_sheet_id_override(monkeypatch) -> None:
+    monkeypatch.setenv("LARK_SPREADSHEET_URL", "N935sK3fzhGDiNtwT3LcRLDTnvb")
+    monkeypatch.setenv("LARK_SHEET_ID", "wAKHdf")
+
+    settings = LarkSpreadsheetSettings.from_env()
+
+    assert settings.reference is not None
+    assert settings.reference.spreadsheet_id == "N935sK3fzhGDiNtwT3LcRLDTnvb"
+    assert settings.reference.sheet_id == "wAKHdf"

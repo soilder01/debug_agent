@@ -3,6 +3,8 @@ from pathlib import Path
 
 from pydantic import BaseModel, SecretStr
 
+from debug_agent.spreadsheets.lark import LarkSpreadsheetReference, parse_lark_spreadsheet_reference
+
 _LOCAL_ENV_LOADED = False
 
 
@@ -91,3 +93,19 @@ class ArkSettings(BaseModel):
                 "ARK_SEED2_PRO_MODEL_ID", cls.model_fields["seed2_pro_model_id"].default
             ),
         )
+
+
+class LarkSpreadsheetSettings(BaseModel):
+    spreadsheet_url: str = ""
+    sheet_id: str = ""
+    reference: LarkSpreadsheetReference | None = None
+
+    @classmethod
+    def from_env(cls) -> "LarkSpreadsheetSettings":
+        load_local_env()
+        spreadsheet_url = os.environ.get("LARK_SPREADSHEET_URL", "")
+        sheet_id = os.environ.get("LARK_SHEET_ID", "")
+        reference = None
+        if spreadsheet_url:
+            reference = parse_lark_spreadsheet_reference(spreadsheet_url, sheet_id=sheet_id or None)
+        return cls(spreadsheet_url=spreadsheet_url, sheet_id=sheet_id, reference=reference)
