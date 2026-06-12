@@ -1098,6 +1098,34 @@ describe("App", () => {
     expect(await screen.findByText("Retry eligibility：available")).toBeInTheDocument();
   });
 
+  it("shows retry reason for failed spreadsheet writeback audits", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          audits: [
+            {
+              job_id: "job-failed-writeback-1",
+              status: "failed",
+              row_id: "7",
+              report_url: "https://debug-agent.local/jobs/job-failed-writeback-1/report",
+              fields: {},
+              error_message: "permission denied",
+              created_at: "2026-06-12T06:00:00+00:00",
+              updated_at: "2026-06-12T06:00:01+00:00"
+            }
+          ],
+          total_count: 1
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load failed writeback audits" }));
+
+    expect(await screen.findByText("Retry reason：last writeback failed")).toBeInTheDocument();
+  });
+
   it("loads succeeded spreadsheet writeback audits for drilldown", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(
@@ -1155,6 +1183,34 @@ describe("App", () => {
 
     expect(await screen.findByText("job-succeeded-writeback-1：succeeded｜row 9｜无错误")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Retry writeback job-succeeded-writeback-1" })).not.toBeInTheDocument();
+  });
+
+  it("shows retry reason for succeeded spreadsheet writeback audits", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          audits: [
+            {
+              job_id: "job-succeeded-writeback-1",
+              status: "succeeded",
+              row_id: "9",
+              report_url: "https://debug-agent.local/jobs/job-succeeded-writeback-1/report",
+              fields: { 错误原因: "model_weakness" },
+              error_message: "",
+              created_at: "2026-06-12T06:00:00+00:00",
+              updated_at: "2026-06-12T06:00:01+00:00"
+            }
+          ],
+          total_count: 1
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load succeeded writeback audits" }));
+
+    expect(await screen.findByText("Retry reason：already succeeded")).toBeInTheDocument();
   });
 
   it("opens a job from a spreadsheet writeback audit row", async () => {
@@ -1573,6 +1629,34 @@ describe("App", () => {
     await userEvent.click(screen.getByRole("button", { name: "Load skipped writeback audits" }));
 
     expect(await screen.findByText("Retry eligibility：unavailable")).toBeInTheDocument();
+  });
+
+  it("shows retry reason for skipped spreadsheet writeback audits", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          audits: [
+            {
+              job_id: "job-skipped-writeback-1",
+              status: "skipped",
+              row_id: "",
+              report_url: "https://debug-agent.local/jobs/job-skipped-writeback-1/report",
+              fields: {},
+              error_message: "spreadsheet row mapping not found",
+              created_at: "2026-06-12T06:00:00+00:00",
+              updated_at: "2026-06-12T06:00:01+00:00"
+            }
+          ],
+          total_count: 1
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load skipped writeback audits" }));
+
+    expect(await screen.findByText("Retry reason：missing prerequisites")).toBeInTheDocument();
   });
 
   it("parses a Lark spreadsheet URL into sync identifiers", async () => {
