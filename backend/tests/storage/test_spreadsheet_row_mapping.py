@@ -186,6 +186,42 @@ def test_repository_lists_spreadsheet_writeback_audits_with_status_filter_and_pa
     audits = repository.list_spreadsheet_writeback_audits(status="failed", limit=1, offset=1)
 
     assert repository.count_spreadsheet_writeback_audits(status="failed") == 2
-    assert [audit.job_id for audit in audits] == ["job-3"]
+    assert [audit.job_id for audit in audits] == ["job-1"]
     assert audits[0].status == "failed"
-    assert audits[0].fields == {"index": "3"}
+    assert audits[0].fields == {"index": "1"}
+
+
+def test_repository_lists_spreadsheet_writeback_audits_newest_updates_first() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    repository.save_spreadsheet_writeback_audit(
+        job_id="job-old",
+        status="failed",
+        row_id="7",
+        report_url="https://debug-agent.local/jobs/job-old/report",
+        fields={"attempt": "1"},
+        error_message="permission denied",
+    )
+    repository.save_spreadsheet_writeback_audit(
+        job_id="job-new",
+        status="failed",
+        row_id="8",
+        report_url="https://debug-agent.local/jobs/job-new/report",
+        fields={"attempt": "1"},
+        error_message="permission denied",
+    )
+    repository.save_spreadsheet_writeback_audit(
+        job_id="job-old",
+        status="succeeded",
+        row_id="7",
+        report_url="https://debug-agent.local/jobs/job-old/report",
+        fields={"attempt": "2"},
+        error_message="",
+    )
+
+    audits = repository.list_spreadsheet_writeback_audits(limit=2)
+
+    assert [audit.job_id for audit in audits] == ["job-old", "job-new"]
+    assert audits[0].status == "succeeded"
+    assert audits[0].fields == {"attempt": "2"}

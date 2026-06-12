@@ -221,7 +221,7 @@ class DebugJobRepository:
         with self._lock:
             with self._session_factory() as session:
                 query = select(SpreadsheetWritebackAuditRow).order_by(
-                    SpreadsheetWritebackAuditRow.updated_at,
+                    desc(SpreadsheetWritebackAuditRow.updated_at),
                     SpreadsheetWritebackAuditRow.job_id,
                 )
                 if status is not None:
