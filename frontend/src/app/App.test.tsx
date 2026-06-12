@@ -1213,6 +1213,40 @@ describe("App", () => {
     expect(await screen.findByText("Retry reason：already succeeded")).toBeInTheDocument();
   });
 
+  it("shows persisted fields for succeeded spreadsheet writeback audits", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          audits: [
+            {
+              job_id: "job-succeeded-writeback-1",
+              status: "succeeded",
+              row_id: "9",
+              report_url: "https://debug-agent.local/jobs/job-succeeded-writeback-1/report",
+              fields: {
+                错误原因: "model_weakness",
+                分析报告链接: "https://debug-agent.local/jobs/job-succeeded-writeback-1/report"
+              },
+              error_message: "",
+              created_at: "2026-06-12T06:00:00+00:00",
+              updated_at: "2026-06-12T06:00:01+00:00"
+            }
+          ],
+          total_count: 1
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load succeeded writeback audits" }));
+
+    expect(await screen.findByText("Writeback audit field：错误原因=model_weakness")).toBeInTheDocument();
+    expect(
+      screen.getByText("Writeback audit field：分析报告链接=https://debug-agent.local/jobs/job-succeeded-writeback-1/report")
+    ).toBeInTheDocument();
+  });
+
   it("opens a job from a spreadsheet writeback audit row", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
