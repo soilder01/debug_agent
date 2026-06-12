@@ -19,7 +19,7 @@ from debug_agent.models.fake import FakeModelAdapter
 from debug_agent.reports.generator import DebugReport, generate_initial_report
 from debug_agent.reports.job_report import build_report_for_job
 from debug_agent.settings import DebugAgentSettings, LarkSpreadsheetSettings
-from debug_agent.spreadsheets.lark import LarkCliSheetsTransport, LarkSpreadsheetClient
+from debug_agent.spreadsheets.lark import LarkCliError, LarkCliSheetsTransport, LarkSpreadsheetClient
 from debug_agent.spreadsheets.writeback import (
     SpreadsheetWritebackClient,
     SpreadsheetWritebackResult,
@@ -318,15 +318,18 @@ def import_spreadsheet_rows(request: SpreadsheetRowImportRequest) -> Spreadsheet
 def sync_spreadsheet(request: SpreadsheetSyncRequest) -> SpreadsheetSyncResult:
     if spreadsheet_sync_client is None:
         raise HTTPException(status_code=503, detail="Spreadsheet sync client is not configured")
-    return sync_spreadsheet_rows(
-        client=spreadsheet_sync_client,
-        spreadsheet_id=request.spreadsheet_id,
-        sheet_id=request.sheet_id,
-        repository=job_repository,
-        job_service=job_service,
-        create_jobs=request.create_jobs,
-        baseline_trials=request.baseline_trials,
-    )
+    try:
+        return sync_spreadsheet_rows(
+            client=spreadsheet_sync_client,
+            spreadsheet_id=request.spreadsheet_id,
+            sheet_id=request.sheet_id,
+            repository=job_repository,
+            job_service=job_service,
+            create_jobs=request.create_jobs,
+            baseline_trials=request.baseline_trials,
+        )
+    except LarkCliError as exc:
+        raise _lark_spreadsheet_error(exc) from exc
 
 
 @router.post("/jobs/run-next")
@@ -407,13 +410,16 @@ def write_job_report_to_spreadsheet(job_id: str, request: JobReportWritebackRequ
     report = build_report_for_job(job_repository, job_id)
     if report is None:
         raise HTTPException(status_code=404, detail=f"Debug report not found for job: {job_id}")
-    result = write_report_for_job(
-        repository=job_repository,
-        client=spreadsheet_writeback_client,
-        job_id=job_id,
-        report=report,
-        report_url=request.report_url,
-    )
+    try:
+        result = write_report_for_job(
+            repository=job_repository,
+            client=spreadsheet_writeback_client,
+            job_id=job_id,
+            report=report,
+            report_url=request.report_url,
+        )
+    except LarkCliError as exc:
+        raise _lark_spreadsheet_error(exc) from exc
     if result is None:
         raise HTTPException(status_code=404, detail=f"Spreadsheet row mapping not found for job: {job_id}")
     return result
@@ -443,6 +449,10 @@ def _build_job_status(job: DebugJobRow) -> DebugJobStatus:
         evidence_ids=job_repository.list_evidence_ids(job.job_id),
         evidence_error_counts=evidence_error_counts,
     )
+
+
+def _lark_spreadsheet_error(exc: LarkCliError) -> HTTPException:
+    return HTTPException(status_code=502, detail=f"Lark spreadsheet operation failed: {exc}")
 
 
 @router.get("/cases/{case_id}/evidence/{evidence_id:path}")

@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from debug_agent.api import routes
 from debug_agent.main import app
+from debug_agent.spreadsheets.lark import LarkCliError
 from debug_agent.spreadsheets.sync import SpreadsheetSourceRow
 
 
@@ -17,6 +18,11 @@ class StaticSpreadsheetClient:
         self.requested_spreadsheet_id = spreadsheet_id
         self.requested_sheet_id = sheet_id
         return self.rows
+
+
+class FailingSpreadsheetClient:
+    def list_rows(self, spreadsheet_id: str, sheet_id: str) -> list[SpreadsheetSourceRow]:
+        raise LarkCliError("missing lark spreadsheet permission")
 
 
 def test_spreadsheet_sync_api_imports_rows_creates_jobs_and_saves_mapping(monkeypatch) -> None:
@@ -83,3 +89,19 @@ def test_spreadsheet_sync_api_returns_503_when_client_is_not_configured(monkeypa
 
     assert response.status_code == 503
     assert response.json()["detail"] == "Spreadsheet sync client is not configured"
+
+
+def test_spreadsheet_sync_api_maps_lark_transport_failures(monkeypatch) -> None:
+    client = TestClient(app)
+    monkeypatch.setattr(routes, "spreadsheet_sync_client", FailingSpreadsheetClient(), raising=False)
+
+    response = client.post(
+        "/spreadsheets/sync",
+        json={
+            "spreadsheet_id": "spreadsheet-api-1",
+            "sheet_id": "sheet-api-1",
+        },
+    )
+
+    assert response.status_code == 502
+    assert response.json()["detail"] == "Lark spreadsheet operation failed: missing lark spreadsheet permission"

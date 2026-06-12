@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 
 from debug_agent.api import routes
 from debug_agent.main import app
+from debug_agent.spreadsheets.lark import LarkCliError
 
 
 class RecordingWritebackClient:
@@ -16,6 +17,11 @@ class RecordingWritebackClient:
         self.sheet_id = sheet_id
         self.row_id = row_id
         self.fields = fields
+
+
+class FailingWritebackClient:
+    def update_row(self, spreadsheet_id: str, sheet_id: str, row_id: str, fields: dict[str, str]) -> None:
+        raise LarkCliError("sheet header not found")
 
 
 def test_job_report_writeback_api_updates_mapped_spreadsheet_row(monkeypatch) -> None:
@@ -79,3 +85,26 @@ def test_job_report_writeback_api_returns_503_when_client_is_not_configured(monk
 
     assert response.status_code == 503
     assert response.json()["detail"] == "Spreadsheet writeback client is not configured"
+
+
+def test_job_report_writeback_api_maps_lark_transport_failures(monkeypatch) -> None:
+    client = TestClient(app)
+    monkeypatch.setattr(routes, "spreadsheet_writeback_client", FailingWritebackClient(), raising=False)
+    submit_response = client.post("/cases/handwrite233/debug-jobs?auto_run=true&baseline_trials=5")
+    assert submit_response.status_code == 202
+    job_id = submit_response.json()["job_id"]
+    routes.job_repository.save_spreadsheet_row_mapping(
+        spreadsheet_id="spreadsheet-1",
+        sheet_id="sheet-1",
+        row_id="7",
+        case_id="handwrite233",
+        job_id=job_id,
+    )
+
+    response = client.post(
+        f"/jobs/{job_id}/spreadsheet-writeback",
+        json={"report_url": f"https://debug-agent.local/jobs/{job_id}/report"},
+    )
+
+    assert response.status_code == 502
+    assert response.json()["detail"] == "Lark spreadsheet operation failed: sheet header not found"
