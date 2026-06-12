@@ -34,6 +34,7 @@ def load_local_env() -> None:
 class DebugAgentSettings(BaseModel):
     database_url: str = "sqlite+pysqlite:///:memory:"
     image_artifact_dir: Path = Path("artifacts/image-crops")
+    report_base_url: str = "http://localhost:8000"
 
     @classmethod
     def from_env(cls) -> "DebugAgentSettings":
@@ -49,6 +50,10 @@ class DebugAgentSettings(BaseModel):
                     "DEBUG_AGENT_IMAGE_ARTIFACT_DIR",
                     str(default_image_artifact_dir),
                 )
+            ),
+            report_base_url=os.environ.get(
+                "DEBUG_AGENT_REPORT_BASE_URL",
+                cls.model_fields["report_base_url"].default,
             ),
         )
 

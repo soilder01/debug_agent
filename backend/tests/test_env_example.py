@@ -43,3 +43,9 @@ def test_env_example_contains_lark_spreadsheet_connectivity_fixture() -> None:
     )
     assert values["LARK_SHEET_ID"] == "qJAomX"
     assert values["LARK_CLI_TIMEOUT_SECONDS"] == "60"
+
+
+def test_env_example_contains_report_base_url_for_writeback_links() -> None:
+    values = _read_env_example()
+
+    assert values["DEBUG_AGENT_REPORT_BASE_URL"] == "http://localhost:8000"

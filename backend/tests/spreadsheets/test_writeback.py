@@ -1,3 +1,7 @@
+from debug_agent.cases.fixtures import load_fixture_case
+from debug_agent.experiments.runner import ExperimentEvidence
+from debug_agent.judging.runner import JudgeResult
+from debug_agent.jobs.service import SubmittedDebugJob
 from debug_agent.reports.generator import (
     DebugReport,
     ExperimentSummary,
@@ -6,6 +10,7 @@ from debug_agent.reports.generator import (
 )
 from debug_agent.spreadsheets.writeback import (
     build_report_writeback_fields,
+    make_spreadsheet_writeback_completion_hook,
     write_report_for_job,
     write_report_to_spreadsheet_row,
 )
@@ -107,6 +112,67 @@ def test_write_report_for_job_returns_none_when_mapping_is_missing() -> None:
     )
 
     assert result is None
+    assert client.fields == {}
+
+
+def test_completion_hook_builds_report_and_writes_mapped_row() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    case = load_fixture_case("handwrite233").model_copy(update={"case_id": "auto-writeback-case"})
+    repository.save_case(case)
+    repository.create_job(job_id="job-1", case_id=case.case_id, baseline_trials=2)
+    repository.save_evidence(
+        job_id="job-1",
+        case_id=case.case_id,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="auto-writeback-case:baseline:0",
+                step_name="baseline_replay",
+                trial=0,
+                raw_output=case.predictions[0].raw_output,
+                judge=JudgeResult(score=0, reasons=["student_answer_mismatch"]),
+            )
+        ],
+    )
+    repository.mark_completed("job-1")
+    repository.save_spreadsheet_row_mapping(
+        spreadsheet_id="spreadsheet-1",
+        sheet_id="sheet-1",
+        row_id="7",
+        case_id=case.case_id,
+        job_id="job-1",
+    )
+    client = RecordingWritebackClient()
+    hook = make_spreadsheet_writeback_completion_hook(
+        repository=repository,
+        client=client,
+        report_base_url="https://debug-agent.local/",
+    )
+
+    hook(SubmittedDebugJob(job_id="job-1", case_id=case.case_id, status="completed"))
+
+    assert client.spreadsheet_id == "spreadsheet-1"
+    assert client.sheet_id == "sheet-1"
+    assert client.row_id == "7"
+    assert client.fields["分析报告链接"] == "https://debug-agent.local/jobs/job-1/report"
+    assert client.fields["错误原因"]
+    assert "复测稳定性：" in client.fields["评估问题反馈"]
+
+
+def test_completion_hook_skips_when_report_cannot_be_rebuilt() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    client = RecordingWritebackClient()
+    hook = make_spreadsheet_writeback_completion_hook(
+        repository=repository,
+        client=client,
+        report_base_url="https://debug-agent.local",
+    )
+
+    hook(SubmittedDebugJob(job_id="missing-job", case_id="missing-case", status="completed"))
+
     assert client.fields == {}
 
 

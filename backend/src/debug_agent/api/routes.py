@@ -23,6 +23,7 @@ from debug_agent.spreadsheets.lark import LarkCliError, LarkCliSheetsTransport, 
 from debug_agent.spreadsheets.writeback import (
     SpreadsheetWritebackClient,
     SpreadsheetWritebackResult,
+    make_spreadsheet_writeback_completion_hook,
     write_report_for_job,
 )
 from debug_agent.spreadsheets.sync import SpreadsheetClient, SpreadsheetSyncResult, sync_spreadsheet_rows
@@ -35,7 +36,6 @@ session_factory, engine = create_sqlite_session_factory(settings.database_url)
 ensure_database_schema(engine)
 job_repository = DebugJobRepository(session_factory)
 job_service = DebugJobService(job_repository, image_artifact_dir=settings.image_artifact_dir)
-job_worker = AsyncJobWorker(job_service)
 spreadsheet_writeback_client: SpreadsheetWritebackClient | None = None
 spreadsheet_sync_client: SpreadsheetClient | None = None
 lark_spreadsheet_settings = LarkSpreadsheetSettings.from_env()
@@ -58,7 +58,32 @@ def configure_spreadsheet_clients(lark_settings: LarkSpreadsheetSettings | None 
     spreadsheet_writeback_client = lark_client
 
 
+def build_job_worker(
+    *,
+    service: DebugJobService,
+    repository: DebugJobRepository,
+    writeback_client: SpreadsheetWritebackClient | None,
+    report_base_url: str,
+) -> AsyncJobWorker:
+    if writeback_client is None:
+        return AsyncJobWorker(service)
+    return AsyncJobWorker(
+        service,
+        on_job_completed=make_spreadsheet_writeback_completion_hook(
+            repository=repository,
+            client=writeback_client,
+            report_base_url=report_base_url,
+        ),
+    )
+
+
 configure_spreadsheet_clients(lark_spreadsheet_settings)
+job_worker = build_job_worker(
+    service=job_service,
+    repository=job_repository,
+    writeback_client=spreadsheet_writeback_client,
+    report_base_url=settings.report_base_url,
+)
 
 router = APIRouter()
 

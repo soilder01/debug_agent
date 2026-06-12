@@ -1,8 +1,11 @@
+from collections.abc import Callable
 from typing import Protocol
 
 from pydantic import BaseModel
 
+from debug_agent.jobs.service import SubmittedDebugJob
 from debug_agent.reports.generator import DebugReport
+from debug_agent.reports.job_report import build_report_for_job
 from debug_agent.storage.repository import DebugJobRepository
 
 
@@ -57,6 +60,31 @@ def write_report_for_job(
         report=report,
         report_url=report_url,
     )
+
+
+def make_spreadsheet_writeback_completion_hook(
+    *,
+    repository: DebugJobRepository,
+    client: SpreadsheetWritebackClient,
+    report_base_url: str,
+) -> Callable[[SubmittedDebugJob], None]:
+    base_url = report_base_url.rstrip("/")
+
+    def on_job_completed(job: SubmittedDebugJob) -> None:
+        if job.status != "completed":
+            return
+        report = build_report_for_job(repository, job.job_id)
+        if report is None:
+            return
+        write_report_for_job(
+            repository=repository,
+            client=client,
+            job_id=job.job_id,
+            report=report,
+            report_url=f"{base_url}/jobs/{job.job_id}/report",
+        )
+
+    return on_job_completed
 
 
 def _evaluation_feedback(report: DebugReport) -> str:
