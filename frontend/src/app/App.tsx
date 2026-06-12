@@ -419,8 +419,13 @@ export function App() {
     setError("");
     try {
       const reportUrl = audit.report_url || `${window.location.origin}/api/jobs/${audit.job_id}/report`;
-      setSpreadsheetWritebackResult(await writeJobReportToSpreadsheet(audit.job_id, reportUrl));
+      const result = await writeJobReportToSpreadsheet(audit.job_id, reportUrl);
+      setSpreadsheetWritebackResult(result);
       setSpreadsheetWritebackAudit(null);
+      if (activeWritebackAuditStatus) {
+        setSpreadsheetWritebackAuditList(await fetchSpreadsheetWritebackAudits(activeWritebackAuditStatus, jobListLimit));
+      }
+      setSpreadsheetWritebackAuditSummary(await fetchSpreadsheetWritebackAuditSummary());
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
     }
