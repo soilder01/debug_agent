@@ -211,6 +211,26 @@ def test_lark_cli_transport_subprocess_runner_uses_timeout(monkeypatch) -> None:
     assert captured_timeout == 60
 
 
+def test_lark_cli_transport_uses_configured_timeout(monkeypatch) -> None:
+    captured_timeout = 0
+
+    def fake_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        nonlocal captured_timeout
+        captured_timeout = int(kwargs["timeout"])
+        return subprocess.CompletedProcess(
+            args=args,
+            returncode=0,
+            stdout=json.dumps({"ok": True, "data": {"rows": []}}),
+            stderr="",
+        )
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    transport = LarkCliSheetsTransport(timeout_seconds=7)
+
+    assert transport.read_values("spreadsheet-1", "sheet-1") == []
+    assert captured_timeout == 7
+
+
 def test_lark_cli_transport_maps_subprocess_timeout(monkeypatch) -> None:
     def fake_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
         raise subprocess.TimeoutExpired(cmd=args, timeout=kwargs["timeout"])

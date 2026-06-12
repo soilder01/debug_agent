@@ -49,7 +49,9 @@ def configure_spreadsheet_clients(lark_settings: LarkSpreadsheetSettings | None 
         spreadsheet_writeback_client = None
         return
 
-    lark_client = LarkSpreadsheetClient(LarkCliSheetsTransport())
+    lark_client = LarkSpreadsheetClient(
+        LarkCliSheetsTransport(timeout_seconds=resolved_settings.lark_cli_timeout_seconds)
+    )
     spreadsheet_sync_client = lark_client
     spreadsheet_writeback_client = lark_client
 

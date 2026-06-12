@@ -42,3 +42,4 @@ def test_env_example_contains_lark_spreadsheet_connectivity_fixture() -> None:
         == "https://bytedance.larkoffice.com/sheets/NLews6C2ShValptV7IdcJ62tnWc?sheet=qJAomX"
     )
     assert values["LARK_SHEET_ID"] == "qJAomX"
+    assert values["LARK_CLI_TIMEOUT_SECONDS"] == "60"

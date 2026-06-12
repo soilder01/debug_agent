@@ -39,8 +39,9 @@ class LarkCliSheetsTransport:
         *,
         command_runner: CommandRunner | None = None,
         read_range: str = "A1:Z500",
+        timeout_seconds: int = DEFAULT_LARK_CLI_TIMEOUT_SECONDS,
     ) -> None:
-        self._command_runner = command_runner or _run_lark_cli
+        self._command_runner = command_runner or _subprocess_lark_cli_runner(timeout_seconds)
         self._read_range = read_range
 
     def read_values(self, spreadsheet_id: str, sheet_id: str) -> list[list[object]]:
@@ -159,7 +160,18 @@ def _first_non_empty_row_index(rows: list[list[object]]) -> int | None:
     return None
 
 
-def _run_lark_cli(args: list[str], stdin: str | None = None) -> str:
+def _subprocess_lark_cli_runner(timeout_seconds: int) -> CommandRunner:
+    def run(args: list[str], stdin: str | None = None) -> str:
+        return _run_lark_cli(args=args, stdin=stdin, timeout_seconds=timeout_seconds)
+
+    return run
+
+
+def _run_lark_cli(
+    args: list[str],
+    stdin: str | None = None,
+    timeout_seconds: int = DEFAULT_LARK_CLI_TIMEOUT_SECONDS,
+) -> str:
     try:
         completed = subprocess.run(
             args,
@@ -167,10 +179,10 @@ def _run_lark_cli(args: list[str], stdin: str | None = None) -> str:
             capture_output=True,
             check=False,
             text=True,
-            timeout=DEFAULT_LARK_CLI_TIMEOUT_SECONDS,
+            timeout=timeout_seconds,
         )
     except subprocess.TimeoutExpired as exc:
-        raise LarkCliError(f"lark-cli timed out after {DEFAULT_LARK_CLI_TIMEOUT_SECONDS} seconds") from exc
+        raise LarkCliError(f"lark-cli timed out after {timeout_seconds} seconds") from exc
     if completed.returncode != 0:
         message = completed.stderr.strip() or completed.stdout.strip() or f"lark-cli exited {completed.returncode}"
         raise LarkCliError(message)

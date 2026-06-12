@@ -98,6 +98,7 @@ class ArkSettings(BaseModel):
 class LarkSpreadsheetSettings(BaseModel):
     spreadsheet_url: str = ""
     sheet_id: str = ""
+    lark_cli_timeout_seconds: int = 60
     reference: LarkSpreadsheetReference | None = None
 
     @classmethod
@@ -105,7 +106,18 @@ class LarkSpreadsheetSettings(BaseModel):
         load_local_env()
         spreadsheet_url = os.environ.get("LARK_SPREADSHEET_URL", "")
         sheet_id = os.environ.get("LARK_SHEET_ID", "")
+        lark_cli_timeout_seconds = int(
+            os.environ.get(
+                "LARK_CLI_TIMEOUT_SECONDS",
+                str(cls.model_fields["lark_cli_timeout_seconds"].default),
+            )
+        )
         reference = None
         if spreadsheet_url:
             reference = parse_lark_spreadsheet_reference(spreadsheet_url, sheet_id=sheet_id or None)
-        return cls(spreadsheet_url=spreadsheet_url, sheet_id=sheet_id, reference=reference)
+        return cls(
+            spreadsheet_url=spreadsheet_url,
+            sheet_id=sheet_id,
+            lark_cli_timeout_seconds=lark_cli_timeout_seconds,
+            reference=reference,
+        )

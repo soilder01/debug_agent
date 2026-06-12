@@ -113,3 +113,12 @@ def test_lark_spreadsheet_settings_allow_sheet_id_override(monkeypatch) -> None:
     assert settings.reference is not None
     assert settings.reference.spreadsheet_id == "N935sK3fzhGDiNtwT3LcRLDTnvb"
     assert settings.reference.sheet_id == "wAKHdf"
+
+
+def test_lark_spreadsheet_settings_read_cli_timeout_from_env(monkeypatch) -> None:
+    monkeypatch.delenv("LARK_SPREADSHEET_URL", raising=False)
+    monkeypatch.setenv("LARK_CLI_TIMEOUT_SECONDS", "120")
+
+    settings = LarkSpreadsheetSettings.from_env()
+
+    assert settings.lark_cli_timeout_seconds == 120
