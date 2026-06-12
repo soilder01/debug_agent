@@ -43,6 +43,7 @@ import {
 import { CaseDetail } from "../cases/CaseDetail";
 import { EvidenceDetail } from "../evidence/EvidenceDetail";
 import { ExperimentTimeline } from "../experiments/ExperimentTimeline";
+import { CSVImportResultPanel } from "../imports/CSVImportResultPanel";
 import { JSONLImportResultPanel } from "../imports/JSONLImportResultPanel";
 import { JobStatusPanel } from "../jobs/JobStatusPanel";
 import { ReportPanel } from "../reports/ReportPanel";
@@ -574,19 +575,7 @@ export function App() {
         <button type="button" onClick={importCsv}>
           Import CSV cases
         </button>
-        {csvImportResult ? (
-          <>
-            <p>CSV 导入样本：{csvImportResult.imported_case_ids.length}</p>
-            <p>
-              CSV 导入拒绝：
-              {csvImportResult.rejected_rows.length === 0
-                ? "无"
-                : csvImportResult.rejected_rows
-                    .map((row) => `${row.row_number}:${row.error_message}`)
-                    .join(", ")}
-            </p>
-          </>
-        ) : null}
+        {csvImportResult ? <CSVImportResultPanel result={csvImportResult} /> : null}
       </section>
       <section>
         <h2>Spreadsheet Rows Import</h2>
