@@ -31,7 +31,7 @@ describe("WritebackAuditRow", () => {
 
     expect(screen.getByText("job-failed-writeback-1：failed｜row 7｜permission denied")).toBeInTheDocument();
     expect(screen.getByText("Retry eligibility：available")).toBeInTheDocument();
-    expect(screen.getByText("Retry reason：last writeback failed")).toBeInTheDocument();
+    expect(screen.getByText("Retry reason：last writeback failed: permission denied")).toBeInTheDocument();
     expect(screen.getByText("Writeback audit fields：1")).toBeInTheDocument();
     expect(screen.getByText("Writeback audit field：错误原因=model_weakness")).toBeInTheDocument();
 

@@ -1123,7 +1123,7 @@ describe("App", () => {
     render(<App />);
     await userEvent.click(screen.getByRole("button", { name: "Load failed writeback audits" }));
 
-    expect(await screen.findByText("Retry reason：last writeback failed")).toBeInTheDocument();
+    expect(await screen.findByText("Retry reason：last writeback failed: permission denied")).toBeInTheDocument();
   });
 
   it("loads succeeded spreadsheet writeback audits for drilldown", async () => {
