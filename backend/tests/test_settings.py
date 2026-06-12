@@ -35,6 +35,22 @@ def test_debug_agent_settings_read_report_base_url_from_env(monkeypatch) -> None
     assert settings.report_base_url == "https://debug-agent.example"
 
 
+def test_debug_agent_settings_disable_auto_writeback_by_default(monkeypatch) -> None:
+    monkeypatch.delenv("DEBUG_AGENT_AUTO_WRITEBACK_ENABLED", raising=False)
+
+    settings = DebugAgentSettings.from_env()
+
+    assert settings.auto_writeback_enabled is False
+
+
+def test_debug_agent_settings_read_auto_writeback_enabled_from_env(monkeypatch) -> None:
+    monkeypatch.setenv("DEBUG_AGENT_AUTO_WRITEBACK_ENABLED", "1")
+
+    settings = DebugAgentSettings.from_env()
+
+    assert settings.auto_writeback_enabled is True
+
+
 def test_load_env_file_populates_missing_environment_values(monkeypatch) -> None:
     monkeypatch.delenv("DEBUG_AGENT_MODEL_PROVIDER", raising=False)
     env_file = Path(__file__).with_name(".settings-provider-test.env")

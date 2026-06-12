@@ -34,6 +34,7 @@ def test_worker_status_endpoint_reports_lifecycle_state() -> None:
         "last_error": None,
         "completion_hook_enabled": False,
         "report_base_url": "http://localhost:8000",
+        "auto_writeback_enabled": False,
     }
 
 
@@ -106,6 +107,7 @@ async def test_runtime_worker_writes_report_back_after_completed_mapped_job() ->
         repository=repository,
         writeback_client=writeback_client,
         report_base_url="https://debug-agent.local",
+        auto_writeback_enabled=True,
     )
 
     assert worker.status().completion_hook_enabled is True
@@ -116,3 +118,21 @@ async def test_runtime_worker_writes_report_back_after_completed_mapped_job() ->
     assert writeback_client.fields["分析报告链接"] == f"https://debug-agent.local/jobs/{submitted.job_id}/report"
     assert writeback_client.fields["错误原因"]
     assert worker.status().error_count == 0
+
+
+def test_runtime_worker_leaves_completion_hook_disabled_when_auto_writeback_is_off() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    service = DebugJobService(repository)
+    writeback_client = RecordingWritebackClient()
+
+    worker = routes.build_job_worker(
+        service=service,
+        repository=repository,
+        writeback_client=writeback_client,
+        report_base_url="https://debug-agent.local",
+        auto_writeback_enabled=False,
+    )
+
+    assert worker.status().completion_hook_enabled is False

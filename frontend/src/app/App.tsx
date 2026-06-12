@@ -456,6 +456,7 @@ export function App() {
             <p>Worker running：{String(workerStatus.running)}</p>
             <p>Worker processed：{workerStatus.processed_count}</p>
             <p>Worker errors：{workerStatus.error_count}</p>
+            <p>Worker auto writeback setting：{workerStatus.auto_writeback_enabled ? "enabled" : "disabled"}</p>
             <p>Worker auto writeback：{workerStatus.completion_hook_enabled ? "enabled" : "disabled"}</p>
             <p>Worker report base URL：{workerStatus.report_base_url}</p>
             {workerStatus.last_error ? <p role="alert">Worker error：{workerStatus.last_error}</p> : null}

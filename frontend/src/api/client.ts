@@ -159,6 +159,7 @@ export type WorkerStatus = {
   last_error: string | null;
   completion_hook_enabled: boolean;
   report_base_url: string;
+  auto_writeback_enabled: boolean;
 };
 
 export type JsonlRejectedLine = {

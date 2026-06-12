@@ -64,8 +64,9 @@ def build_job_worker(
     repository: DebugJobRepository,
     writeback_client: SpreadsheetWritebackClient | None,
     report_base_url: str,
+    auto_writeback_enabled: bool,
 ) -> AsyncJobWorker:
-    if writeback_client is None:
+    if writeback_client is None or not auto_writeback_enabled:
         return AsyncJobWorker(service)
     return AsyncJobWorker(
         service,
@@ -83,6 +84,7 @@ job_worker = build_job_worker(
     repository=job_repository,
     writeback_client=spreadsheet_writeback_client,
     report_base_url=settings.report_base_url,
+    auto_writeback_enabled=settings.auto_writeback_enabled,
 )
 
 router = APIRouter()
@@ -198,6 +200,7 @@ class LarkSpreadsheetStatusResponse(BaseModel):
 
 class WorkerRuntimeStatus(AsyncJobWorkerStatus):
     report_base_url: str
+    auto_writeback_enabled: bool
 
 
 class DebugCaseSummary(BaseModel):
@@ -585,6 +588,7 @@ def _build_worker_runtime_status() -> WorkerRuntimeStatus:
     return WorkerRuntimeStatus(
         **status.model_dump(),
         report_base_url=settings.report_base_url,
+        auto_writeback_enabled=settings.auto_writeback_enabled,
     )
 
 

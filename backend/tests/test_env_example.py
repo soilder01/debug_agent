@@ -49,3 +49,9 @@ def test_env_example_contains_report_base_url_for_writeback_links() -> None:
     values = _read_env_example()
 
     assert values["DEBUG_AGENT_REPORT_BASE_URL"] == "http://localhost:8000"
+
+
+def test_env_example_disables_auto_writeback_by_default() -> None:
+    values = _read_env_example()
+
+    assert values["DEBUG_AGENT_AUTO_WRITEBACK_ENABLED"] == "0"

@@ -31,10 +31,18 @@ def load_local_env() -> None:
     _LOCAL_ENV_LOADED = True
 
 
+def _env_bool(key: str, *, default: bool) -> bool:
+    value = os.environ.get(key)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 class DebugAgentSettings(BaseModel):
     database_url: str = "sqlite+pysqlite:///:memory:"
     image_artifact_dir: Path = Path("artifacts/image-crops")
     report_base_url: str = "http://localhost:8000"
+    auto_writeback_enabled: bool = False
 
     @classmethod
     def from_env(cls) -> "DebugAgentSettings":
@@ -55,6 +63,7 @@ class DebugAgentSettings(BaseModel):
                 "DEBUG_AGENT_REPORT_BASE_URL",
                 cls.model_fields["report_base_url"].default,
             ),
+            auto_writeback_enabled=_env_bool("DEBUG_AGENT_AUTO_WRITEBACK_ENABLED", default=False),
         )
 
 
