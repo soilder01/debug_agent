@@ -167,3 +167,25 @@ def test_repository_counts_spreadsheet_writeback_audits_by_status() -> None:
     summary = repository.count_spreadsheet_writeback_audits_by_status()
 
     assert summary == {"failed": 1, "skipped": 1, "succeeded": 1}
+
+
+def test_repository_lists_spreadsheet_writeback_audits_with_status_filter_and_pagination() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    for index, status in enumerate(["failed", "succeeded", "failed"], start=1):
+        repository.save_spreadsheet_writeback_audit(
+            job_id=f"job-{index}",
+            status=status,
+            row_id=str(index),
+            report_url=f"https://debug-agent.local/jobs/job-{index}/report",
+            fields={"index": str(index)},
+            error_message="permission denied" if status == "failed" else "",
+        )
+
+    audits = repository.list_spreadsheet_writeback_audits(status="failed", limit=1, offset=1)
+
+    assert repository.count_spreadsheet_writeback_audits(status="failed") == 2
+    assert [audit.job_id for audit in audits] == ["job-3"]
+    assert audits[0].status == "failed"
+    assert audits[0].fields == {"index": "3"}

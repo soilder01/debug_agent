@@ -200,19 +200,7 @@ class DebugJobRepository:
                 row = session.get(SpreadsheetWritebackAuditRow, job_id)
                 if row is None:
                     return None
-                fields = json.loads(row.fields_json)
-                if not isinstance(fields, dict):
-                    raise ValueError(f"Spreadsheet writeback fields must be an object: {job_id}")
-                return SpreadsheetWritebackAudit(
-                    job_id=row.job_id,
-                    status=row.status,
-                    row_id=row.row_id,
-                    report_url=row.report_url,
-                    fields={str(key): str(value) for key, value in fields.items()},
-                    error_message=row.error_message,
-                    created_at=row.created_at,
-                    updated_at=row.updated_at,
-                )
+                return _spreadsheet_writeback_audit_from_row(row)
 
     def count_spreadsheet_writeback_audits_by_status(self) -> dict[str, int]:
         with self._lock:
@@ -223,6 +211,34 @@ class DebugJobRepository:
                     .order_by(SpreadsheetWritebackAuditRow.status)
                 )
                 return {str(status): int(count) for status, count in rows}
+
+    def list_spreadsheet_writeback_audits(
+        self,
+        status: str | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> list[SpreadsheetWritebackAudit]:
+        with self._lock:
+            with self._session_factory() as session:
+                query = select(SpreadsheetWritebackAuditRow).order_by(
+                    SpreadsheetWritebackAuditRow.updated_at,
+                    SpreadsheetWritebackAuditRow.job_id,
+                )
+                if status is not None:
+                    query = query.where(SpreadsheetWritebackAuditRow.status == status)
+                if offset > 0:
+                    query = query.offset(offset)
+                if limit is not None:
+                    query = query.limit(limit)
+                return [_spreadsheet_writeback_audit_from_row(row) for row in session.scalars(query)]
+
+    def count_spreadsheet_writeback_audits(self, status: str | None = None) -> int:
+        with self._lock:
+            with self._session_factory() as session:
+                query = select(func.count()).select_from(SpreadsheetWritebackAuditRow)
+                if status is not None:
+                    query = query.where(SpreadsheetWritebackAuditRow.status == status)
+                return session.scalar(query) or 0
 
     def list_cases(self, has_regions: bool = False, limit: int | None = None, offset: int = 0) -> list[DebugCase]:
         with self._lock:
@@ -452,3 +468,19 @@ class DebugJobRepository:
 
 def _utc_now_iso() -> str:
     return datetime.now(UTC).isoformat(timespec="microseconds")
+
+
+def _spreadsheet_writeback_audit_from_row(row: SpreadsheetWritebackAuditRow) -> SpreadsheetWritebackAudit:
+    fields = json.loads(row.fields_json)
+    if not isinstance(fields, dict):
+        raise ValueError(f"Spreadsheet writeback fields must be an object: {row.job_id}")
+    return SpreadsheetWritebackAudit(
+        job_id=row.job_id,
+        status=row.status,
+        row_id=row.row_id,
+        report_url=row.report_url,
+        fields={str(key): str(value) for key, value in fields.items()},
+        error_message=row.error_message,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+    )

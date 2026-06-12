@@ -203,6 +203,11 @@ class SpreadsheetWritebackAuditSummaryResponse(BaseModel):
     total_count: int
 
 
+class SpreadsheetWritebackAuditListResponse(BaseModel):
+    audits: list[SpreadsheetWritebackAudit]
+    total_count: int
+
+
 class WorkerRuntimeStatus(AsyncJobWorkerStatus):
     report_base_url: str
     auto_writeback_enabled: bool
@@ -437,6 +442,18 @@ def get_spreadsheet_writeback_audit_summary() -> SpreadsheetWritebackAuditSummar
     return SpreadsheetWritebackAuditSummaryResponse(
         by_status=by_status,
         total_count=sum(by_status.values()),
+    )
+
+
+@router.get("/spreadsheets/writeback/audits")
+def list_spreadsheet_writeback_audits(
+    status: str | None = None,
+    limit: int | None = Query(default=None, ge=0),
+    offset: int = Query(default=0, ge=0),
+) -> SpreadsheetWritebackAuditListResponse:
+    return SpreadsheetWritebackAuditListResponse(
+        audits=job_repository.list_spreadsheet_writeback_audits(status=status, limit=limit, offset=offset),
+        total_count=job_repository.count_spreadsheet_writeback_audits(status=status),
     )
 
 

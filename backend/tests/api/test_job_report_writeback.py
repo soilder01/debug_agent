@@ -181,3 +181,30 @@ def test_spreadsheet_writeback_audit_summary_api_counts_statuses() -> None:
     assert body["by_status"]["succeeded"] >= 1
     assert body["by_status"]["failed"] >= 1
     assert body["total_count"] >= 2
+
+
+def test_spreadsheet_writeback_audit_list_api_filters_and_paginates() -> None:
+    client = TestClient(app)
+    for job_id, status in [
+        ("list-success", "succeeded"),
+        ("list-failed-1", "failed-list-test"),
+        ("list-failed-2", "failed-list-test"),
+    ]:
+        routes.job_repository.save_spreadsheet_writeback_audit(
+            job_id=job_id,
+            status=status,
+            row_id=job_id,
+            report_url=f"https://debug-agent.local/jobs/{job_id}/report",
+            fields={"job": job_id},
+            error_message="permission denied" if status == "failed-list-test" else "",
+        )
+
+    response = client.get("/spreadsheets/writeback/audits?status=failed-list-test&limit=1&offset=1")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total_count"] == 2
+    assert len(body["audits"]) == 1
+    assert body["audits"][0]["status"] == "failed-list-test"
+    assert body["audits"][0]["job_id"] == "list-failed-2"
+    assert body["audits"][0]["fields"] == {"job": "list-failed-2"}
