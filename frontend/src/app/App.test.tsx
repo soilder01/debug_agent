@@ -1100,6 +1100,35 @@ describe("App", () => {
     expect(screen.getByText("job-succeeded-writeback-1：succeeded｜row 9｜无错误")).toBeInTheDocument();
   });
 
+  it("hides retry action for succeeded spreadsheet writeback audits", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          audits: [
+            {
+              job_id: "job-succeeded-writeback-1",
+              status: "succeeded",
+              row_id: "9",
+              report_url: "https://debug-agent.local/jobs/job-succeeded-writeback-1/report",
+              fields: { 错误原因: "model_weakness" },
+              error_message: "",
+              created_at: "2026-06-12T06:00:00+00:00",
+              updated_at: "2026-06-12T06:00:01+00:00"
+            }
+          ],
+          total_count: 1
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load succeeded writeback audits" }));
+
+    expect(await screen.findByText("job-succeeded-writeback-1：succeeded｜row 9｜无错误")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Retry writeback job-succeeded-writeback-1" })).not.toBeInTheDocument();
+  });
+
   it("opens a job from a spreadsheet writeback audit row", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
