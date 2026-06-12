@@ -1095,6 +1095,55 @@ describe("App", () => {
     expect(screen.getByText("写回错误：permission denied")).toBeInTheDocument();
   });
 
+  it("retries spreadsheet writeback from an audit row", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            audits: [
+              {
+                job_id: "job-failed-writeback-1",
+                status: "failed",
+                row_id: "7",
+                report_url: "https://debug-agent.local/jobs/job-failed-writeback-1/report",
+                fields: {},
+                error_message: "permission denied",
+                created_at: "2026-06-12T06:00:00+00:00",
+                updated_at: "2026-06-12T06:00:01+00:00"
+              }
+            ],
+            total_count: 1
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            row_id: "7",
+            fields: {
+              错误原因: "model_weakness",
+              分析报告链接: "https://debug-agent.local/jobs/job-failed-writeback-1/report"
+            }
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load failed writeback audits" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Retry writeback job-failed-writeback-1" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-failed-writeback-1/spreadsheet-writeback", {
+      body: JSON.stringify({ report_url: "https://debug-agent.local/jobs/job-failed-writeback-1/report" }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST"
+    });
+    expect(await screen.findByText("Spreadsheet writeback row：7")).toBeInTheDocument();
+    expect(screen.getByText("错误原因：model_weakness")).toBeInTheDocument();
+  });
+
   it("loads more spreadsheet writeback audits using the current status filter", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")

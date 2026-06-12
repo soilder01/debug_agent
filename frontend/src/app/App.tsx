@@ -415,6 +415,17 @@ export function App() {
     }
   }
 
+  async function retryWritebackAudit(audit: SpreadsheetWritebackAudit) {
+    setError("");
+    try {
+      const reportUrl = audit.report_url || `${window.location.origin}/api/jobs/${audit.job_id}/report`;
+      setSpreadsheetWritebackResult(await writeJobReportToSpreadsheet(audit.job_id, reportUrl));
+      setSpreadsheetWritebackAudit(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
   async function stopWorkerLoop() {
     setError("");
     try {
@@ -693,9 +704,24 @@ export function App() {
                   <button type="button" onClick={() => void openWritebackAuditJob(audit.job_id)}>
                     Open audit job {audit.job_id}
                   </button>
+                  <button type="button" onClick={() => void retryWritebackAudit(audit)}>
+                    Retry writeback {audit.job_id}
+                  </button>
                 </li>
               ))}
             </ul>
+            {spreadsheetWritebackResult ? (
+              <>
+                <p>Spreadsheet writeback row：{spreadsheetWritebackResult.row_id}</p>
+                <ul aria-label="Spreadsheet writeback fields">
+                  {Object.entries(spreadsheetWritebackResult.fields).map(([key, value]) => (
+                    <li key={key}>
+                      {key}：{value}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
             {spreadsheetWritebackAuditList.audits.length < spreadsheetWritebackAuditList.total_count ? (
               <button type="button" onClick={() => void loadMoreWritebackAudits()}>
                 Load more writeback audits
