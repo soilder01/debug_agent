@@ -12,11 +12,13 @@ import {
   fetchJobEvidenceDetail,
   fetchJobReport,
   fetchJobStatus,
+  fetchLarkSpreadsheetStatus,
   fetchWorkerStatus,
   importCsvCases,
   importJsonlCases,
   importSpreadsheetRows,
   type JsonlImportResponse,
+  type LarkSpreadsheetStatus,
   startWorker,
   submitBatchDebugJobs,
   submitDebugJob,
@@ -66,6 +68,7 @@ export function App() {
   const [sheetId, setSheetId] = useState(defaultSheetId);
   const [spreadsheetSyncResult, setSpreadsheetSyncResult] = useState<SpreadsheetSyncResponse | null>(null);
   const [spreadsheetWritebackResult, setSpreadsheetWritebackResult] = useState<SpreadsheetWritebackResult | null>(null);
+  const [larkSpreadsheetStatus, setLarkSpreadsheetStatus] = useState<LarkSpreadsheetStatus | null>(null);
   const [workerStatus, setWorkerStatus] = useState<WorkerStatus | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<ExperimentEvidence | null>(null);
   const [importedCaseTotalCount, setImportedCaseTotalCount] = useState(0);
@@ -319,6 +322,16 @@ export function App() {
     }
   }
 
+
+  async function checkLarkStatus() {
+    setError("");
+    try {
+      setLarkSpreadsheetStatus(await fetchLarkSpreadsheetStatus(true));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
   async function syncSpreadsheet() {
     setError("");
     try {
@@ -529,9 +542,23 @@ export function App() {
         />
         <label htmlFor="sheet-id">Sheet ID</label>
         <input id="sheet-id" value={sheetId} onChange={(event) => setSheetId(event.target.value)} />
+        <button type="button" onClick={() => void checkLarkStatus()}>
+          Check Lark status
+        </button>
         <button type="button" onClick={() => void syncSpreadsheet()}>
           Sync spreadsheet rows
         </button>
+        {larkSpreadsheetStatus ? (
+          <>
+            <p>Lark 配置状态：{larkSpreadsheetStatus.configured ? "已配置" : "未配置"}</p>
+            <p>Lark 连接状态：{larkSpreadsheetStatus.connectivity_status}</p>
+            <p>
+              Lark 表格：{larkSpreadsheetStatus.spreadsheet_id || "无"} / {larkSpreadsheetStatus.sheet_id || "无"}
+            </p>
+            <p>Lark CLI 超时：{larkSpreadsheetStatus.lark_cli_timeout_seconds}s</p>
+            {larkSpreadsheetStatus.error_message ? <p>Lark 错误：{larkSpreadsheetStatus.error_message}</p> : null}
+          </>
+        ) : null}
         {spreadsheetSyncResult ? (
           <>
             <p>Spreadsheet 同步样本：{spreadsheetSyncResult.imported_case_ids.length}</p>

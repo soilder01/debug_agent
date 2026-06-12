@@ -907,6 +907,31 @@ describe("App", () => {
     expect(screen.getByText("job-synced-sheet-1：created")).toBeInTheDocument();
   });
 
+  it("checks Lark spreadsheet configuration and connectivity", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          configured: true,
+          spreadsheet_id: "NLews6C2ShValptV7IdcJ62tnWc",
+          sheet_id: "qJAomX",
+          lark_cli_timeout_seconds: 60,
+          connectivity_status: "ok",
+          error_message: ""
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Check Lark status" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/spreadsheets/lark/status?check_connectivity=true");
+    expect(await screen.findByText("Lark 配置状态：已配置")).toBeInTheDocument();
+    expect(screen.getByText("Lark 连接状态：ok")).toBeInTheDocument();
+    expect(screen.getByText("Lark 表格：NLews6C2ShValptV7IdcJ62tnWc / qJAomX")).toBeInTheDocument();
+    expect(screen.getByText("Lark CLI 超时：60s")).toBeInTheDocument();
+  });
+
   it("parses a Lark spreadsheet URL into sync identifiers", async () => {
     render(<App />);
     fireEvent.change(screen.getByLabelText("Lark spreadsheet URL"), {

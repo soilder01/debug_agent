@@ -197,6 +197,15 @@ export type SpreadsheetWritebackResult = {
   fields: Record<string, string>;
 };
 
+export type LarkSpreadsheetStatus = {
+  configured: boolean;
+  spreadsheet_id: string;
+  sheet_id: string;
+  lark_cli_timeout_seconds: number;
+  connectivity_status: "not_checked" | "ok" | "failed";
+  error_message: string;
+};
+
 export type ExperimentEvidence = {
   evidence_id: string;
   step_name: string;
@@ -317,6 +326,19 @@ export async function importSpreadsheetRows(
     throw new Error(`Failed to import spreadsheet rows: ${response.status}`);
   }
   return (await response.json()) as SpreadsheetRowImportResponse;
+}
+
+export async function fetchLarkSpreadsheetStatus(checkConnectivity = false): Promise<LarkSpreadsheetStatus> {
+  const params = new URLSearchParams();
+  if (checkConnectivity) {
+    params.set("check_connectivity", "true");
+  }
+  const query = params.size > 0 ? `?${params.toString()}` : "";
+  const response = await fetch(`/api/spreadsheets/lark/status${query}`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch Lark spreadsheet status: ${response.status}`);
+  }
+  return (await response.json()) as LarkSpreadsheetStatus;
 }
 
 export async function syncSpreadsheetRows(
