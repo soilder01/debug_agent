@@ -46,6 +46,7 @@ import { ExperimentTimeline } from "../experiments/ExperimentTimeline";
 import { JobStatusPanel } from "../jobs/JobStatusPanel";
 import { ReportPanel } from "../reports/ReportPanel";
 import { LarkSpreadsheetStatusPanel } from "../spreadsheets/LarkSpreadsheetStatusPanel";
+import { SpreadsheetSyncResultPanel } from "../spreadsheets/SpreadsheetSyncResultPanel";
 import { WritebackAuditList } from "../spreadsheets/WritebackAuditList";
 import { WritebackAuditSummary } from "../spreadsheets/WritebackAuditSummary";
 
@@ -671,27 +672,7 @@ export function App() {
           Load skipped writeback audits
         </button>
         {larkSpreadsheetStatus ? <LarkSpreadsheetStatusPanel status={larkSpreadsheetStatus} /> : null}
-        {spreadsheetSyncResult ? (
-          <>
-            <p>Spreadsheet 同步样本：{spreadsheetSyncResult.imported_case_ids.length}</p>
-            <p>
-              Spreadsheet 同步行：
-              {spreadsheetSyncResult.imported_rows.length === 0
-                ? "无"
-                : spreadsheetSyncResult.imported_rows
-                    .map((row) => `${row.sheet_row_id}:${row.case_id}`)
-                    .join(", ")}
-            </p>
-            <p>
-              Spreadsheet 同步拒绝：
-              {spreadsheetSyncResult.rejected_rows.length === 0
-                ? "无"
-                : spreadsheetSyncResult.rejected_rows
-                    .map((row) => `${row.row_index}:${row.sheet_row_id}:${row.error_message}`)
-                    .join(", ")}
-            </p>
-          </>
-        ) : null}
+        {spreadsheetSyncResult ? <SpreadsheetSyncResultPanel result={spreadsheetSyncResult} /> : null}
         {spreadsheetWritebackAuditSummary ? (
           <WritebackAuditSummary
             summary={spreadsheetWritebackAuditSummary}
