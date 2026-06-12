@@ -54,6 +54,24 @@ def test_lark_spreadsheet_client_skips_empty_rows() -> None:
     assert rows[0].values["case_id"] == "case-1"
 
 
+def test_lark_spreadsheet_client_uses_first_non_empty_row_as_header() -> None:
+    transport = RecordingLarkSheetsTransport(
+        [
+            ["", "", ""],
+            ["", "", ""],
+            ["case_id", "image_uri", "avg_score"],
+            ["case-1", "file://case-1.png", 0.2],
+        ]
+    )
+    client = LarkSpreadsheetClient(transport)
+
+    rows = client.list_rows("spreadsheet-1", "sheet-1")
+
+    assert len(rows) == 1
+    assert rows[0].row_id == "4"
+    assert rows[0].values == {"case_id": "case-1", "image_uri": "file://case-1.png", "avg_score": 0.2}
+
+
 def test_lark_spreadsheet_client_forwards_writeback_fields() -> None:
     transport = RecordingLarkSheetsTransport([["case_id"], ["case-1"]])
     client = LarkSpreadsheetClient(transport)

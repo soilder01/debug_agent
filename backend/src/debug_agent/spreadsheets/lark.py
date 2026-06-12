@@ -99,11 +99,12 @@ class LarkSpreadsheetClient:
         from debug_agent.spreadsheets.sync import SpreadsheetSourceRow
 
         values = self._transport.read_values(spreadsheet_id=spreadsheet_id, sheet_id=sheet_id)
-        if not values:
+        header_index = _first_non_empty_row_index(values)
+        if header_index is None:
             return []
-        headers = [str(header).strip() for header in values[0]]
+        headers = [str(header).strip() for header in values[header_index]]
         rows: list[SpreadsheetSourceRow] = []
-        for row_number, row_values in enumerate(values[1:], start=2):
+        for row_number, row_values in enumerate(values[header_index + 1 :], start=header_index + 2):
             if _is_empty_row(row_values):
                 continue
             rows.append(
@@ -150,6 +151,13 @@ def _is_empty_row(values: list[object]) -> bool:
     return all(value is None or str(value).strip() == "" for value in values)
 
 
+def _first_non_empty_row_index(rows: list[list[object]]) -> int | None:
+    for index, values in enumerate(rows):
+        if not _is_empty_row(values):
+            return index
+    return None
+
+
 def _run_lark_cli(args: list[str], stdin: str | None = None) -> str:
     completed = subprocess.run(
         args,
@@ -191,10 +199,10 @@ def _rows_json_to_matrix(data: dict[str, object]) -> list[list[object]]:
 
 def _header_columns(data: dict[str, object]) -> dict[str, str]:
     rows = _rows_json_entries(data)
-    if not rows:
+    header_row = next((values for _, values in sorted(rows) if not _is_empty_row(list(values.values()))), None)
+    if header_row is None:
         raise LarkCliError("Spreadsheet header row is empty")
-    _, first_row = sorted(rows)[0]
-    return {str(value).strip(): column for column, value in first_row.items() if str(value).strip()}
+    return {str(value).strip(): column for column, value in header_row.items() if str(value).strip()}
 
 
 def _rows_json_entries(data: dict[str, object]) -> list[tuple[int, dict[str, object]]]:

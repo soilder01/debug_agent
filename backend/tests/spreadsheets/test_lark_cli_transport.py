@@ -133,3 +133,46 @@ def test_lark_cli_transport_writes_fields_to_header_columns() -> None:
             json.dumps([[{"value": "http://localhost/reports/job-1"}]], ensure_ascii=False),
         ),
     ]
+
+
+def test_lark_cli_transport_uses_first_non_empty_row_for_writeback_headers() -> None:
+    runner = RecordingCommandRunner(
+        [
+            {
+                "ok": True,
+                "data": {
+                    "rows": [
+                        {"row_number": 1, "values": {"A": "", "B": ""}},
+                        {"row_number": 2, "values": {"A": "", "B": ""}},
+                        {"row_number": 3, "values": {"A": "case_id", "B": "错误原因"}},
+                    ]
+                },
+            },
+            {"ok": True, "data": {}},
+        ]
+    )
+    transport = LarkCliSheetsTransport(command_runner=runner, read_range="A1:B200")
+
+    transport.update_row(
+        spreadsheet_id="spreadsheet-1",
+        sheet_id="sheet-1",
+        row_id="8",
+        fields={"错误原因": "模型无法稳定识别。"},
+    )
+
+    assert runner.calls[1] == (
+        [
+            "lark-cli",
+            "sheets",
+            "+cells-set",
+            "--spreadsheet-token",
+            "spreadsheet-1",
+            "--sheet-id",
+            "sheet-1",
+            "--range",
+            "B8",
+            "--cells",
+            "-",
+        ],
+        json.dumps([[{"value": "模型无法稳定识别。"}]], ensure_ascii=False),
+    )
