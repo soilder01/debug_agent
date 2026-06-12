@@ -45,7 +45,7 @@ import { EvidenceDetail } from "../evidence/EvidenceDetail";
 import { ExperimentTimeline } from "../experiments/ExperimentTimeline";
 import { JobStatusPanel } from "../jobs/JobStatusPanel";
 import { ReportPanel } from "../reports/ReportPanel";
-import { WritebackAuditRow } from "../spreadsheets/WritebackAuditRow";
+import { WritebackAuditList } from "../spreadsheets/WritebackAuditList";
 
 const jobListLimit = 50;
 const caseListLimit = 50;
@@ -718,37 +718,15 @@ export function App() {
           </>
         ) : null}
         {spreadsheetWritebackAuditList ? (
-          <>
-            <p>Writeback audits total：{spreadsheetWritebackAuditList.total_count}</p>
-            <p>Writeback audit filter：{activeWritebackAuditStatus ?? "all"}</p>
-            <ul aria-label="Spreadsheet writeback audits">
-              {spreadsheetWritebackAuditList.audits.map((audit) => (
-                <WritebackAuditRow
-                  key={audit.job_id}
-                  audit={audit}
-                  onOpenJob={(jobId) => void openWritebackAuditJob(jobId)}
-                  onRetry={(auditToRetry) => void retryWritebackAudit(auditToRetry)}
-                />
-              ))}
-            </ul>
-            {spreadsheetWritebackResult ? (
-              <>
-                <p>Spreadsheet writeback row：{spreadsheetWritebackResult.row_id}</p>
-                <ul aria-label="Spreadsheet writeback fields">
-                  {Object.entries(spreadsheetWritebackResult.fields).map(([key, value]) => (
-                    <li key={key}>
-                      {key}：{value}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            ) : null}
-            {spreadsheetWritebackAuditList.audits.length < spreadsheetWritebackAuditList.total_count ? (
-              <button type="button" onClick={() => void loadMoreWritebackAudits()}>
-                Load more writeback audits
-              </button>
-            ) : null}
-          </>
+          <WritebackAuditList
+            audits={spreadsheetWritebackAuditList.audits}
+            activeFilter={activeWritebackAuditStatus ?? null}
+            totalCount={spreadsheetWritebackAuditList.total_count}
+            writebackResult={spreadsheetWritebackResult}
+            onOpenJob={(jobId) => void openWritebackAuditJob(jobId)}
+            onRetry={(auditToRetry) => void retryWritebackAudit(auditToRetry)}
+            onLoadMore={() => void loadMoreWritebackAudits()}
+          />
         ) : null}
       </section>
       <section>
