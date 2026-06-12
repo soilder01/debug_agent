@@ -14,6 +14,7 @@ import {
   fetchJobStatus,
   fetchLarkSpreadsheetStatus,
   fetchSpreadsheetWritebackAudit,
+  fetchSpreadsheetWritebackAudits,
   fetchSpreadsheetWritebackAuditSummary,
   fetchWorkerStatus,
   importCsvCases,
@@ -27,6 +28,7 @@ import {
   type SpreadsheetRowImportResponse,
   type SpreadsheetWritebackAudit,
   type SpreadsheetWritebackAuditCounts,
+  type SpreadsheetWritebackAuditListResponse,
   type SpreadsheetSyncResponse,
   type SpreadsheetWritebackResult,
   stopWorker,
@@ -75,6 +77,8 @@ export function App() {
   const [spreadsheetWritebackAudit, setSpreadsheetWritebackAudit] = useState<SpreadsheetWritebackAudit | null>(null);
   const [spreadsheetWritebackAuditSummary, setSpreadsheetWritebackAuditSummary] =
     useState<SpreadsheetWritebackAuditCounts | null>(null);
+  const [spreadsheetWritebackAuditList, setSpreadsheetWritebackAuditList] =
+    useState<SpreadsheetWritebackAuditListResponse | null>(null);
   const [larkSpreadsheetStatus, setLarkSpreadsheetStatus] = useState<LarkSpreadsheetStatus | null>(null);
   const [workerStatus, setWorkerStatus] = useState<WorkerStatus | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<ExperimentEvidence | null>(null);
@@ -365,6 +369,15 @@ export function App() {
     }
   }
 
+  async function loadWritebackAudits(status: string) {
+    setError("");
+    try {
+      setSpreadsheetWritebackAuditList(await fetchSpreadsheetWritebackAudits(status, jobListLimit));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
   async function stopWorkerLoop() {
     setError("");
     try {
@@ -587,6 +600,12 @@ export function App() {
         <button type="button" onClick={() => void loadWritebackAuditSummary()}>
           Load writeback audit summary
         </button>
+        <button type="button" onClick={() => void loadWritebackAudits("failed")}>
+          Load failed writeback audits
+        </button>
+        <button type="button" onClick={() => void loadWritebackAudits("skipped")}>
+          Load skipped writeback audits
+        </button>
         {larkSpreadsheetStatus ? (
           <>
             <p>Lark 配置状态：{larkSpreadsheetStatus.configured ? "已配置" : "未配置"}</p>
@@ -625,6 +644,18 @@ export function App() {
             <p>Writeback audit succeeded：{spreadsheetWritebackAuditSummary.by_status.succeeded ?? 0}</p>
             <p>Writeback audit failed：{spreadsheetWritebackAuditSummary.by_status.failed ?? 0}</p>
             <p>Writeback audit skipped：{spreadsheetWritebackAuditSummary.by_status.skipped ?? 0}</p>
+          </>
+        ) : null}
+        {spreadsheetWritebackAuditList ? (
+          <>
+            <p>Writeback audits total：{spreadsheetWritebackAuditList.total_count}</p>
+            <ul aria-label="Spreadsheet writeback audits">
+              {spreadsheetWritebackAuditList.audits.map((audit) => (
+                <li key={audit.job_id}>
+                  {audit.job_id}：{audit.status}｜row {audit.row_id || "无"}｜{audit.error_message || "无错误"}
+                </li>
+              ))}
+            </ul>
           </>
         ) : null}
       </section>

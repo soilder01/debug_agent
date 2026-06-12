@@ -225,6 +225,11 @@ export type SpreadsheetWritebackAuditCounts = {
   total_count: number;
 };
 
+export type SpreadsheetWritebackAuditListResponse = {
+  audits: SpreadsheetWritebackAudit[];
+  total_count: number;
+};
+
 export type LarkSpreadsheetStatus = {
   configured: boolean;
   spreadsheet_id: string;
@@ -436,6 +441,29 @@ export async function fetchSpreadsheetWritebackAuditSummary(): Promise<Spreadshe
     throw new Error(`Failed to fetch spreadsheet writeback audit summary: ${response.status}`);
   }
   return (await response.json()) as SpreadsheetWritebackAuditCounts;
+}
+
+export async function fetchSpreadsheetWritebackAudits(
+  status?: string,
+  limit?: number,
+  offset?: number
+): Promise<SpreadsheetWritebackAuditListResponse> {
+  const params = new URLSearchParams();
+  if (status) {
+    params.set("status", status);
+  }
+  if (limit !== undefined) {
+    params.set("limit", String(limit));
+  }
+  if (offset !== undefined) {
+    params.set("offset", String(offset));
+  }
+  const query = params.size > 0 ? `?${params.toString()}` : "";
+  const response = await fetch(`/api/spreadsheets/writeback/audits${query}`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch spreadsheet writeback audits: ${response.status}`);
+  }
+  return (await response.json()) as SpreadsheetWritebackAuditListResponse;
 }
 
 export async function fetchDebugJobs(
