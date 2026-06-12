@@ -702,6 +702,15 @@ export function App() {
             <p>Writeback audit succeeded：{spreadsheetWritebackAuditSummary.by_status.succeeded ?? 0}</p>
             <p>Writeback audit failed：{spreadsheetWritebackAuditSummary.by_status.failed ?? 0}</p>
             <p>Writeback audit skipped：{spreadsheetWritebackAuditSummary.by_status.skipped ?? 0}</p>
+            <button type="button" onClick={() => void loadWritebackAudits("succeeded")}>
+              View succeeded writeback audits
+            </button>
+            <button type="button" onClick={() => void loadWritebackAudits("failed")}>
+              View failed writeback audits
+            </button>
+            <button type="button" onClick={() => void loadWritebackAudits("skipped")}>
+              View skipped writeback audits
+            </button>
           </>
         ) : null}
         {spreadsheetWritebackAuditList ? (

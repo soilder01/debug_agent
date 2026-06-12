@@ -183,8 +183,16 @@ def test_spreadsheet_writeback_audit_summary_api_counts_statuses() -> None:
     assert body["total_count"] >= 2
 
 
-def test_spreadsheet_writeback_audit_list_api_filters_and_paginates() -> None:
+def test_spreadsheet_writeback_audit_list_api_filters_and_paginates(monkeypatch) -> None:
     client = TestClient(app)
+    timestamps = iter(
+        [
+            "2026-06-12T00:00:00.000001+00:00",
+            "2026-06-12T00:00:00.000002+00:00",
+            "2026-06-12T00:00:00.000003+00:00",
+        ]
+    )
+    monkeypatch.setattr("debug_agent.storage.repository._utc_now_iso", lambda: next(timestamps))
     for job_id, status in [
         ("list-success", "succeeded"),
         ("list-failed-1", "failed-list-test"),

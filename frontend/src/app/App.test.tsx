@@ -993,6 +993,52 @@ describe("App", () => {
     expect(screen.getByText("Writeback audit skipped：3")).toBeInTheDocument();
   });
 
+  it("drills down from writeback audit summary counts", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            by_status: {
+              succeeded: 8,
+              failed: 2,
+              skipped: 3
+            },
+            total_count: 13
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            audits: [
+              {
+                job_id: "job-failed-writeback-1",
+                status: "failed",
+                row_id: "7",
+                report_url: "https://debug-agent.local/jobs/job-failed-writeback-1/report",
+                fields: {},
+                error_message: "permission denied",
+                created_at: "2026-06-12T06:00:00+00:00",
+                updated_at: "2026-06-12T06:00:01+00:00"
+              }
+            ],
+            total_count: 2
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load writeback audit summary" }));
+    await userEvent.click(await screen.findByRole("button", { name: "View failed writeback audits" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/spreadsheets/writeback/audits?status=failed&limit=50");
+    expect(await screen.findByText("Writeback audits total：2")).toBeInTheDocument();
+    expect(screen.getByText("job-failed-writeback-1：failed｜row 7｜permission denied")).toBeInTheDocument();
+  });
+
   it("loads failed spreadsheet writeback audits for drilldown", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(
