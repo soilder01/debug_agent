@@ -182,11 +182,31 @@ def _run_lark_cli(
             timeout=timeout_seconds,
         )
     except subprocess.TimeoutExpired as exc:
-        raise LarkCliError(f"lark-cli timed out after {timeout_seconds} seconds") from exc
+        context = _safe_command_context(args)
+        raise LarkCliError(f"lark-cli {context} timed out after {timeout_seconds} seconds") from exc
     if completed.returncode != 0:
+        context = _safe_command_context(args)
         message = completed.stderr.strip() or completed.stdout.strip() or f"lark-cli exited {completed.returncode}"
-        raise LarkCliError(message)
+        raise LarkCliError(f"lark-cli {context} failed: {message}")
     return completed.stdout
+
+
+def _safe_command_context(args: list[str]) -> str:
+    safe_flags = {"--spreadsheet-token", "--sheet-id", "--range"}
+    parts: list[str] = []
+    for item in args:
+        if item.startswith("+"):
+            parts.append(item)
+            break
+    index = 0
+    while index < len(args):
+        item = args[index]
+        if item in safe_flags and index + 1 < len(args):
+            parts.append(f"{item} {args[index + 1]}")
+            index += 2
+            continue
+        index += 1
+    return " ".join(parts) or "command"
 
 
 def _parse_lark_cli_data(output: str) -> dict[str, object]:

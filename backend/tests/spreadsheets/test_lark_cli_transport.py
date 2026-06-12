@@ -240,3 +240,62 @@ def test_lark_cli_transport_maps_subprocess_timeout(monkeypatch) -> None:
 
     with pytest.raises(LarkCliError, match="timed out after 60 seconds"):
         transport.read_values("spreadsheet-1", "sheet-1")
+
+
+def test_lark_cli_transport_nonzero_error_includes_safe_command_context(monkeypatch) -> None:
+    def fake_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(args=args, returncode=1, stdout="", stderr="permission denied")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    transport = LarkCliSheetsTransport()
+
+    with pytest.raises(LarkCliError) as exc_info:
+        transport.read_values("spreadsheet-1", "sheet-1")
+
+    message = str(exc_info.value)
+    assert "+csv-get" in message
+    assert "--spreadsheet-token spreadsheet-1" in message
+    assert "--sheet-id sheet-1" in message
+    assert "--range A1:Z500" in message
+    assert "permission denied" in message
+
+
+def test_lark_cli_transport_write_error_excludes_stdin_payload(monkeypatch) -> None:
+    responses = [
+        subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=json.dumps(
+                {
+                    "ok": True,
+                    "data": {
+                        "rows": [
+                            {"row_number": 1, "values": {"A": "case_id", "B": "错误原因"}}
+                        ]
+                    },
+                }
+            ),
+            stderr="",
+        ),
+        subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr="write failed"),
+    ]
+
+    def fake_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        return responses.pop(0)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    transport = LarkCliSheetsTransport()
+
+    with pytest.raises(LarkCliError) as exc_info:
+        transport.update_row(
+            spreadsheet_id="spreadsheet-1",
+            sheet_id="sheet-1",
+            row_id="7",
+            fields={"错误原因": "sensitive report detail"},
+        )
+
+    message = str(exc_info.value)
+    assert "+cells-set" in message
+    assert "--range B7" in message
+    assert "write failed" in message
+    assert "sensitive report detail" not in message
