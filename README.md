@@ -26,6 +26,19 @@ The project reads model credentials from environment variables and automatically
 python -m pytest tests/integration/test_live_ark_adapter.py -q
 ```
 
+## Lark Spreadsheet Configuration
+
+The backend can sync rows from Lark spreadsheets and write report fields back through local `lark-cli` auth. Copy `.env.example` to `.env`, keep secrets out of git, and make sure `lark-cli` is authenticated as a user that can read/write the target spreadsheet.
+
+The committed Lark fixture is:
+
+```env
+LARK_SPREADSHEET_URL=https://bytedance.larkoffice.com/sheets/NLews6C2ShValptV7IdcJ62tnWc?sheet=qJAomX
+LARK_SHEET_ID=qJAomX
+```
+
+Current connectivity check result: `workbook-info` succeeds for this spreadsheet, and `qJAomX` maps to `Sheet9`. The sampled ranges `A1:AC40` and `A1:E394` currently read as empty values, so this fixture verifies URL parsing, auth, and transport connectivity rather than sample import content.
+
 ## Quality Bar
 
 This repository is built through small tested slices. A feature is complete only when tests, docs, and local verification pass.

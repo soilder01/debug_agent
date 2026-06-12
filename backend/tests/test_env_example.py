@@ -32,3 +32,13 @@ def test_env_example_does_not_commit_real_ark_api_key() -> None:
         r"ark-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
         values["ARK_API_KEY"],
     ) is None
+
+
+def test_env_example_contains_lark_spreadsheet_connectivity_fixture() -> None:
+    values = _read_env_example()
+
+    assert (
+        values["LARK_SPREADSHEET_URL"]
+        == "https://bytedance.larkoffice.com/sheets/NLews6C2ShValptV7IdcJ62tnWc?sheet=qJAomX"
+    )
+    assert values["LARK_SHEET_ID"] == "qJAomX"
