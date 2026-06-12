@@ -49,6 +49,7 @@ class DebugJobService:
     def submit_case_debug(self, case_id: str, baseline_trials: int = 0) -> SubmittedDebugJob:
         case = self._load_case(case_id)
         job_id = str(uuid4())
+        self._repository.save_case(case)
         self._repository.create_job(job_id=job_id, case_id=case.case_id, baseline_trials=baseline_trials)
         return SubmittedDebugJob(job_id=job_id, case_id=case.case_id, status="created")
 

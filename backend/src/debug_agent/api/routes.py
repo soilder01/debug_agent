@@ -17,6 +17,7 @@ from debug_agent.jobs.service import DebugJobService, RetryRecommendationDetail,
 from debug_agent.jobs.worker import AsyncJobWorker, AsyncJobWorkerStatus
 from debug_agent.models.fake import FakeModelAdapter
 from debug_agent.reports.generator import DebugReport, generate_initial_report
+from debug_agent.reports.job_report import build_report_for_job
 from debug_agent.settings import DebugAgentSettings
 from debug_agent.storage.database import create_sqlite_session_factory, ensure_database_schema
 from debug_agent.storage.models import DebugJobRow
@@ -337,6 +338,14 @@ def get_job_status(job_id: str) -> DebugJobStatus:
     if job is None:
         raise HTTPException(status_code=404, detail=f"Debug job not found: {job_id}")
     return _build_job_status(job)
+
+
+@router.get("/jobs/{job_id}/report")
+def get_job_report(job_id: str) -> DebugReport:
+    report = build_report_for_job(job_repository, job_id)
+    if report is None:
+        raise HTTPException(status_code=404, detail=f"Debug report not found for job: {job_id}")
+    return report
 
 
 def _build_job_status(job: DebugJobRow) -> DebugJobStatus:
