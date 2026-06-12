@@ -725,6 +725,7 @@ export function App() {
                 <li key={audit.job_id}>
                   {audit.job_id}：{audit.status}｜row {audit.row_id || "无"}｜{audit.error_message || "无错误"}
                   <span>updated {audit.updated_at}</span>
+                  <span>Retry eligibility：{audit.status === "failed" ? "available" : "unavailable"}</span>
                   <button type="button" onClick={() => void openWritebackAuditJob(audit.job_id)}>
                     Open audit job {audit.job_id}
                   </button>
