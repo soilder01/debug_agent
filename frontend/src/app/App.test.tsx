@@ -1488,6 +1488,37 @@ describe("App", () => {
     ).toBeInTheDocument();
   });
 
+  it("hides retry action for skipped spreadsheet writeback audits", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          audits: [
+            {
+              job_id: "job-skipped-writeback-1",
+              status: "skipped",
+              row_id: "",
+              report_url: "https://debug-agent.local/jobs/job-skipped-writeback-1/report",
+              fields: {},
+              error_message: "spreadsheet row mapping not found",
+              created_at: "2026-06-12T06:00:00+00:00",
+              updated_at: "2026-06-12T06:00:01+00:00"
+            }
+          ],
+          total_count: 1
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load skipped writeback audits" }));
+
+    expect(
+      await screen.findByText("job-skipped-writeback-1：skipped｜row 无｜spreadsheet row mapping not found")
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Retry writeback job-skipped-writeback-1" })).not.toBeInTheDocument();
+  });
+
   it("parses a Lark spreadsheet URL into sync identifiers", async () => {
     render(<App />);
     fireEvent.change(screen.getByLabelText("Lark spreadsheet URL"), {

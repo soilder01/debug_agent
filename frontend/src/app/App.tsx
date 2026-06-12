@@ -728,7 +728,7 @@ export function App() {
                   <button type="button" onClick={() => void openWritebackAuditJob(audit.job_id)}>
                     Open audit job {audit.job_id}
                   </button>
-                  {audit.status !== "succeeded" ? (
+                  {audit.status === "failed" ? (
                     <button type="button" onClick={() => void retryWritebackAudit(audit)}>
                       Retry writeback {audit.job_id}
                     </button>
