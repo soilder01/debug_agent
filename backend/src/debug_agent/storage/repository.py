@@ -10,7 +10,13 @@ from sqlalchemy.orm import Session
 from debug_agent.cases.models import DebugCase
 from debug_agent.experiments.runner import ExperimentEvidence
 from debug_agent.judging.runner import JudgeResult
-from debug_agent.storage.models import DebugCaseRow, DebugJobRow, EvidenceRow, SpreadsheetRowMappingRow
+from debug_agent.storage.models import (
+    DebugCaseRow,
+    DebugJobRow,
+    EvidenceRow,
+    SpreadsheetRowMappingRow,
+    SpreadsheetWritebackAuditRow,
+)
 
 
 class SpreadsheetRowMapping(BaseModel):
@@ -19,6 +25,17 @@ class SpreadsheetRowMapping(BaseModel):
     row_id: str
     case_id: str
     job_id: str
+    created_at: str
+    updated_at: str
+
+
+class SpreadsheetWritebackAudit(BaseModel):
+    job_id: str
+    status: str
+    row_id: str
+    report_url: str
+    fields: dict[str, str]
+    error_message: str
     created_at: str
     updated_at: str
 
@@ -144,6 +161,55 @@ class DebugJobRepository:
                     row_id=row.row_id,
                     case_id=row.case_id,
                     job_id=row.job_id,
+                    created_at=row.created_at,
+                    updated_at=row.updated_at,
+                )
+
+    def save_spreadsheet_writeback_audit(
+        self,
+        *,
+        job_id: str,
+        status: str,
+        row_id: str,
+        report_url: str,
+        fields: dict[str, str],
+        error_message: str,
+    ) -> None:
+        with self._lock:
+            with self._session_factory() as session:
+                now = _utc_now_iso()
+                existing = session.get(SpreadsheetWritebackAuditRow, job_id)
+                created_at = existing.created_at if existing is not None else now
+                session.merge(
+                    SpreadsheetWritebackAuditRow(
+                        job_id=job_id,
+                        status=status,
+                        row_id=row_id,
+                        report_url=report_url,
+                        fields_json=json.dumps(fields, ensure_ascii=False),
+                        error_message=error_message,
+                        created_at=created_at,
+                        updated_at=now,
+                    )
+                )
+                session.commit()
+
+    def get_spreadsheet_writeback_audit(self, job_id: str) -> SpreadsheetWritebackAudit | None:
+        with self._lock:
+            with self._session_factory() as session:
+                row = session.get(SpreadsheetWritebackAuditRow, job_id)
+                if row is None:
+                    return None
+                fields = json.loads(row.fields_json)
+                if not isinstance(fields, dict):
+                    raise ValueError(f"Spreadsheet writeback fields must be an object: {job_id}")
+                return SpreadsheetWritebackAudit(
+                    job_id=row.job_id,
+                    status=row.status,
+                    row_id=row.row_id,
+                    report_url=row.report_url,
+                    fields={str(key): str(value) for key, value in fields.items()},
+                    error_message=row.error_message,
                     created_at=row.created_at,
                     updated_at=row.updated_at,
                 )

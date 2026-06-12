@@ -33,6 +33,11 @@ class RecordingWritebackClient:
         self.fields = fields
 
 
+class FailingWritebackClient:
+    def update_row(self, spreadsheet_id: str, sheet_id: str, row_id: str, fields: dict[str, str]) -> None:
+        raise RuntimeError("permission denied")
+
+
 def test_build_report_writeback_fields_includes_root_cause_feedback_and_link() -> None:
     report = _make_report()
 
@@ -158,6 +163,13 @@ def test_completion_hook_builds_report_and_writes_mapped_row() -> None:
     assert client.fields["分析报告链接"] == "https://debug-agent.local/jobs/job-1/report"
     assert client.fields["错误原因"]
     assert "复测稳定性：" in client.fields["评估问题反馈"]
+    audit = repository.get_spreadsheet_writeback_audit("job-1")
+    assert audit is not None
+    assert audit.status == "succeeded"
+    assert audit.row_id == "7"
+    assert audit.report_url == "https://debug-agent.local/jobs/job-1/report"
+    assert audit.fields == client.fields
+    assert audit.error_message == ""
 
 
 def test_completion_hook_skips_when_report_cannot_be_rebuilt() -> None:
@@ -174,6 +186,56 @@ def test_completion_hook_skips_when_report_cannot_be_rebuilt() -> None:
     hook(SubmittedDebugJob(job_id="missing-job", case_id="missing-case", status="completed"))
 
     assert client.fields == {}
+
+
+def test_completion_hook_records_failed_writeback_audit_before_reraising() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    case = load_fixture_case("handwrite233").model_copy(update={"case_id": "auto-writeback-failure-case"})
+    repository.save_case(case)
+    repository.create_job(job_id="job-1", case_id=case.case_id, baseline_trials=1)
+    repository.save_evidence(
+        job_id="job-1",
+        case_id=case.case_id,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="auto-writeback-failure-case:baseline:0",
+                step_name="baseline_replay",
+                trial=0,
+                raw_output=case.predictions[0].raw_output,
+                judge=JudgeResult(score=0, reasons=["student_answer_mismatch"]),
+            )
+        ],
+    )
+    repository.mark_completed("job-1")
+    repository.save_spreadsheet_row_mapping(
+        spreadsheet_id="spreadsheet-1",
+        sheet_id="sheet-1",
+        row_id="7",
+        case_id=case.case_id,
+        job_id="job-1",
+    )
+    hook = make_spreadsheet_writeback_completion_hook(
+        repository=repository,
+        client=FailingWritebackClient(),
+        report_base_url="https://debug-agent.local",
+    )
+
+    try:
+        hook(SubmittedDebugJob(job_id="job-1", case_id=case.case_id, status="completed"))
+    except RuntimeError as exc:
+        assert str(exc) == "permission denied"
+    else:
+        raise AssertionError("expected writeback failure")
+
+    audit = repository.get_spreadsheet_writeback_audit("job-1")
+    assert audit is not None
+    assert audit.status == "failed"
+    assert audit.row_id == "7"
+    assert audit.report_url == "https://debug-agent.local/jobs/job-1/report"
+    assert audit.fields == {}
+    assert audit.error_message == "permission denied"
 
 
 def _make_report() -> DebugReport:

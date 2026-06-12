@@ -76,12 +76,36 @@ def make_spreadsheet_writeback_completion_hook(
         report = build_report_for_job(repository, job.job_id)
         if report is None:
             return
-        write_report_for_job(
-            repository=repository,
-            client=client,
+        mapping = repository.get_spreadsheet_row_mapping_by_job_id(job.job_id)
+        if mapping is None:
+            return
+        report_url = f"{base_url}/jobs/{job.job_id}/report"
+        try:
+            result = write_report_to_spreadsheet_row(
+                client=client,
+                spreadsheet_id=mapping.spreadsheet_id,
+                sheet_id=mapping.sheet_id,
+                row_id=mapping.row_id,
+                report=report,
+                report_url=report_url,
+            )
+        except Exception as exc:
+            repository.save_spreadsheet_writeback_audit(
+                job_id=job.job_id,
+                status="failed",
+                row_id=mapping.row_id,
+                report_url=report_url,
+                fields={},
+                error_message=str(exc),
+            )
+            raise
+        repository.save_spreadsheet_writeback_audit(
             job_id=job.job_id,
-            report=report,
-            report_url=f"{base_url}/jobs/{job.job_id}/report",
+            status="succeeded",
+            row_id=result.row_id,
+            report_url=report_url,
+            fields=result.fields,
+            error_message="",
         )
 
     return on_job_completed

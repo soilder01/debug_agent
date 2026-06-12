@@ -53,6 +53,12 @@ def test_job_report_writeback_api_updates_mapped_spreadsheet_row(monkeypatch) ->
     assert writeback_client.sheet_id == "sheet-1"
     assert writeback_client.row_id == "row-42"
     assert writeback_client.fields == body["fields"]
+    audit = routes.job_repository.get_spreadsheet_writeback_audit(job_id)
+    assert audit is not None
+    assert audit.status == "succeeded"
+    assert audit.row_id == "row-42"
+    assert audit.report_url == f"https://debug-agent.local/jobs/{job_id}/report"
+    assert audit.fields == body["fields"]
 
 
 def test_job_report_writeback_api_returns_404_when_mapping_is_missing(monkeypatch) -> None:
@@ -108,3 +114,42 @@ def test_job_report_writeback_api_maps_lark_transport_failures(monkeypatch) -> N
 
     assert response.status_code == 502
     assert response.json()["detail"] == "Lark spreadsheet operation failed: sheet header not found"
+    audit = routes.job_repository.get_spreadsheet_writeback_audit(job_id)
+    assert audit is not None
+    assert audit.status == "failed"
+    assert audit.row_id == "7"
+    assert audit.report_url == f"https://debug-agent.local/jobs/{job_id}/report"
+    assert audit.error_message == "sheet header not found"
+
+
+def test_job_report_writeback_audit_api_returns_latest_audit() -> None:
+    client = TestClient(app)
+    routes.job_repository.save_spreadsheet_writeback_audit(
+        job_id="job-audit-api",
+        status="succeeded",
+        row_id="7",
+        report_url="https://debug-agent.local/jobs/job-audit-api/report",
+        fields={"错误原因": "模型无法稳定识别涂改后的最终答案。"},
+        error_message="",
+    )
+
+    response = client.get("/jobs/job-audit-api/spreadsheet-writeback/audit")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["job_id"] == "job-audit-api"
+    assert body["status"] == "succeeded"
+    assert body["row_id"] == "7"
+    assert body["report_url"] == "https://debug-agent.local/jobs/job-audit-api/report"
+    assert body["fields"] == {"错误原因": "模型无法稳定识别涂改后的最终答案。"}
+    assert body["error_message"] == ""
+    assert body["updated_at"]
+
+
+def test_job_report_writeback_audit_api_returns_404_when_missing() -> None:
+    client = TestClient(app)
+
+    response = client.get("/jobs/missing-audit/spreadsheet-writeback/audit")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Spreadsheet writeback audit not found for job: missing-audit"

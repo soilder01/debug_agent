@@ -24,12 +24,12 @@ from debug_agent.spreadsheets.writeback import (
     SpreadsheetWritebackClient,
     SpreadsheetWritebackResult,
     make_spreadsheet_writeback_completion_hook,
-    write_report_for_job,
+    write_report_to_spreadsheet_row,
 )
 from debug_agent.spreadsheets.sync import SpreadsheetClient, SpreadsheetSyncResult, sync_spreadsheet_rows
 from debug_agent.storage.database import create_sqlite_session_factory, ensure_database_schema
 from debug_agent.storage.models import DebugJobRow
-from debug_agent.storage.repository import DebugJobRepository
+from debug_agent.storage.repository import DebugJobRepository, SpreadsheetWritebackAudit
 
 settings = DebugAgentSettings.from_env()
 session_factory, engine = create_sqlite_session_factory(settings.database_url)
@@ -469,6 +469,14 @@ async def stop_worker() -> WorkerRuntimeStatus:
     return _build_worker_runtime_status()
 
 
+@router.get("/jobs/{job_id}/spreadsheet-writeback/audit")
+def get_job_spreadsheet_writeback_audit(job_id: str) -> SpreadsheetWritebackAudit:
+    audit = job_repository.get_spreadsheet_writeback_audit(job_id)
+    if audit is None:
+        raise HTTPException(status_code=404, detail=f"Spreadsheet writeback audit not found for job: {job_id}")
+    return audit
+
+
 @router.get("/jobs/{job_id}")
 def get_job_status(job_id: str) -> DebugJobStatus:
     job = job_repository.get_job(job_id)
@@ -492,18 +500,36 @@ def write_job_report_to_spreadsheet(job_id: str, request: JobReportWritebackRequ
     report = build_report_for_job(job_repository, job_id)
     if report is None:
         raise HTTPException(status_code=404, detail=f"Debug report not found for job: {job_id}")
+    mapping = job_repository.get_spreadsheet_row_mapping_by_job_id(job_id)
+    if mapping is None:
+        raise HTTPException(status_code=404, detail=f"Spreadsheet row mapping not found for job: {job_id}")
     try:
-        result = write_report_for_job(
-            repository=job_repository,
+        result = write_report_to_spreadsheet_row(
             client=spreadsheet_writeback_client,
-            job_id=job_id,
+            spreadsheet_id=mapping.spreadsheet_id,
+            sheet_id=mapping.sheet_id,
+            row_id=mapping.row_id,
             report=report,
             report_url=request.report_url,
         )
     except LarkCliError as exc:
+        job_repository.save_spreadsheet_writeback_audit(
+            job_id=job_id,
+            status="failed",
+            row_id=mapping.row_id,
+            report_url=request.report_url,
+            fields={},
+            error_message=str(exc),
+        )
         raise _lark_spreadsheet_error(exc) from exc
-    if result is None:
-        raise HTTPException(status_code=404, detail=f"Spreadsheet row mapping not found for job: {job_id}")
+    job_repository.save_spreadsheet_writeback_audit(
+        job_id=job_id,
+        status="succeeded",
+        row_id=result.row_id,
+        report_url=request.report_url,
+        fields=result.fields,
+        error_message="",
+    )
     return result
 
 

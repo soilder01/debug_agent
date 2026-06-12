@@ -39,6 +39,19 @@ class SpreadsheetRowMappingRow(Base):
     updated_at: Mapped[str] = mapped_column(String(40), default="", server_default="")
 
 
+class SpreadsheetWritebackAuditRow(Base):
+    __tablename__ = "spreadsheet_writeback_audits"
+
+    job_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    status: Mapped[str] = mapped_column(String(40), index=True)
+    row_id: Mapped[str] = mapped_column(String(160), default="", server_default="")
+    report_url: Mapped[str] = mapped_column(Text, default="", server_default="")
+    fields_json: Mapped[str] = mapped_column(Text, default="{}", server_default="{}")
+    error_message: Mapped[str] = mapped_column(Text, default="", server_default="")
+    created_at: Mapped[str] = mapped_column(String(40), default="", server_default="", index=True)
+    updated_at: Mapped[str] = mapped_column(String(40), default="", server_default="")
+
+
 class EvidenceRow(Base):
     __tablename__ = "evidence"
 
