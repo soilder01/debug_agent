@@ -190,6 +190,8 @@ export type SpreadsheetRowImportResponse = {
   rejected_rows: SpreadsheetRejectedRow[];
 };
 
+export type SpreadsheetSyncResponse = SpreadsheetRowImportResponse;
+
 export type SpreadsheetWritebackResult = {
   row_id: string;
   fields: Record<string, string>;
@@ -315,6 +317,28 @@ export async function importSpreadsheetRows(
     throw new Error(`Failed to import spreadsheet rows: ${response.status}`);
   }
   return (await response.json()) as SpreadsheetRowImportResponse;
+}
+
+export async function syncSpreadsheetRows(
+  spreadsheetId: string,
+  sheetId: string,
+  createJobs = true,
+  baselineTrials = 5
+): Promise<SpreadsheetSyncResponse> {
+  const response = await fetch("/api/spreadsheets/sync", {
+    body: JSON.stringify({
+      spreadsheet_id: spreadsheetId,
+      sheet_id: sheetId,
+      create_jobs: createJobs,
+      baseline_trials: baselineTrials
+    }),
+    headers: { "Content-Type": "application/json" },
+    method: "POST"
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to sync spreadsheet rows: ${response.status}`);
+  }
+  return (await response.json()) as SpreadsheetSyncResponse;
 }
 
 export async function fetchJobStatus(jobId: string): Promise<DebugJobStatus> {

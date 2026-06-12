@@ -870,6 +870,43 @@ describe("App", () => {
     expect(screen.getByText("job-spreadsheet-1：created")).toBeInTheDocument();
   });
 
+  it("syncs spreadsheet rows through the configured backend client", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          imported_case_ids: ["synced-sheet-case-1"],
+          imported_rows: [{ sheet_row_id: "sheet-row-7", case_id: "synced-sheet-case-1" }],
+          rejected_rows: [],
+          jobs: [{ job_id: "job-synced-sheet-1", case_id: "synced-sheet-case-1", status: "created" }]
+        }),
+        { status: 202, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    render(<App />);
+    expect(screen.getByLabelText("Spreadsheet ID")).toHaveValue("NLews6C2ShValptV7IdcJ62tnWc");
+    expect(screen.getByLabelText("Sheet ID")).toHaveValue("qJAomX");
+    fireEvent.change(screen.getByLabelText("Spreadsheet ID"), { target: { value: "spreadsheet-1" } });
+    fireEvent.change(screen.getByLabelText("Sheet ID"), { target: { value: "sheet-1" } });
+    await userEvent.click(screen.getByRole("button", { name: "Sync spreadsheet rows" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/spreadsheets/sync", {
+      body: JSON.stringify({
+        spreadsheet_id: "spreadsheet-1",
+        sheet_id: "sheet-1",
+        create_jobs: true,
+        baseline_trials: 5
+      }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST"
+    });
+    expect(await screen.findByText("Spreadsheet 同步样本：1")).toBeInTheDocument();
+    expect(screen.getByText("Spreadsheet 同步行：sheet-row-7:synced-sheet-case-1")).toBeInTheDocument();
+    expect(screen.getByText("Spreadsheet 同步拒绝：无")).toBeInTheDocument();
+    expect(screen.getByText("Spreadsheet 同步任务：1")).toBeInTheDocument();
+    expect(screen.getByText("job-synced-sheet-1：created")).toBeInTheDocument();
+  });
+
   it("loads imported case summaries and can copy them into batch submission", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")

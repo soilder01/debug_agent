@@ -21,8 +21,10 @@ import {
   submitBatchDebugJobs,
   submitDebugJob,
   type SpreadsheetRowImportResponse,
+  type SpreadsheetSyncResponse,
   type SpreadsheetWritebackResult,
   stopWorker,
+  syncSpreadsheetRows,
   type DebugJobStatus,
   type DebugReport,
   type ExperimentEvidence,
@@ -38,6 +40,8 @@ import { ReportPanel } from "../reports/ReportPanel";
 
 const jobListLimit = 50;
 const caseListLimit = 50;
+const defaultSpreadsheetId = "NLews6C2ShValptV7IdcJ62tnWc";
+const defaultSheetId = "qJAomX";
 
 export function App() {
   const [report, setReport] = useState<DebugReport | null>(null);
@@ -56,6 +60,9 @@ export function App() {
   const [csvImportResult, setCsvImportResult] = useState<CsvImportResponse | null>(null);
   const [spreadsheetRowsJson, setSpreadsheetRowsJson] = useState("");
   const [spreadsheetImportResult, setSpreadsheetImportResult] = useState<SpreadsheetRowImportResponse | null>(null);
+  const [spreadsheetId, setSpreadsheetId] = useState(defaultSpreadsheetId);
+  const [sheetId, setSheetId] = useState(defaultSheetId);
+  const [spreadsheetSyncResult, setSpreadsheetSyncResult] = useState<SpreadsheetSyncResponse | null>(null);
   const [spreadsheetWritebackResult, setSpreadsheetWritebackResult] = useState<SpreadsheetWritebackResult | null>(null);
   const [workerStatus, setWorkerStatus] = useState<WorkerStatus | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<ExperimentEvidence | null>(null);
@@ -299,6 +306,20 @@ export function App() {
     }
   }
 
+  async function syncSpreadsheet() {
+    setError("");
+    try {
+      const result = await syncSpreadsheetRows(spreadsheetId, sheetId);
+      setSpreadsheetSyncResult(result);
+      setBatchResult({ jobs: result.jobs, rejected_case_ids: [] });
+      setJobListSummaryLabel("Spreadsheet 同步任务");
+      setJobListTotalCount(result.jobs.length);
+      setBatchJobStatuses(Object.fromEntries(result.jobs.map((job) => [job.job_id, job])));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
   async function stopWorkerLoop() {
     setError("");
     try {
@@ -470,6 +491,41 @@ export function App() {
               {spreadsheetImportResult.rejected_rows.length === 0
                 ? "无"
                 : spreadsheetImportResult.rejected_rows
+                    .map((row) => `${row.row_index}:${row.sheet_row_id}:${row.error_message}`)
+                    .join(", ")}
+            </p>
+          </>
+        ) : null}
+      </section>
+      <section>
+        <h2>Spreadsheet Sync</h2>
+        <label htmlFor="spreadsheet-id">Spreadsheet ID</label>
+        <input
+          id="spreadsheet-id"
+          value={spreadsheetId}
+          onChange={(event) => setSpreadsheetId(event.target.value)}
+        />
+        <label htmlFor="sheet-id">Sheet ID</label>
+        <input id="sheet-id" value={sheetId} onChange={(event) => setSheetId(event.target.value)} />
+        <button type="button" onClick={() => void syncSpreadsheet()}>
+          Sync spreadsheet rows
+        </button>
+        {spreadsheetSyncResult ? (
+          <>
+            <p>Spreadsheet 同步样本：{spreadsheetSyncResult.imported_case_ids.length}</p>
+            <p>
+              Spreadsheet 同步行：
+              {spreadsheetSyncResult.imported_rows.length === 0
+                ? "无"
+                : spreadsheetSyncResult.imported_rows
+                    .map((row) => `${row.sheet_row_id}:${row.case_id}`)
+                    .join(", ")}
+            </p>
+            <p>
+              Spreadsheet 同步拒绝：
+              {spreadsheetSyncResult.rejected_rows.length === 0
+                ? "无"
+                : spreadsheetSyncResult.rejected_rows
                     .map((row) => `${row.row_index}:${row.sheet_row_id}:${row.error_message}`)
                     .join(", ")}
             </p>
