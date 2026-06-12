@@ -1069,6 +1069,36 @@ describe("App", () => {
     expect(screen.getByText("job-failed-writeback-1：failed｜row 7｜permission denied")).toBeInTheDocument();
   });
 
+  it("loads succeeded spreadsheet writeback audits for drilldown", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          audits: [
+            {
+              job_id: "job-succeeded-writeback-1",
+              status: "succeeded",
+              row_id: "9",
+              report_url: "https://debug-agent.local/jobs/job-succeeded-writeback-1/report",
+              fields: { 错误原因: "model_weakness" },
+              error_message: "",
+              created_at: "2026-06-12T06:00:00+00:00",
+              updated_at: "2026-06-12T06:00:01+00:00"
+            }
+          ],
+          total_count: 4
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load succeeded writeback audits" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/spreadsheets/writeback/audits?status=succeeded&limit=50");
+    expect(await screen.findByText("Writeback audits total：4")).toBeInTheDocument();
+    expect(screen.getByText("job-succeeded-writeback-1：succeeded｜row 9｜无错误")).toBeInTheDocument();
+  });
+
   it("opens a job from a spreadsheet writeback audit row", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")

@@ -658,6 +658,9 @@ export function App() {
         <button type="button" onClick={() => void loadWritebackAudits(null)}>
           Load all writeback audits
         </button>
+        <button type="button" onClick={() => void loadWritebackAudits("succeeded")}>
+          Load succeeded writeback audits
+        </button>
         <button type="button" onClick={() => void loadWritebackAudits("failed")}>
           Load failed writeback audits
         </button>
