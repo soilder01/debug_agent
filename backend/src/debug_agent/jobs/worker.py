@@ -1,9 +1,10 @@
 import asyncio
 import threading
+from collections.abc import Callable
 
 from pydantic import BaseModel
 
-from debug_agent.jobs.service import DebugJobService
+from debug_agent.jobs.service import DebugJobService, SubmittedDebugJob
 
 
 class AsyncJobWorkerStatus(BaseModel):
@@ -14,9 +15,15 @@ class AsyncJobWorkerStatus(BaseModel):
 
 
 class AsyncJobWorker:
-    def __init__(self, service: DebugJobService, idle_sleep_seconds: float = 0.1) -> None:
+    def __init__(
+        self,
+        service: DebugJobService,
+        idle_sleep_seconds: float = 0.1,
+        on_job_completed: Callable[[SubmittedDebugJob], None] | None = None,
+    ) -> None:
         self._service = service
         self._idle_sleep_seconds = idle_sleep_seconds
+        self._on_job_completed = on_job_completed
         self._thread: threading.Thread | None = None
         self._stop_requested = threading.Event()
         self._processed_count = 0
@@ -46,6 +53,12 @@ class AsyncJobWorker:
             return
         if result is not None:
             self._processed_count += 1
+            if result.status == "completed" and self._on_job_completed is not None:
+                try:
+                    self._on_job_completed(result)
+                except Exception as exc:
+                    self._error_count += 1
+                    self._last_error = str(exc)
 
     def status(self) -> AsyncJobWorkerStatus:
         return AsyncJobWorkerStatus(

@@ -81,3 +81,24 @@ async def test_async_worker_survives_failed_job_attempt_and_keeps_polling() -> N
     assert worker.status().error_count == 1
     assert worker.status().last_error is not None
     assert "missing-case" in worker.status().last_error
+
+
+@pytest.mark.asyncio
+async def test_async_worker_invokes_completion_hook_after_completed_job() -> None:
+    repository, service = create_service()
+    submitted = service.submit_case_debug("handwrite233")
+    completed_job_ids: list[str] = []
+    worker = AsyncJobWorker(
+        service,
+        idle_sleep_seconds=0.01,
+        on_job_completed=lambda job: completed_job_ids.append(job.job_id),
+    )
+
+    await worker.tick()
+
+    job = repository.get_job(submitted.job_id)
+    assert job is not None
+    assert job.status == "completed"
+    assert completed_job_ids == [submitted.job_id]
+    assert worker.status().processed_count == 1
+    assert worker.status().error_count == 0
