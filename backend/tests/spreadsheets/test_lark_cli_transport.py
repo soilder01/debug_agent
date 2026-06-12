@@ -1,6 +1,9 @@
 import json
+import subprocess
 
-from debug_agent.spreadsheets.lark import LarkCliSheetsTransport
+import pytest
+
+from debug_agent.spreadsheets.lark import LarkCliError, LarkCliSheetsTransport
 
 
 class RecordingCommandRunner:
@@ -176,3 +179,44 @@ def test_lark_cli_transport_uses_first_non_empty_row_for_writeback_headers() -> 
         ],
         json.dumps([[{"value": "模型无法稳定识别。"}]], ensure_ascii=False),
     )
+
+
+def test_lark_cli_transport_subprocess_runner_uses_timeout(monkeypatch) -> None:
+    captured_timeout = 0
+
+    def fake_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        nonlocal captured_timeout
+        captured_timeout = int(kwargs["timeout"])
+        return subprocess.CompletedProcess(
+            args=args,
+            returncode=0,
+            stdout=json.dumps(
+                {
+                    "ok": True,
+                    "data": {
+                        "rows": [
+                            {"row_number": 1, "values": {"A": "case_id"}},
+                            {"row_number": 2, "values": {"A": "case-1"}},
+                        ]
+                    },
+                }
+            ),
+            stderr="",
+        )
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    transport = LarkCliSheetsTransport()
+
+    assert transport.read_values("spreadsheet-1", "sheet-1") == [["case_id"], ["case-1"]]
+    assert captured_timeout == 60
+
+
+def test_lark_cli_transport_maps_subprocess_timeout(monkeypatch) -> None:
+    def fake_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        raise subprocess.TimeoutExpired(cmd=args, timeout=kwargs["timeout"])
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    transport = LarkCliSheetsTransport()
+
+    with pytest.raises(LarkCliError, match="timed out after 60 seconds"):
+        transport.read_values("spreadsheet-1", "sheet-1")

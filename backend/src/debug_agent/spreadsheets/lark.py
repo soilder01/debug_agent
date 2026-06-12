@@ -26,6 +26,7 @@ class LarkSheetsTransport(Protocol):
 
 
 CommandRunner = Callable[[list[str], str | None], str]
+DEFAULT_LARK_CLI_TIMEOUT_SECONDS = 60
 
 
 class LarkCliError(RuntimeError):
@@ -159,13 +160,17 @@ def _first_non_empty_row_index(rows: list[list[object]]) -> int | None:
 
 
 def _run_lark_cli(args: list[str], stdin: str | None = None) -> str:
-    completed = subprocess.run(
-        args,
-        input=stdin,
-        capture_output=True,
-        check=False,
-        text=True,
-    )
+    try:
+        completed = subprocess.run(
+            args,
+            input=stdin,
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=DEFAULT_LARK_CLI_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise LarkCliError(f"lark-cli timed out after {DEFAULT_LARK_CLI_TIMEOUT_SECONDS} seconds") from exc
     if completed.returncode != 0:
         message = completed.stderr.strip() or completed.stdout.strip() or f"lark-cli exited {completed.returncode}"
         raise LarkCliError(message)
