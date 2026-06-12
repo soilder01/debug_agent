@@ -199,6 +199,17 @@ export type SpreadsheetWritebackResult = {
   fields: Record<string, string>;
 };
 
+export type SpreadsheetWritebackAudit = {
+  job_id: string;
+  status: string;
+  row_id: string;
+  report_url: string;
+  fields: Record<string, string>;
+  error_message: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type LarkSpreadsheetStatus = {
   configured: boolean;
   spreadsheet_id: string;
@@ -394,6 +405,14 @@ export async function writeJobReportToSpreadsheet(
     throw new Error(`Failed to write job report ${jobId}: ${response.status}`);
   }
   return (await response.json()) as SpreadsheetWritebackResult;
+}
+
+export async function fetchSpreadsheetWritebackAudit(jobId: string): Promise<SpreadsheetWritebackAudit> {
+  const response = await fetch(`/api/jobs/${jobId}/spreadsheet-writeback/audit`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch spreadsheet writeback audit ${jobId}: ${response.status}`);
+  }
+  return (await response.json()) as SpreadsheetWritebackAudit;
 }
 
 export async function fetchDebugJobs(

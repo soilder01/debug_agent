@@ -13,6 +13,7 @@ import {
   fetchJobReport,
   fetchJobStatus,
   fetchLarkSpreadsheetStatus,
+  fetchSpreadsheetWritebackAudit,
   fetchWorkerStatus,
   importCsvCases,
   importJsonlCases,
@@ -23,6 +24,7 @@ import {
   submitBatchDebugJobs,
   submitDebugJob,
   type SpreadsheetRowImportResponse,
+  type SpreadsheetWritebackAudit,
   type SpreadsheetSyncResponse,
   type SpreadsheetWritebackResult,
   stopWorker,
@@ -68,6 +70,7 @@ export function App() {
   const [sheetId, setSheetId] = useState(defaultSheetId);
   const [spreadsheetSyncResult, setSpreadsheetSyncResult] = useState<SpreadsheetSyncResponse | null>(null);
   const [spreadsheetWritebackResult, setSpreadsheetWritebackResult] = useState<SpreadsheetWritebackResult | null>(null);
+  const [spreadsheetWritebackAudit, setSpreadsheetWritebackAudit] = useState<SpreadsheetWritebackAudit | null>(null);
   const [larkSpreadsheetStatus, setLarkSpreadsheetStatus] = useState<LarkSpreadsheetStatus | null>(null);
   const [workerStatus, setWorkerStatus] = useState<WorkerStatus | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<ExperimentEvidence | null>(null);
@@ -146,6 +149,7 @@ export function App() {
       setJobStatus(null);
       setReport(null);
       setSpreadsheetWritebackResult(null);
+      setSpreadsheetWritebackAudit(null);
       setSelectedEvidence(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
@@ -197,6 +201,7 @@ export function App() {
       setJobStatus(null);
       setReport(null);
       setSpreadsheetWritebackResult(null);
+      setSpreadsheetWritebackAudit(null);
       setSelectedEvidence(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
@@ -253,6 +258,7 @@ export function App() {
     setJobStatus("evidence_error_counts" in job ? job : null);
     setReport(null);
     setSpreadsheetWritebackResult(null);
+    setSpreadsheetWritebackAudit(null);
     setSelectedEvidence(null);
   }
 
@@ -389,6 +395,7 @@ export function App() {
     try {
       setReport(await fetchJobReport(currentJob.job_id));
       setSpreadsheetWritebackResult(null);
+      setSpreadsheetWritebackAudit(null);
       setSelectedEvidence(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
@@ -412,6 +419,19 @@ export function App() {
     try {
       const reportUrl = `${window.location.origin}/api/jobs/${report.job_id}/report`;
       setSpreadsheetWritebackResult(await writeJobReportToSpreadsheet(report.job_id, reportUrl));
+      setSpreadsheetWritebackAudit(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
+  async function loadCurrentWritebackAudit() {
+    if (!report?.job_id) {
+      return;
+    }
+    setError("");
+    try {
+      setSpreadsheetWritebackAudit(await fetchSpreadsheetWritebackAudit(report.job_id));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
     }
@@ -769,6 +789,9 @@ export function App() {
               <button type="button" onClick={() => void writeCurrentReportToSpreadsheet()}>
                 Write report to spreadsheet
               </button>
+              <button type="button" onClick={() => void loadCurrentWritebackAudit()}>
+                Load writeback audit
+              </button>
               {spreadsheetWritebackResult ? (
                 <>
                   <p>Spreadsheet writeback row：{spreadsheetWritebackResult.row_id}</p>
@@ -779,6 +802,17 @@ export function App() {
                       </li>
                     ))}
                   </ul>
+                </>
+              ) : null}
+              {spreadsheetWritebackAudit ? (
+                <>
+                  <p>Writeback audit status：{spreadsheetWritebackAudit.status}</p>
+                  <p>Writeback audit row：{spreadsheetWritebackAudit.row_id}</p>
+                  <p>Writeback audit report URL：{spreadsheetWritebackAudit.report_url}</p>
+                  <p>Writeback audit updated：{spreadsheetWritebackAudit.updated_at}</p>
+                  {spreadsheetWritebackAudit.error_message ? (
+                    <p role="alert">Writeback audit error：{spreadsheetWritebackAudit.error_message}</p>
+                  ) : null}
                 </>
               ) : null}
             </section>

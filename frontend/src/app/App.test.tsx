@@ -430,6 +430,23 @@ describe("App", () => {
           }),
           { status: 200, headers: { "Content-Type": "application/json" } }
         )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            job_id: "job-report-1",
+            status: "succeeded",
+            row_id: "row-42",
+            report_url: `${window.location.origin}/api/jobs/job-report-1/report`,
+            fields: {
+              "错误原因": "模型无法稳定识别涂改后的最终答案。"
+            },
+            error_message: "",
+            created_at: "2026-06-12T06:00:00+00:00",
+            updated_at: "2026-06-12T06:00:01+00:00"
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
       );
 
     render(<App />);
@@ -455,6 +472,13 @@ describe("App", () => {
     expect(
       screen.getByText(`分析报告链接：${window.location.origin}/api/jobs/job-report-1/report`)
     ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Load writeback audit" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-report-1/spreadsheet-writeback/audit");
+    expect(await screen.findByText("Writeback audit status：succeeded")).toBeInTheDocument();
+    expect(screen.getByText("Writeback audit row：row-42")).toBeInTheDocument();
+    expect(screen.getByText("Writeback audit updated：2026-06-12T06:00:01+00:00")).toBeInTheDocument();
   });
 
   it("loads failed debug jobs with a status filter", async () => {
