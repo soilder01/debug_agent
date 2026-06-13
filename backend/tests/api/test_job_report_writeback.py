@@ -48,7 +48,8 @@ def test_job_report_writeback_api_updates_mapped_spreadsheet_row(monkeypatch) ->
     body = response.json()
     assert body["row_id"] == "row-42"
     assert body["fields"]["分析报告链接"] == f"https://debug-agent.local/jobs/{job_id}/report"
-    assert body["fields"]["错误原因"].startswith("模型无法稳定识别涂改后的最终答案")
+    assert body["fields"]["错误原因"].startswith("结构化评分显示")
+    assert "student_answer_mismatch" in body["fields"]["错误原因"]
     assert writeback_client.spreadsheet_id == "spreadsheet-1"
     assert writeback_client.sheet_id == "sheet-1"
     assert writeback_client.row_id == "row-42"

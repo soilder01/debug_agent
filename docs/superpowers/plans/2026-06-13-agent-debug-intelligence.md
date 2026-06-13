@@ -97,3 +97,39 @@ git commit -m "feat(agent): structure judging evidence"
 - Prompt diagnostic checks for missing JSON schema constraints, ambiguous instruction, and absent scoring-standard references.
 - Golden-answer diagnostic checks for missing/extra box IDs, invalid answer shape, and suspiciously empty expected values.
 - Report confidence improvements with explicit evidence citations.
+
+## Task 2: Dynamic Root Cause From Structured Evidence
+
+**Files:**
+- Modify: `backend/src/debug_agent/reports/generator.py`
+- Test: `backend/tests/reports/test_generator.py`
+
+- [ ] **Step 1: Write failing report tests**
+
+Add tests requiring `generate_initial_report()` to infer affected boxes and root cause labels from structured `JudgeResult.deltas`, model-call errors, and parse errors.
+
+- [ ] **Step 2: Run tests and verify RED**
+
+Run:
+
+```powershell
+python -m pytest backend/tests/reports/test_generator.py
+```
+
+Expected: fail because reports still use the static `erasure_revision_failure` template.
+
+- [ ] **Step 3: Implement minimal root-cause inference**
+
+Add helper functions in `reports/generator.py` to inspect `ExperimentEvidence` and build `ObservedFailure`, `RootCause`, and `suggested_sheet_fields`.
+
+- [ ] **Step 4: Run focused tests**
+
+Run:
+
+```powershell
+python -m pytest backend/tests/reports/test_generator.py backend/tests/reports/test_job_report.py backend/tests/spreadsheets/test_writeback.py
+```
+
+- [ ] **Step 5: Full verification and commit**
+
+Run full verification and commit as `feat(agent): infer root cause from evidence`.

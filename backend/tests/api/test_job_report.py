@@ -17,7 +17,10 @@ def test_job_report_api_returns_report_from_persisted_job_evidence() -> None:
     assert body["case_id"] == "handwrite233"
     assert body["experiment_summary"]["total_trials"] == 10
     assert len(body["experiment_summary"]["evidence_ids"]) == 10
-    assert body["root_cause"]["label"] == "erasure_revision_failure"
+    assert body["root_cause"]["label"] == "answer_mismatch"
+    assert body["root_cause"]["confidence"] == "high"
+    assert body["observed_failure"]["type"] == "answer_mismatch"
+    assert body["observed_failure"]["affected_box_ids"]
 
 
 def test_job_report_api_returns_404_for_missing_job() -> None:
