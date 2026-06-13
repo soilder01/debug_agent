@@ -41,8 +41,7 @@ import {
   writeJobReportToSpreadsheet
 } from "../api/client";
 import { CaseDetail } from "../cases/CaseDetail";
-import { ImportedCaseDetailPanel } from "../cases/ImportedCaseDetailPanel";
-import { ImportedCaseListPanel } from "../cases/ImportedCaseListPanel";
+import { ImportedCasesPanel } from "../cases/ImportedCasesPanel";
 import { EvidenceDetail } from "../evidence/EvidenceDetail";
 import { ExperimentTimeline } from "../experiments/ExperimentTimeline";
 import { CSVImportPanel } from "../imports/CSVImportPanel";
@@ -592,33 +591,20 @@ export function App() {
           />
         ) : null}
       </section>
-      <section>
-        <h2>Imported Cases</h2>
-        <button type="button" onClick={() => void loadImportedCases(false)}>
-          Load imported cases
-        </button>
-        {importedCases.length > 0 ? (
-          <>
-            <ImportedCaseListPanel
-              cases={visibleImportedCases}
-              totalCount={importedCaseTotalCount}
-              effectiveCount={effectiveImportedCaseCount}
-              unloadedCount={unloadedCaseCount}
-              onLoadWithRegions={() => void loadImportedCases(true)}
-              onLoadAll={() => void loadImportedCases(false)}
-              onLoadMore={() => void loadMoreImportedCases()}
-              onUseForBatch={useImportedCasesForBatch}
-              onViewCaseDetail={(caseId) => void loadCaseDetail(caseId)}
-            />
-            {selectedCaseDetail ? (
-              <ImportedCaseDetailPanel
-                caseDetail={selectedCaseDetail}
-                onCreateDebugJob={(caseId) => void submitSelectedCaseJob(caseId)}
-              />
-            ) : null}
-          </>
-        ) : null}
-      </section>
+      <ImportedCasesPanel
+        cases={visibleImportedCases}
+        totalCount={importedCaseTotalCount}
+        effectiveCount={effectiveImportedCaseCount}
+        unloadedCount={unloadedCaseCount}
+        selectedCaseDetail={selectedCaseDetail}
+        onLoadImportedCases={() => void loadImportedCases(false)}
+        onLoadWithRegions={() => void loadImportedCases(true)}
+        onLoadAll={() => void loadImportedCases(false)}
+        onLoadMore={() => void loadMoreImportedCases()}
+        onUseForBatch={useImportedCasesForBatch}
+        onViewCaseDetail={(caseId) => void loadCaseDetail(caseId)}
+        onCreateDebugJob={(caseId) => void submitSelectedCaseJob(caseId)}
+      />
       <section>
         <BatchJobControlsPanel
           caseIds={batchCaseIds}
