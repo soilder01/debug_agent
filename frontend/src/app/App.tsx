@@ -40,19 +40,16 @@ import {
   type WorkerStatus,
   writeJobReportToSpreadsheet
 } from "../api/client";
-import { CaseDetail } from "../cases/CaseDetail";
 import { ImportedCasesPanel } from "../cases/ImportedCasesPanel";
 import { EvidenceDetail } from "../evidence/EvidenceDetail";
-import { ExperimentTimeline } from "../experiments/ExperimentTimeline";
 import { CSVImportPanel } from "../imports/CSVImportPanel";
 import { JSONLImportPanel } from "../imports/JSONLImportPanel";
 import { BatchJobsPanel } from "../jobs/BatchJobsPanel";
 import { JobStatusPanel } from "../jobs/JobStatusPanel";
 import { WorkerControlsPanel } from "../jobs/WorkerControlsPanel";
-import { ReportPanel } from "../reports/ReportPanel";
+import { DebugReportWorkspace } from "../reports/DebugReportWorkspace";
 import { SpreadsheetImportPanel } from "../spreadsheets/SpreadsheetImportPanel";
 import { SpreadsheetSyncPanel } from "../spreadsheets/SpreadsheetSyncPanel";
-import { SpreadsheetWritebackPanel } from "../spreadsheets/SpreadsheetWritebackPanel";
 import { parseLarkSpreadsheetUrl } from "../spreadsheets/larkUrl";
 
 const jobListLimit = 50;
@@ -615,24 +612,15 @@ export function App() {
         </>
       ) : null}
       {report ? (
-        <>
-          <CaseDetail jobId={report.job_id} caseId={report.case_id} status={report.status} />
-          <ExperimentTimeline
-            experiments={report.planned_experiments}
-            summary={report.experiment_summary}
-            onSelectEvidence={selectEvidence}
-          />
-          <EvidenceDetail evidence={selectedEvidence} />
-          <ReportPanel report={report} />
-          {report.job_id ? (
-            <SpreadsheetWritebackPanel
-              writebackResult={spreadsheetWritebackResult}
-              writebackAudit={spreadsheetWritebackAudit}
-              onWriteReport={() => void writeCurrentReportToSpreadsheet()}
-              onLoadAudit={() => void loadCurrentWritebackAudit()}
-            />
-          ) : null}
-        </>
+        <DebugReportWorkspace
+          report={report}
+          selectedEvidence={selectedEvidence}
+          writebackResult={spreadsheetWritebackResult}
+          writebackAudit={spreadsheetWritebackAudit}
+          onSelectEvidence={selectEvidence}
+          onWriteReport={() => void writeCurrentReportToSpreadsheet()}
+          onLoadWritebackAudit={() => void loadCurrentWritebackAudit()}
+        />
       ) : submittedJob ? null : (
         <p>点击按钮运行第一条可验证 debug 闭环。</p>
       )}
