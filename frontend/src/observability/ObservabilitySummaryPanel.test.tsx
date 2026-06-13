@@ -45,7 +45,12 @@ function makeSummary(): ObservabilitySummary {
     },
     health: {
       level: "critical",
-      reasons: ["failed jobs present", "failed spreadsheet writebacks present", "model call errors present"]
+      reasons: ["failed jobs present", "failed spreadsheet writebacks present", "model call errors present"],
+      actions: [
+        "Inspect failed jobs and open their evidence chain.",
+        "Retry failed spreadsheet writebacks after checking Lark permissions and sheet headers.",
+        "Check model endpoint health, timeout settings, and retry affected jobs."
+      ]
     }
   };
 }
@@ -77,5 +82,14 @@ describe("ObservabilitySummaryPanel", () => {
     expect(screen.getByText("Observed health reason：failed jobs present")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：failed spreadsheet writebacks present")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：model call errors present")).toBeInTheDocument();
+    expect(screen.getByText("Recommended action：Inspect failed jobs and open their evidence chain.")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Recommended action：Retry failed spreadsheet writebacks after checking Lark permissions and sheet headers."
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Recommended action：Check model endpoint health, timeout settings, and retry affected jobs.")
+    ).toBeInTheDocument();
   });
 });

@@ -183,6 +183,7 @@ export type ObservabilitySummary = {
   health: {
     level: "healthy" | "degraded" | "critical";
     reasons: string[];
+    actions: string[];
   };
 };
 

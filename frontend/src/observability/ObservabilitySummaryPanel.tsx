@@ -32,6 +32,9 @@ export function ObservabilitySummaryPanel({ summary }: ObservabilitySummaryPanel
       {summary.health.reasons.map((reason) => (
         <p key={reason}>Observed health reason：{reason}</p>
       ))}
+      {summary.health.actions.map((action) => (
+        <p key={action}>Recommended action：{action}</p>
+      ))}
     </section>
   );
 }

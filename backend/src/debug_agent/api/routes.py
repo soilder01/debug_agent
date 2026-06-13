@@ -233,6 +233,7 @@ class ObservabilityEvidenceSummary(BaseModel):
 class ObservabilityHealthSummary(BaseModel):
     level: Literal["healthy", "degraded", "critical"]
     reasons: list[str]
+    actions: list[str]
 
 
 class ObservabilitySummaryResponse(BaseModel):
@@ -711,10 +712,36 @@ def _build_observability_health(
     if writeback_audits.by_status.get("skipped", 0) > 0:
         degraded_reasons.append("skipped spreadsheet writebacks present")
     if critical_reasons:
-        return ObservabilityHealthSummary(level="critical", reasons=critical_reasons + degraded_reasons)
+        reasons = critical_reasons + degraded_reasons
+        return ObservabilityHealthSummary(level="critical", reasons=reasons, actions=_observability_actions(reasons))
     if degraded_reasons:
-        return ObservabilityHealthSummary(level="degraded", reasons=degraded_reasons)
-    return ObservabilityHealthSummary(level="healthy", reasons=[])
+        return ObservabilityHealthSummary(
+            level="degraded",
+            reasons=degraded_reasons,
+            actions=_observability_actions(degraded_reasons),
+        )
+    return ObservabilityHealthSummary(level="healthy", reasons=[], actions=[])
+
+
+def _observability_actions(reasons: list[str]) -> list[str]:
+    action_by_reason = {
+        "failed jobs present": "Inspect failed jobs and open their evidence chain.",
+        "worker errors present": "Check worker logs and restart the worker if the error persists.",
+        "failed spreadsheet writebacks present": (
+            "Retry failed spreadsheet writebacks after checking Lark permissions and sheet headers."
+        ),
+        "model call errors present": "Check model endpoint health, timeout settings, and retry affected jobs.",
+        "pending jobs present": "Start or scale workers to drain the pending job backlog.",
+        "jobs currently running": "Monitor running jobs for timeout or stuck execution.",
+        "response parse errors present": "Inspect prompts and parser assumptions for malformed model outputs.",
+        "skipped spreadsheet writebacks present": "Check spreadsheet row mappings before retrying writeback.",
+    }
+    actions: list[str] = []
+    for reason in reasons:
+        action = action_by_reason.get(reason)
+        if action and action not in actions:
+            actions.append(action)
+    return actions
 
 
 def _lark_spreadsheet_error(exc: LarkCliError) -> HTTPException:

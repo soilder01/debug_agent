@@ -53,7 +53,11 @@ describe("App", () => {
           },
           health: {
             level: "critical",
-            reasons: ["failed jobs present", "failed spreadsheet writebacks present"]
+            reasons: ["failed jobs present", "failed spreadsheet writebacks present"],
+            actions: [
+              "Inspect failed jobs and open their evidence chain.",
+              "Retry failed spreadsheet writebacks after checking Lark permissions and sheet headers."
+            ]
           }
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
@@ -70,6 +74,7 @@ describe("App", () => {
     expect(screen.getByText("Observed evidence parse errors：3")).toBeInTheDocument();
     expect(screen.getByText("Observed health：critical")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：failed jobs present")).toBeInTheDocument();
+    expect(screen.getByText("Recommended action：Inspect failed jobs and open their evidence chain.")).toBeInTheDocument();
   });
 
   it("submits a single-case debug job and renders the created job state", async () => {

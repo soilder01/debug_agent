@@ -70,5 +70,10 @@ def test_observability_summary_reports_runtime_and_operational_counts() -> None:
     assert "failed jobs present" in body["health"]["reasons"]
     assert "failed spreadsheet writebacks present" in body["health"]["reasons"]
     assert "model call errors present" in body["health"]["reasons"]
+    assert "Inspect failed jobs and open their evidence chain." in body["health"]["actions"]
+    assert "Retry failed spreadsheet writebacks after checking Lark permissions and sheet headers." in body["health"][
+        "actions"
+    ]
+    assert "Check model endpoint health, timeout settings, and retry affected jobs." in body["health"]["actions"]
 
     job_repository.mark_failed(created["job_id"], "test cleanup")

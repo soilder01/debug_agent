@@ -12,6 +12,7 @@ Add a backend observability summary endpoint that aggregates runtime health and 
 - Expose key operational counters such as pending backlog and failed jobs.
 - Expose aggregate evidence quality metrics for debugging reliability.
 - Expose health level and risk reasons for fast operational triage.
+- Expose operator action suggestions for each health risk.
 - Keep this slice read-only and safe.
 
 ## Verification
