@@ -23,6 +23,11 @@ export function ObservabilitySummaryPanel({ summary }: ObservabilitySummaryPanel
       <p>Observed writeback succeeded：{summary.writeback_audits.by_status.succeeded ?? 0}</p>
       <p>Observed writeback failed：{summary.writeback_audits.by_status.failed ?? 0}</p>
       <p>Observed writeback skipped：{summary.writeback_audits.by_status.skipped ?? 0}</p>
+      <p>Observed evidence total：{summary.evidence.total_evidence}</p>
+      <p>Observed evidence failed judgements：{summary.evidence.failed_judgements}</p>
+      <p>Observed evidence parse errors：{summary.evidence.response_parse_errors}</p>
+      <p>Observed evidence model call errors：{summary.evidence.model_call_errors}</p>
+      <p>Observed evidence avg latency：{summary.evidence.average_latency_ms}ms</p>
     </section>
   );
 }

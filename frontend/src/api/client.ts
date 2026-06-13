@@ -173,6 +173,13 @@ export type ObservabilitySummary = {
   };
   worker: WorkerStatus;
   writeback_audits: SpreadsheetWritebackAuditCounts;
+  evidence: {
+    total_evidence: number;
+    failed_judgements: number;
+    response_parse_errors: number;
+    model_call_errors: number;
+    average_latency_ms: number;
+  };
 };
 
 export type JsonlRejectedLine = {

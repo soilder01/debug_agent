@@ -43,6 +43,13 @@ describe("App", () => {
               skipped: 1
             },
             total_count: 13
+          },
+          evidence: {
+            total_evidence: 42,
+            failed_judgements: 11,
+            response_parse_errors: 3,
+            model_call_errors: 2,
+            average_latency_ms: 88.5
           }
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
@@ -56,6 +63,7 @@ describe("App", () => {
     expect(await screen.findByText("Observed jobs pending：4")).toBeInTheDocument();
     expect(screen.getByText("Observed worker running：true")).toBeInTheDocument();
     expect(screen.getByText("Observed writeback failed：2")).toBeInTheDocument();
+    expect(screen.getByText("Observed evidence parse errors：3")).toBeInTheDocument();
   });
 
   it("submits a single-case debug job and renders the created job state", async () => {

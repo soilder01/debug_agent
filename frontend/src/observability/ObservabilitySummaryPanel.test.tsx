@@ -35,6 +35,13 @@ function makeSummary(): ObservabilitySummary {
         skipped: 1
       },
       total_count: 13
+    },
+    evidence: {
+      total_evidence: 42,
+      failed_judgements: 11,
+      response_parse_errors: 3,
+      model_call_errors: 2,
+      average_latency_ms: 88.5
     }
   };
 }
@@ -57,5 +64,10 @@ describe("ObservabilitySummaryPanel", () => {
     expect(screen.getByText("Observed writeback succeeded：10")).toBeInTheDocument();
     expect(screen.getByText("Observed writeback failed：2")).toBeInTheDocument();
     expect(screen.getByText("Observed writeback skipped：1")).toBeInTheDocument();
+    expect(screen.getByText("Observed evidence total：42")).toBeInTheDocument();
+    expect(screen.getByText("Observed evidence failed judgements：11")).toBeInTheDocument();
+    expect(screen.getByText("Observed evidence parse errors：3")).toBeInTheDocument();
+    expect(screen.getByText("Observed evidence model call errors：2")).toBeInTheDocument();
+    expect(screen.getByText("Observed evidence avg latency：88.5ms")).toBeInTheDocument();
   });
 });

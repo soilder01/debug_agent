@@ -222,10 +222,19 @@ class ObservabilityJobSummary(BaseModel):
     completed_count: int
 
 
+class ObservabilityEvidenceSummary(BaseModel):
+    total_evidence: int
+    failed_judgements: int
+    response_parse_errors: int
+    model_call_errors: int
+    average_latency_ms: float
+
+
 class ObservabilitySummaryResponse(BaseModel):
     jobs: ObservabilityJobSummary
     worker: WorkerRuntimeStatus
     writeback_audits: SpreadsheetWritebackAuditSummaryResponse
+    evidence: ObservabilityEvidenceSummary
 
 
 class DebugCaseSummary(BaseModel):
@@ -266,6 +275,7 @@ def get_observability_summary() -> ObservabilitySummaryResponse:
             by_status=writeback_counts,
             total_count=sum(writeback_counts.values()),
         ),
+        evidence=ObservabilityEvidenceSummary.model_validate(job_repository.summarize_evidence_quality()),
     )
 
 

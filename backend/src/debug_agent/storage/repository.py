@@ -428,6 +428,22 @@ class DebugJobRepository:
                     "model_call_errors": sum(1 for row in rows if row.model_call_error_type),
                 }
 
+    def summarize_evidence_quality(self) -> dict[str, int | float]:
+        with self._lock:
+            with self._session_factory() as session:
+                rows = list(session.scalars(select(EvidenceRow).order_by(EvidenceRow.job_id, EvidenceRow.evidence_id)))
+                total_evidence = len(rows)
+                average_latency_ms = (
+                    round(sum(row.latency_ms for row in rows) / total_evidence, 2) if total_evidence > 0 else 0
+                )
+                return {
+                    "total_evidence": total_evidence,
+                    "failed_judgements": sum(1 for row in rows if row.score == 0),
+                    "response_parse_errors": sum(1 for row in rows if row.response_parse_error),
+                    "model_call_errors": sum(1 for row in rows if row.model_call_error_type),
+                    "average_latency_ms": average_latency_ms,
+                }
+
     def get_evidence(self, job_id: str, evidence_id: str) -> ExperimentEvidence | None:
         with self._lock:
             with self._session_factory() as session:
