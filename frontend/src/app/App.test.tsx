@@ -50,6 +50,10 @@ describe("App", () => {
             response_parse_errors: 3,
             model_call_errors: 2,
             average_latency_ms: 88.5
+          },
+          health: {
+            level: "critical",
+            reasons: ["failed jobs present", "failed spreadsheet writebacks present"]
           }
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
@@ -64,6 +68,8 @@ describe("App", () => {
     expect(screen.getByText("Observed worker running：true")).toBeInTheDocument();
     expect(screen.getByText("Observed writeback failed：2")).toBeInTheDocument();
     expect(screen.getByText("Observed evidence parse errors：3")).toBeInTheDocument();
+    expect(screen.getByText("Observed health：critical")).toBeInTheDocument();
+    expect(screen.getByText("Observed health reason：failed jobs present")).toBeInTheDocument();
   });
 
   it("submits a single-case debug job and renders the created job state", async () => {

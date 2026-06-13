@@ -66,5 +66,9 @@ def test_observability_summary_reports_runtime_and_operational_counts() -> None:
     assert body["worker"]["running"] is False
     assert body["worker"]["auto_writeback_enabled"] is False
     assert body["worker"]["completion_hook_enabled"] is False
+    assert body["health"]["level"] == "critical"
+    assert "failed jobs present" in body["health"]["reasons"]
+    assert "failed spreadsheet writebacks present" in body["health"]["reasons"]
+    assert "model call errors present" in body["health"]["reasons"]
 
     job_repository.mark_failed(created["job_id"], "test cleanup")

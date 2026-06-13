@@ -28,6 +28,10 @@ export function ObservabilitySummaryPanel({ summary }: ObservabilitySummaryPanel
       <p>Observed evidence parse errors：{summary.evidence.response_parse_errors}</p>
       <p>Observed evidence model call errors：{summary.evidence.model_call_errors}</p>
       <p>Observed evidence avg latency：{summary.evidence.average_latency_ms}ms</p>
+      <p>Observed health：{summary.health.level}</p>
+      {summary.health.reasons.map((reason) => (
+        <p key={reason}>Observed health reason：{reason}</p>
+      ))}
     </section>
   );
 }

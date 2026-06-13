@@ -180,6 +180,10 @@ export type ObservabilitySummary = {
     model_call_errors: number;
     average_latency_ms: number;
   };
+  health: {
+    level: "healthy" | "degraded" | "critical";
+    reasons: string[];
+  };
 };
 
 export type JsonlRejectedLine = {

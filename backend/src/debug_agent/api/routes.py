@@ -230,11 +230,17 @@ class ObservabilityEvidenceSummary(BaseModel):
     average_latency_ms: float
 
 
+class ObservabilityHealthSummary(BaseModel):
+    level: Literal["healthy", "degraded", "critical"]
+    reasons: list[str]
+
+
 class ObservabilitySummaryResponse(BaseModel):
     jobs: ObservabilityJobSummary
     worker: WorkerRuntimeStatus
     writeback_audits: SpreadsheetWritebackAuditSummaryResponse
     evidence: ObservabilityEvidenceSummary
+    health: ObservabilityHealthSummary
 
 
 class DebugCaseSummary(BaseModel):
@@ -261,21 +267,31 @@ def health() -> dict[str, str]:
 def get_observability_summary() -> ObservabilitySummaryResponse:
     job_counts = job_repository.count_jobs_by_status()
     writeback_counts = job_repository.count_spreadsheet_writeback_audits_by_status()
+    worker_status = _build_worker_runtime_status()
+    evidence_summary = ObservabilityEvidenceSummary.model_validate(job_repository.summarize_evidence_quality())
+    job_summary = ObservabilityJobSummary(
+        by_status=job_counts,
+        total_count=sum(job_counts.values()),
+        pending_count=job_counts.get("created", 0),
+        running_count=job_counts.get("running", 0),
+        failed_count=job_counts.get("failed", 0),
+        completed_count=job_counts.get("completed", 0),
+    )
+    writeback_summary = SpreadsheetWritebackAuditSummaryResponse(
+        by_status=writeback_counts,
+        total_count=sum(writeback_counts.values()),
+    )
     return ObservabilitySummaryResponse(
-        jobs=ObservabilityJobSummary(
-            by_status=job_counts,
-            total_count=sum(job_counts.values()),
-            pending_count=job_counts.get("created", 0),
-            running_count=job_counts.get("running", 0),
-            failed_count=job_counts.get("failed", 0),
-            completed_count=job_counts.get("completed", 0),
+        jobs=job_summary,
+        worker=worker_status,
+        writeback_audits=writeback_summary,
+        evidence=evidence_summary,
+        health=_build_observability_health(
+            jobs=job_summary,
+            worker=worker_status,
+            writeback_audits=writeback_summary,
+            evidence=evidence_summary,
         ),
-        worker=_build_worker_runtime_status(),
-        writeback_audits=SpreadsheetWritebackAuditSummaryResponse(
-            by_status=writeback_counts,
-            total_count=sum(writeback_counts.values()),
-        ),
-        evidence=ObservabilityEvidenceSummary.model_validate(job_repository.summarize_evidence_quality()),
     )
 
 
@@ -667,6 +683,38 @@ def _build_worker_runtime_status() -> WorkerRuntimeStatus:
         report_base_url=settings.report_base_url,
         auto_writeback_enabled=settings.auto_writeback_enabled,
     )
+
+
+def _build_observability_health(
+    *,
+    jobs: ObservabilityJobSummary,
+    worker: WorkerRuntimeStatus,
+    writeback_audits: SpreadsheetWritebackAuditSummaryResponse,
+    evidence: ObservabilityEvidenceSummary,
+) -> ObservabilityHealthSummary:
+    critical_reasons: list[str] = []
+    degraded_reasons: list[str] = []
+    if jobs.failed_count > 0:
+        critical_reasons.append("failed jobs present")
+    if worker.error_count > 0:
+        critical_reasons.append("worker errors present")
+    if writeback_audits.by_status.get("failed", 0) > 0:
+        critical_reasons.append("failed spreadsheet writebacks present")
+    if evidence.model_call_errors > 0:
+        critical_reasons.append("model call errors present")
+    if jobs.pending_count > 0:
+        degraded_reasons.append("pending jobs present")
+    if jobs.running_count > 0:
+        degraded_reasons.append("jobs currently running")
+    if evidence.response_parse_errors > 0:
+        degraded_reasons.append("response parse errors present")
+    if writeback_audits.by_status.get("skipped", 0) > 0:
+        degraded_reasons.append("skipped spreadsheet writebacks present")
+    if critical_reasons:
+        return ObservabilityHealthSummary(level="critical", reasons=critical_reasons + degraded_reasons)
+    if degraded_reasons:
+        return ObservabilityHealthSummary(level="degraded", reasons=degraded_reasons)
+    return ObservabilityHealthSummary(level="healthy", reasons=[])
 
 
 def _lark_spreadsheet_error(exc: LarkCliError) -> HTTPException:

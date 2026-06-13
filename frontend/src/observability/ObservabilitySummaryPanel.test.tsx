@@ -42,6 +42,10 @@ function makeSummary(): ObservabilitySummary {
       response_parse_errors: 3,
       model_call_errors: 2,
       average_latency_ms: 88.5
+    },
+    health: {
+      level: "critical",
+      reasons: ["failed jobs present", "failed spreadsheet writebacks present", "model call errors present"]
     }
   };
 }
@@ -69,5 +73,9 @@ describe("ObservabilitySummaryPanel", () => {
     expect(screen.getByText("Observed evidence parse errors：3")).toBeInTheDocument();
     expect(screen.getByText("Observed evidence model call errors：2")).toBeInTheDocument();
     expect(screen.getByText("Observed evidence avg latency：88.5ms")).toBeInTheDocument();
+    expect(screen.getByText("Observed health：critical")).toBeInTheDocument();
+    expect(screen.getByText("Observed health reason：failed jobs present")).toBeInTheDocument();
+    expect(screen.getByText("Observed health reason：failed spreadsheet writebacks present")).toBeInTheDocument();
+    expect(screen.getByText("Observed health reason：model call errors present")).toBeInTheDocument();
   });
 });
