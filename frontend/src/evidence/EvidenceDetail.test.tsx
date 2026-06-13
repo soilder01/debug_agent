@@ -115,7 +115,7 @@ describe("EvidenceDetail", () => {
 
     render(<EvidenceDetail evidence={evidence} />);
 
-    expect(screen.getByText("Image Artifacts")).toBeInTheDocument();
+    expect(screen.getByText("Evidence Artifacts")).toBeInTheDocument();
     expect(screen.getByText("Artifact case-1:box-7:crop")).toBeInTheDocument();
     expect(screen.getByText("类型：crop_candidate")).toBeInTheDocument();
     expect(screen.getByText("源图片：file:///tmp/case-1.png")).toBeInTheDocument();

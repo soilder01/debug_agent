@@ -9,7 +9,7 @@ afterEach(() => {
 });
 
 describe("ReportPanel", () => {
-  it("renders image artifact summary from experiment evidence", () => {
+  it("renders generic artifact summary from experiment evidence", () => {
     const report: DebugReport = {
       job_id: "job-1",
       case_id: "case-1",
@@ -27,6 +27,7 @@ describe("ReportPanel", () => {
         success_rate: 0,
         stability_label: "stable_failure",
         evidence_ids: ["case-1:localized_observation_request:0"],
+        artifact_ids: ["case-1:localized_observation_request:0:input-snapshot"],
         image_artifact_ids: ["case-1:box-7:localized-candidate"]
       },
       root_cause: {
@@ -50,12 +51,13 @@ describe("ReportPanel", () => {
 
     render(<ReportPanel report={report} />);
 
-    expect(screen.getByText("可视证据：1")).toBeInTheDocument();
-    expect(screen.getByText("case-1:box-7:localized-candidate")).toBeInTheDocument();
+    expect(screen.getByText("Evidence Artifacts")).toBeInTheDocument();
+    expect(screen.getByText("证据产物：1")).toBeInTheDocument();
+    expect(screen.getByText("case-1:localized_observation_request:0:input-snapshot")).toBeInTheDocument();
     expect(screen.getByText("Evidence Citations")).toBeInTheDocument();
     expect(screen.getByText("引用证据：case-1:localized_observation_request:0")).toBeInTheDocument();
     expect(screen.getByText("引用步骤：localized_observation_request")).toBeInTheDocument();
-    expect(screen.getByText("引用 box：7")).toBeInTheDocument();
+    expect(screen.getByText("引用目标/区域：7")).toBeInTheDocument();
     expect(screen.getByText("引用原因：student_answer_mismatch")).toBeInTheDocument();
   });
 

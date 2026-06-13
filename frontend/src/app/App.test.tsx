@@ -10,6 +10,13 @@ afterEach(() => {
 });
 
 describe("App", () => {
+  it("renders the generic Debug Detection product title", () => {
+    render(<App />);
+
+    expect(screen.getByRole("heading", { name: "Debug Detection Agent" })).toBeInTheDocument();
+    expect(screen.queryByText("Handwriting OCR Debug Agent")).not.toBeInTheDocument();
+  });
+
   it("loads observability summary for operational monitoring", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")

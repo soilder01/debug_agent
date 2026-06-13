@@ -6,7 +6,9 @@ type ReportPanelProps = {
 
 export function ReportPanel({ report }: ReportPanelProps) {
   const experimentSummary = report.experiment_summary;
-  const imageArtifactIds = experimentSummary?.image_artifact_ids ?? [];
+  const artifactIds = experimentSummary?.artifact_ids?.length
+    ? experimentSummary.artifact_ids
+    : (experimentSummary?.image_artifact_ids ?? []);
   const failedTrialCount = experimentSummary?.failed_trial_count ?? 0;
   const evidenceCitations = report.evidence_citations ?? [];
 
@@ -26,11 +28,11 @@ export function ReportPanel({ report }: ReportPanelProps) {
           </p>
         </>
       ) : null}
-      <h3>Visual Evidence</h3>
-      <p>可视证据：{imageArtifactIds.length}</p>
-      {imageArtifactIds.length > 0 ? (
+      <h3>Evidence Artifacts</h3>
+      <p>证据产物：{artifactIds.length}</p>
+      {artifactIds.length > 0 ? (
         <ul>
-          {imageArtifactIds.map((artifactId) => (
+          {artifactIds.map((artifactId) => (
             <li key={artifactId}>{artifactId}</li>
           ))}
         </ul>
@@ -43,9 +45,9 @@ export function ReportPanel({ report }: ReportPanelProps) {
               <li key={`${citation.evidence_id}:${citation.box_id ?? "global"}:${citation.reason}`}>
                 <p>引用证据：{citation.evidence_id}</p>
                 <p>引用步骤：{citation.step_name}</p>
-                <p>引用 box：{citation.box_id ?? "global"}</p>
+                <p>引用目标/区域：{citation.box_id ?? "global"}</p>
                 <p>引用原因：{citation.reason}</p>
-                {citation.artifact_ids.length > 0 ? <p>引用图片证据：{citation.artifact_ids.join(", ")}</p> : null}
+                {citation.artifact_ids.length > 0 ? <p>引用证据产物：{citation.artifact_ids.join(", ")}</p> : null}
               </li>
             ))}
           </ul>

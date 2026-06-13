@@ -115,10 +115,10 @@ The final target is not only handwriting OCR badcase debug. Handwriting OCR is t
 - Test: `frontend/src/app/App.test.tsx`
 - Test: `frontend/src/reports/ReportPanel.test.tsx`
 
-- [ ] Rename visible product copy from `Handwriting OCR Debug Agent` to `Debug Detection Agent`.
-- [ ] Replace `box`-only UI wording with `target/region` wording while preserving OCR metadata display.
-- [ ] Keep OCR-specific details in task profile sections.
-- [ ] Run focused tests and commit as `feat(frontend): generalize detection UI copy`.
+- [x] Rename visible product copy from `Handwriting OCR Debug Agent` to `Debug Detection Agent`.
+- [x] Replace `box`-only UI wording with `target/region` wording while preserving OCR metadata display.
+- [x] Keep OCR-specific details in task profile sections.
+- [x] Run focused tests and commit as `feat(frontend): generalize detection UI copy`.
 
 ## Verification Policy
 

@@ -536,7 +536,7 @@ export function App() {
 
   return (
     <main>
-      <h1>Handwriting OCR Debug Agent</h1>
+      <h1>Debug Detection Agent</h1>
       <button type="button" onClick={submitJob}>
         Submit debug job
       </button>

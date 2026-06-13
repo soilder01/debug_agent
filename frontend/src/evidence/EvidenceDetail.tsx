@@ -65,7 +65,7 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
         </>
       ) : imageArtifacts.length > 0 ? (
         <>
-          <h3>Image Artifacts</h3>
+          <h3>Evidence Artifacts</h3>
           <ul>
             {imageArtifacts.map((artifact) => (
               <li key={artifact.artifact_id}>
