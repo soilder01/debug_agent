@@ -41,6 +41,7 @@ import {
   writeJobReportToSpreadsheet
 } from "../api/client";
 import { CaseDetail } from "../cases/CaseDetail";
+import { ImportedCaseDetailPanel } from "../cases/ImportedCaseDetailPanel";
 import { ImportedCaseListPanel } from "../cases/ImportedCaseListPanel";
 import { EvidenceDetail } from "../evidence/EvidenceDetail";
 import { ExperimentTimeline } from "../experiments/ExperimentTimeline";
@@ -661,41 +662,10 @@ export function App() {
               onViewCaseDetail={(caseId) => void loadCaseDetail(caseId)}
             />
             {selectedCaseDetail ? (
-              <section aria-label="Selected case detail">
-                <h3>样本详情：{selectedCaseDetail.case_id}</h3>
-                <button type="button" onClick={() => void submitSelectedCaseJob(selectedCaseDetail.case_id)}>
-                  Create debug job for {selectedCaseDetail.case_id}
-                </button>
-                <p>图片：{selectedCaseDetail.image_uri}</p>
-                <p>Prompt：{selectedCaseDetail.prompt}</p>
-                <p>评分标准：{selectedCaseDetail.scoring_standard}</p>
-                <ul aria-label="Golden answers">
-                  {selectedCaseDetail.golden_answer.answers.map((answer) => (
-                    <li key={answer.box_id}>
-                      标答 {answer.box_id}：{answer.student_answer}
-                    </li>
-                  ))}
-                </ul>
-                {(selectedCaseDetail.box_regions ?? []).length > 0 ? (
-                  <ul aria-label="Box regions">
-                    {selectedCaseDetail.box_regions?.map((region) => (
-                      <li key={region.box_id}>
-                        区域 {region.box_id}：x={region.x}, y={region.y}, width={region.width}, height=
-                        {region.height}, unit={region.unit}, label={region.label || "无"}
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-                <ul aria-label="Predictions">
-                  {selectedCaseDetail.predictions.map((prediction) => (
-                    <li key={prediction.trial}>
-                      预测 trial {prediction.trial}：score {prediction.score}
-                    </li>
-                  ))}
-                </ul>
-                <p>人工状态：{selectedCaseDetail.human_notes.debug_status || "未标记"}</p>
-                <p>人工根因：{selectedCaseDetail.human_notes.root_cause || "未归因"}</p>
-              </section>
+              <ImportedCaseDetailPanel
+                caseDetail={selectedCaseDetail}
+                onCreateDebugJob={(caseId) => void submitSelectedCaseJob(caseId)}
+              />
             ) : null}
           </>
         ) : null}
