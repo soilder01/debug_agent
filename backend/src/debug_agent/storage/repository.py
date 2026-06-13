@@ -387,7 +387,7 @@ class DebugJobRepository:
                                 [artifact.model_dump() for artifact in item.image_artifacts]
                             ),
                             score=item.judge.score,
-                            reasons_json=json.dumps(item.judge.reasons),
+                            reasons_json=json.dumps(item.judge.model_dump()),
                             raw_output=item.raw_output,
                         )
                     )
@@ -467,9 +467,7 @@ class DebugJobRepository:
                 row = session.get(EvidenceRow, (job_id, evidence_id))
                 if row is None:
                     return None
-                reasons = json.loads(row.reasons_json)
-                if not isinstance(reasons, list):
-                    raise ValueError(f"Evidence reasons must be a list: {evidence_id}")
+                judge_payload = json.loads(row.reasons_json)
                 request_summary = json.loads(row.request_summary_json)
                 if not isinstance(request_summary, dict):
                     raise ValueError(f"Evidence request summary must be an object: {evidence_id}")
@@ -490,10 +488,7 @@ class DebugJobRepository:
                     model_call_error_message=row.model_call_error_message,
                     image_artifacts=image_artifacts,
                     raw_output=row.raw_output,
-                    judge=JudgeResult(
-                        score=row.score,
-                        reasons=[str(reason) for reason in reasons],
-                    ),
+                    judge=_judge_result_from_payload(score=row.score, evidence_id=evidence_id, payload=judge_payload),
                 )
 
     def _set_status(self, job_id: str, status: str) -> None:
@@ -509,6 +504,16 @@ class DebugJobRepository:
 
 def _utc_now_iso() -> str:
     return datetime.now(UTC).isoformat(timespec="microseconds")
+
+
+def _judge_result_from_payload(*, score: int, evidence_id: str, payload: object) -> JudgeResult:
+    if isinstance(payload, list):
+        return JudgeResult(score=score, reasons=[str(reason) for reason in payload])
+    if not isinstance(payload, dict):
+        raise ValueError(f"Evidence judge payload must be an object or reasons list: {evidence_id}")
+    payload_with_score = dict(payload)
+    payload_with_score["score"] = score
+    return JudgeResult.model_validate(payload_with_score)
 
 
 def _spreadsheet_writeback_audit_from_row(row: SpreadsheetWritebackAuditRow) -> SpreadsheetWritebackAudit:

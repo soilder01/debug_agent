@@ -33,9 +33,12 @@ async def test_run_experiments_collects_judged_evidence() -> None:
         "prompt_length": len(case.prompt),
         "has_image": bool(case.image_uri),
         "image_uri_scheme": urlparse(case.image_uri).scheme,
+        "scoring_standard_present": True,
     }
     assert result.evidence[0].latency_ms >= 0
     assert result.evidence[0].judge.score == 0
+    assert result.evidence[0].judge.scoring_standard == case.scoring_standard
+    assert result.evidence[0].judge.affected_box_ids
     assert "student_answer_mismatch" in result.evidence[0].judge.reasons[0]
 
 

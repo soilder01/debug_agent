@@ -67,7 +67,11 @@ async def run_experiments(
                         evidence_id=f"{case.case_id}:{step.name}:{trial_index}",
                         step_name=step.name,
                         trial=trial_index,
-                        request_summary=_build_request_summary(prompt=prompt, image_uri=case.image_uri),
+                        request_summary=_build_request_summary(
+                            prompt=prompt,
+                            image_uri=case.image_uri,
+                            scoring_standard=case.scoring_standard,
+                        ),
                         latency_ms=latency_ms,
                         model_call_error_type=model_call_error_type,
                         model_call_error_message=model_call_error_message,
@@ -81,7 +85,7 @@ async def run_experiments(
             image_artifacts: list[ImageArtifact] = []
             try:
                 predicted = parse_prediction_answer(response.raw_output)
-                judge = judge_answer(case.golden_answer, predicted)
+                judge = judge_answer(case.golden_answer, predicted, scoring_standard=case.scoring_standard)
                 image_artifacts = _build_localized_image_artifacts(
                     case=case,
                     step_name=step.name,
@@ -100,7 +104,11 @@ async def run_experiments(
                     model_name=response.model_name,
                     model_provider=response.model_provider,
                     model_id=response.model_id,
-                    request_summary=_build_request_summary(prompt=prompt, image_uri=case.image_uri),
+                    request_summary=_build_request_summary(
+                        prompt=prompt,
+                        image_uri=case.image_uri,
+                        scoring_standard=case.scoring_standard,
+                    ),
                     latency_ms=latency_ms,
                     response_parse_error=response_parse_error,
                     model_call_error_type=model_call_error_type,
@@ -118,12 +126,13 @@ async def run_experiments(
     )
 
 
-def _build_request_summary(prompt: str, image_uri: str) -> dict[str, object]:
+def _build_request_summary(prompt: str, image_uri: str, scoring_standard: str) -> dict[str, object]:
     parsed_uri = urlparse(image_uri)
     return {
         "prompt_length": len(prompt),
         "has_image": bool(image_uri),
         "image_uri_scheme": parsed_uri.scheme,
+        "scoring_standard_present": bool(scoring_standard.strip()),
     }
 
 

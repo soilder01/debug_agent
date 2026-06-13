@@ -139,7 +139,20 @@ def test_repository_tracks_job_state_and_evidence() -> None:
         model_call_error_type="TimeoutError",
         model_call_error_message="model request timed out",
         raw_output="{\"answers\":[]}",
-        judge=JudgeResult(score=0, reasons=["box 1 mismatch"]),
+        judge=JudgeResult(
+            score=0,
+            reasons=["box 1 mismatch"],
+            scoring_standard="box_id and student_answer must match exactly.",
+            affected_box_ids=[1],
+            deltas=[
+                {
+                    "box_id": 1,
+                    "expected": "A",
+                    "predicted": "B",
+                    "reason": "student_answer_mismatch",
+                }
+            ],
+        ),
     )
 
     repository.create_job(job_id="job-1", case_id="case-1")
@@ -185,6 +198,16 @@ def test_repository_tracks_job_state_and_evidence() -> None:
     assert restored.raw_output == "{\"answers\":[]}"
     assert restored.judge.score == 0
     assert restored.judge.reasons == ["box 1 mismatch"]
+    assert restored.judge.scoring_standard == "box_id and student_answer must match exactly."
+    assert restored.judge.affected_box_ids == [1]
+    assert restored.judge.deltas == [
+        {
+            "box_id": 1,
+            "expected": "A",
+            "predicted": "B",
+            "reason": "student_answer_mismatch",
+        }
+    ]
 
 
 def test_repository_persists_evidence_image_artifacts() -> None:
