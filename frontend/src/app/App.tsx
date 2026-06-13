@@ -49,7 +49,7 @@ import { CSVImportPanel } from "../imports/CSVImportPanel";
 import { JSONLImportPanel } from "../imports/JSONLImportPanel";
 import { BatchJobListPanel } from "../jobs/BatchJobListPanel";
 import { JobStatusPanel } from "../jobs/JobStatusPanel";
-import { WorkerStatusPanel } from "../jobs/WorkerStatusPanel";
+import { WorkerControlsPanel } from "../jobs/WorkerControlsPanel";
 import { ReportPanel } from "../reports/ReportPanel";
 import { LarkSpreadsheetStatusPanel } from "../spreadsheets/LarkSpreadsheetStatusPanel";
 import { SpreadsheetControlsPanel } from "../spreadsheets/SpreadsheetControlsPanel";
@@ -538,16 +538,7 @@ export function App() {
       <button type="button" onClick={submitJob}>
         Submit debug job
       </button>
-      <section>
-        <h2>Worker</h2>
-        <button type="button" onClick={startWorkerLoop}>
-          Start worker
-        </button>
-        <button type="button" onClick={stopWorkerLoop}>
-          Stop worker
-        </button>
-        {workerStatus ? <WorkerStatusPanel status={workerStatus} /> : null}
-      </section>
+      <WorkerControlsPanel status={workerStatus} onStart={startWorkerLoop} onStop={stopWorkerLoop} />
       <section>
         <h2>JSONL Import</h2>
         <JSONLImportPanel value={jsonlCases} result={jsonlImportResult} onChange={setJsonlCases} onImport={importJsonl} />
