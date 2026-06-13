@@ -55,6 +55,7 @@ import { LarkSpreadsheetStatusPanel } from "../spreadsheets/LarkSpreadsheetStatu
 import { SpreadsheetImportResultPanel } from "../spreadsheets/SpreadsheetImportResultPanel";
 import { SpreadsheetSyncResultPanel } from "../spreadsheets/SpreadsheetSyncResultPanel";
 import { SpreadsheetWritebackPanel } from "../spreadsheets/SpreadsheetWritebackPanel";
+import { parseLarkSpreadsheetUrl } from "../spreadsheets/larkUrl";
 import { WritebackAuditList } from "../spreadsheets/WritebackAuditList";
 import { WritebackAuditSummary } from "../spreadsheets/WritebackAuditSummary";
 
@@ -744,17 +745,4 @@ export function App() {
       )}
     </main>
   );
-}
-
-function parseLarkSpreadsheetUrl(value: string): { spreadsheetId: string; sheetId: string } {
-  const parsed = new URL(value);
-  const pathParts = parsed.pathname.split("/").filter(Boolean);
-  if (pathParts.length < 2 || pathParts[0] !== "sheets") {
-    throw new Error("Lark spreadsheet URL must contain /sheets/{spreadsheet_id}");
-  }
-  const sheetId = parsed.searchParams.get("sheet") ?? "";
-  if (!sheetId) {
-    throw new Error("Lark spreadsheet URL must include a sheet query parameter");
-  }
-  return { spreadsheetId: pathParts[1], sheetId };
 }
