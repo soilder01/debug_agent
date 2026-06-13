@@ -50,7 +50,8 @@ function makeSummary(): ObservabilitySummary {
       estimated_cost_units: 54.345,
       budget_units: 50,
       budget_status: "over_budget",
-      budget_utilization: 1.0869
+      budget_utilization: 1.0869,
+      budget_enforcement_enabled: true
     },
     health: {
       level: "critical",
@@ -104,6 +105,7 @@ describe("ObservabilitySummaryPanel", () => {
     expect(screen.getByText("Observed usage budget：50")).toBeInTheDocument();
     expect(screen.getByText("Observed budget status：over_budget")).toBeInTheDocument();
     expect(screen.getByText("Observed budget utilization：1.0869")).toBeInTheDocument();
+    expect(screen.getByText("Observed budget enforcement：enabled")).toBeInTheDocument();
     expect(screen.getByText("Observed health：critical")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：failed jobs present")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：failed spreadsheet writebacks present")).toBeInTheDocument();

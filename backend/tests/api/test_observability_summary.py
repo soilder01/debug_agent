@@ -11,7 +11,7 @@ def test_observability_summary_reports_runtime_and_operational_counts() -> None:
     client = TestClient(app)
     original_settings = routes.settings
     try:
-        routes.settings = original_settings.model_copy(update={"usage_budget_units": 2.0})
+        routes.settings = original_settings.model_copy(update={"usage_budget_units": 2.0, "enforce_usage_budget": False})
         created = client.post("/cases/handwrite233/debug-jobs").json()
         failed = client.post("/cases/handwrite233/debug-jobs").json()
         job_repository.mark_failed(failed["job_id"], "forced failure for observability test")
@@ -52,6 +52,7 @@ def test_observability_summary_reports_runtime_and_operational_counts() -> None:
                 ),
             ],
         )
+        routes.settings = routes.settings.model_copy(update={"enforce_usage_budget": True})
 
         response = client.get("/observability/summary")
 
@@ -75,6 +76,7 @@ def test_observability_summary_reports_runtime_and_operational_counts() -> None:
         assert body["usage"]["budget_units"] == 2.0
         assert body["usage"]["budget_status"] == "over_budget"
         assert body["usage"]["budget_utilization"] >= 1.0
+        assert body["usage"]["budget_enforcement_enabled"] is True
         assert body["worker"]["running"] is False
         assert body["worker"]["auto_writeback_enabled"] is False
         assert body["worker"]["completion_hook_enabled"] is False

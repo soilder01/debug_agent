@@ -243,6 +243,7 @@ class ObservabilityUsageSummary(BaseModel):
     budget_units: float
     budget_status: Literal["not_configured", "within_budget", "over_budget"]
     budget_utilization: float
+    budget_enforcement_enabled: bool
 
 
 class ObservabilitySummaryResponse(BaseModel):
@@ -280,7 +281,11 @@ def get_observability_summary() -> ObservabilitySummaryResponse:
     writeback_counts = job_repository.count_spreadsheet_writeback_audits_by_status()
     worker_status = _build_worker_runtime_status()
     evidence_summary = ObservabilityEvidenceSummary.model_validate(job_repository.summarize_evidence_quality())
-    usage_summary = _build_usage_summary(job_repository.summarize_usage(), budget_units=settings.usage_budget_units)
+    usage_summary = _build_usage_summary(
+        job_repository.summarize_usage(),
+        budget_units=settings.usage_budget_units,
+        budget_enforcement_enabled=settings.enforce_usage_budget,
+    )
     job_summary = ObservabilityJobSummary(
         by_status=job_counts,
         total_count=sum(job_counts.values()),
@@ -709,7 +714,12 @@ def _build_worker_runtime_status() -> WorkerRuntimeStatus:
     )
 
 
-def _build_usage_summary(raw_usage: dict[str, int | float], *, budget_units: float) -> ObservabilityUsageSummary:
+def _build_usage_summary(
+    raw_usage: dict[str, int | float],
+    *,
+    budget_units: float,
+    budget_enforcement_enabled: bool,
+) -> ObservabilityUsageSummary:
     estimated_cost_units = float(raw_usage["estimated_cost_units"])
     budget_status: Literal["not_configured", "within_budget", "over_budget"] = "not_configured"
     budget_utilization = 0.0
@@ -723,13 +733,18 @@ def _build_usage_summary(raw_usage: dict[str, int | float], *, budget_units: flo
         budget_units=budget_units,
         budget_status=budget_status,
         budget_utilization=budget_utilization,
+        budget_enforcement_enabled=budget_enforcement_enabled,
     )
 
 
 def _raise_if_usage_budget_blocks_submission() -> None:
     if not settings.enforce_usage_budget:
         return
-    usage = _build_usage_summary(job_repository.summarize_usage(), budget_units=settings.usage_budget_units)
+    usage = _build_usage_summary(
+        job_repository.summarize_usage(),
+        budget_units=settings.usage_budget_units,
+        budget_enforcement_enabled=settings.enforce_usage_budget,
+    )
     if usage.budget_status == "over_budget":
         raise HTTPException(status_code=429, detail="Usage budget exceeded; new debug jobs are disabled.")
 

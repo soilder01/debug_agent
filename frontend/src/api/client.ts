@@ -187,6 +187,7 @@ export type ObservabilitySummary = {
     budget_units: number;
     budget_status: "not_configured" | "within_budget" | "over_budget";
     budget_utilization: number;
+    budget_enforcement_enabled: boolean;
   };
   health: {
     level: "healthy" | "degraded" | "critical";

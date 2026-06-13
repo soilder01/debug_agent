@@ -42,6 +42,7 @@ export function ObservabilitySummaryPanel({
       <p>Observed usage budget：{summary.usage.budget_units}</p>
       <p>Observed budget status：{summary.usage.budget_status}</p>
       <p>Observed budget utilization：{summary.usage.budget_utilization}</p>
+      <p>Observed budget enforcement：{summary.usage.budget_enforcement_enabled ? "enabled" : "disabled"}</p>
       <p>Observed health：{summary.health.level}</p>
       {summary.health.reasons.map((reason) => (
         <p key={reason}>Observed health reason：{reason}</p>

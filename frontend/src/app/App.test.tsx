@@ -59,7 +59,8 @@ describe("App", () => {
               estimated_cost_units: 54.345,
               budget_units: 50,
               budget_status: "over_budget",
-              budget_utilization: 1.0869
+              budget_utilization: 1.0869,
+              budget_enforcement_enabled: true
             },
             health: {
               level: "critical",
@@ -110,6 +111,7 @@ describe("App", () => {
     expect(screen.getByText("Observed evidence parse errors：3")).toBeInTheDocument();
     expect(screen.getByText("Observed estimated cost units：54.345")).toBeInTheDocument();
     expect(screen.getByText("Observed budget status：over_budget")).toBeInTheDocument();
+    expect(screen.getByText("Observed budget enforcement：enabled")).toBeInTheDocument();
     expect(screen.getByText("Observed health：critical")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：failed jobs present")).toBeInTheDocument();
     expect(screen.getByText("Recommended action：Inspect failed jobs and open their evidence chain.")).toBeInTheDocument();
