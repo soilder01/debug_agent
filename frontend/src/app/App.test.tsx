@@ -53,6 +53,11 @@ describe("App", () => {
               model_call_errors: 2,
               average_latency_ms: 88.5
             },
+            usage: {
+              model_call_count: 42,
+              prompt_character_count: 12345,
+              estimated_cost_units: 54.345
+            },
             health: {
               level: "critical",
               reasons: ["failed jobs present", "failed spreadsheet writebacks present"],
@@ -100,6 +105,7 @@ describe("App", () => {
     expect(screen.getByText("Observed worker running：true")).toBeInTheDocument();
     expect(screen.getByText("Observed writeback failed：2")).toBeInTheDocument();
     expect(screen.getByText("Observed evidence parse errors：3")).toBeInTheDocument();
+    expect(screen.getByText("Observed estimated cost units：54.345")).toBeInTheDocument();
     expect(screen.getByText("Observed health：critical")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：failed jobs present")).toBeInTheDocument();
     expect(screen.getByText("Recommended action：Inspect failed jobs and open their evidence chain.")).toBeInTheDocument();

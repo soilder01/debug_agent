@@ -236,12 +236,19 @@ class ObservabilityHealthSummary(BaseModel):
     actions: list[str]
 
 
+class ObservabilityUsageSummary(BaseModel):
+    model_call_count: int
+    prompt_character_count: int
+    estimated_cost_units: float
+
+
 class ObservabilitySummaryResponse(BaseModel):
     jobs: ObservabilityJobSummary
     worker: WorkerRuntimeStatus
     writeback_audits: SpreadsheetWritebackAuditSummaryResponse
     evidence: ObservabilityEvidenceSummary
     health: ObservabilityHealthSummary
+    usage: ObservabilityUsageSummary
 
 
 class DebugCaseSummary(BaseModel):
@@ -270,6 +277,7 @@ def get_observability_summary() -> ObservabilitySummaryResponse:
     writeback_counts = job_repository.count_spreadsheet_writeback_audits_by_status()
     worker_status = _build_worker_runtime_status()
     evidence_summary = ObservabilityEvidenceSummary.model_validate(job_repository.summarize_evidence_quality())
+    usage_summary = ObservabilityUsageSummary.model_validate(job_repository.summarize_usage())
     job_summary = ObservabilityJobSummary(
         by_status=job_counts,
         total_count=sum(job_counts.values()),
@@ -293,6 +301,7 @@ def get_observability_summary() -> ObservabilitySummaryResponse:
             writeback_audits=writeback_summary,
             evidence=evidence_summary,
         ),
+        usage=usage_summary,
     )
 
 

@@ -444,6 +444,23 @@ class DebugJobRepository:
                     "average_latency_ms": average_latency_ms,
                 }
 
+    def summarize_usage(self) -> dict[str, int | float]:
+        with self._lock:
+            with self._session_factory() as session:
+                rows = list(session.scalars(select(EvidenceRow).order_by(EvidenceRow.job_id, EvidenceRow.evidence_id)))
+                prompt_character_count = 0
+                for row in rows:
+                    request_summary = json.loads(row.request_summary_json)
+                    if isinstance(request_summary, dict):
+                        prompt_length = request_summary.get("prompt_length", 0)
+                        if isinstance(prompt_length, int | float):
+                            prompt_character_count += int(prompt_length)
+                return {
+                    "model_call_count": len(rows),
+                    "prompt_character_count": prompt_character_count,
+                    "estimated_cost_units": round(len(rows) + prompt_character_count / 1000, 4),
+                }
+
     def get_evidence(self, job_id: str, evidence_id: str) -> ExperimentEvidence | None:
         with self._lock:
             with self._session_factory() as session:

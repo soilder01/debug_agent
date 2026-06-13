@@ -44,6 +44,11 @@ function makeSummary(): ObservabilitySummary {
       model_call_errors: 2,
       average_latency_ms: 88.5
     },
+    usage: {
+      model_call_count: 42,
+      prompt_character_count: 12345,
+      estimated_cost_units: 54.345
+    },
     health: {
       level: "critical",
       reasons: ["failed jobs present", "failed spreadsheet writebacks present", "model call errors present"],
@@ -90,6 +95,9 @@ describe("ObservabilitySummaryPanel", () => {
     expect(screen.getByText("Observed evidence parse errors：3")).toBeInTheDocument();
     expect(screen.getByText("Observed evidence model call errors：2")).toBeInTheDocument();
     expect(screen.getByText("Observed evidence avg latency：88.5ms")).toBeInTheDocument();
+    expect(screen.getByText("Observed model calls：42")).toBeInTheDocument();
+    expect(screen.getByText("Observed prompt chars：12345")).toBeInTheDocument();
+    expect(screen.getByText("Observed estimated cost units：54.345")).toBeInTheDocument();
     expect(screen.getByText("Observed health：critical")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：failed jobs present")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：failed spreadsheet writebacks present")).toBeInTheDocument();

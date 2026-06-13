@@ -180,6 +180,11 @@ export type ObservabilitySummary = {
     model_call_errors: number;
     average_latency_ms: number;
   };
+  usage: {
+    model_call_count: number;
+    prompt_character_count: number;
+    estimated_cost_units: number;
+  };
   health: {
     level: "healthy" | "degraded" | "critical";
     reasons: string[];

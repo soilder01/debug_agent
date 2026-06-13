@@ -36,6 +36,9 @@ export function ObservabilitySummaryPanel({
       <p>Observed evidence parse errors：{summary.evidence.response_parse_errors}</p>
       <p>Observed evidence model call errors：{summary.evidence.model_call_errors}</p>
       <p>Observed evidence avg latency：{summary.evidence.average_latency_ms}ms</p>
+      <p>Observed model calls：{summary.usage.model_call_count}</p>
+      <p>Observed prompt chars：{summary.usage.prompt_character_count}</p>
+      <p>Observed estimated cost units：{summary.usage.estimated_cost_units}</p>
       <p>Observed health：{summary.health.level}</p>
       {summary.health.reasons.map((reason) => (
         <p key={reason}>Observed health reason：{reason}</p>

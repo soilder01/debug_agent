@@ -27,6 +27,7 @@ def test_observability_summary_reports_runtime_and_operational_counts() -> None:
                 evidence_id="observability-evidence-1",
                 step_name="baseline_replay",
                 trial=0,
+                request_summary={"prompt_length": 120, "has_image": True},
                 latency_ms=120,
                 response_parse_error="",
                 model_call_error_type="",
@@ -37,6 +38,7 @@ def test_observability_summary_reports_runtime_and_operational_counts() -> None:
                 evidence_id="observability-evidence-2",
                 step_name="localized_observation",
                 trial=1,
+                request_summary={"prompt_length": 80, "has_image": True},
                 latency_ms=80,
                 response_parse_error="invalid json",
                 model_call_error_type="TimeoutError",
@@ -63,6 +65,9 @@ def test_observability_summary_reports_runtime_and_operational_counts() -> None:
     assert body["evidence"]["response_parse_errors"] >= 1
     assert body["evidence"]["model_call_errors"] >= 1
     assert body["evidence"]["average_latency_ms"] >= 0
+    assert body["usage"]["model_call_count"] >= 2
+    assert body["usage"]["prompt_character_count"] >= 200
+    assert body["usage"]["estimated_cost_units"] >= 2.0
     assert body["worker"]["running"] is False
     assert body["worker"]["auto_writeback_enabled"] is False
     assert body["worker"]["completion_hook_enabled"] is False
