@@ -8,6 +8,7 @@ export function ReportPanel({ report }: ReportPanelProps) {
   const experimentSummary = report.experiment_summary;
   const imageArtifactIds = experimentSummary?.image_artifact_ids ?? [];
   const failedTrialCount = experimentSummary?.failed_trial_count ?? 0;
+  const evidenceCitations = report.evidence_citations ?? [];
 
   return (
     <section>
@@ -33,6 +34,22 @@ export function ReportPanel({ report }: ReportPanelProps) {
             <li key={artifactId}>{artifactId}</li>
           ))}
         </ul>
+      ) : null}
+      {evidenceCitations.length > 0 ? (
+        <>
+          <h3>Evidence Citations</h3>
+          <ul>
+            {evidenceCitations.map((citation) => (
+              <li key={`${citation.evidence_id}:${citation.box_id ?? "global"}:${citation.reason}`}>
+                <p>引用证据：{citation.evidence_id}</p>
+                <p>引用步骤：{citation.step_name}</p>
+                <p>引用 box：{citation.box_id ?? "global"}</p>
+                <p>引用原因：{citation.reason}</p>
+                {citation.artifact_ids.length > 0 ? <p>引用图片证据：{citation.artifact_ids.join(", ")}</p> : null}
+              </li>
+            ))}
+          </ul>
+        </>
       ) : null}
       <h3>建议回填</h3>
       <dl>

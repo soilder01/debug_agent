@@ -161,3 +161,32 @@ Pass `DebugCase` into report inference and add deterministic asset checks before
 - [ ] **Step 4: Full verification and commit**
 
 Run full verification and commit as `feat(agent): diagnose evaluation assets`.
+
+## Task 4: Auditable Evidence Citations
+
+**Files:**
+- Modify: `backend/src/debug_agent/reports/generator.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `backend/tests/reports/test_generator.py`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [ ] **Step 1: Write failing backend citation test**
+
+Require `DebugReport` to include `evidence_citations` linking root-cause conclusions to evidence IDs, affected boxes, delta reasons, and crop artifacts.
+
+- [ ] **Step 2: Implement backend citations**
+
+Generate citations from `ExperimentEvidence.judge.deltas`, `ExperimentEvidence.judge.affected_box_ids`, runtime errors, and `image_artifacts`.
+
+- [ ] **Step 3: Write failing frontend citation test**
+
+Require `ReportPanel` to render the evidence citation chain.
+
+- [ ] **Step 4: Implement frontend citation rendering**
+
+Extend the TypeScript API type and render citation rows in `ReportPanel`.
+
+- [ ] **Step 5: Full verification and commit**
+
+Run full verification and commit as `feat(agent): cite report evidence`.

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from debug_agent.cases.models import DebugCase
 from debug_agent.experiments.planner import ExperimentPlan
@@ -35,6 +35,7 @@ class DebugReport(BaseModel):
     planned_experiments: list[str]
     experiment_summary: ExperimentSummary | None = None
     root_cause: RootCause
+    evidence_citations: list[dict[str, object]] = Field(default_factory=list)
     suggested_sheet_fields: dict[str, str]
 
 
@@ -69,6 +70,7 @@ def generate_initial_report(
         planned_experiments=[step.name for step in plan.steps],
         experiment_summary=experiment_summary,
         root_cause=root_cause,
+        evidence_citations=_build_evidence_citations(run_result),
         suggested_sheet_fields=suggested_sheet_fields,
     )
 
@@ -248,3 +250,44 @@ def _affected_box_ids_from_deltas(deltas: list[dict[str, object]]) -> list[int]:
         if isinstance(box_id, int):
             box_ids.add(box_id)
     return sorted(box_ids)
+
+
+def _build_evidence_citations(run_result: ExperimentRunResult | None) -> list[dict[str, object]]:
+    if run_result is None:
+        return []
+    citations: list[dict[str, object]] = []
+    for item in run_result.evidence:
+        artifact_ids = [artifact.artifact_id for artifact in item.image_artifacts]
+        for delta in item.judge.deltas:
+            box_id = delta.get("box_id")
+            reason = delta.get("reason", "")
+            citations.append(
+                {
+                    "evidence_id": item.evidence_id,
+                    "step_name": item.step_name,
+                    "box_id": box_id if isinstance(box_id, int) else None,
+                    "reason": str(reason),
+                    "artifact_ids": artifact_ids,
+                }
+            )
+        if item.model_call_error_type:
+            citations.append(
+                {
+                    "evidence_id": item.evidence_id,
+                    "step_name": item.step_name,
+                    "box_id": None,
+                    "reason": item.model_call_error_type,
+                    "artifact_ids": artifact_ids,
+                }
+            )
+        if item.response_parse_error:
+            citations.append(
+                {
+                    "evidence_id": item.evidence_id,
+                    "step_name": item.step_name,
+                    "box_id": None,
+                    "reason": "response_parse_error",
+                    "artifact_ids": artifact_ids,
+                }
+            )
+    return citations

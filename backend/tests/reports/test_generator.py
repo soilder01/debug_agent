@@ -110,6 +110,13 @@ def test_generate_report_infers_root_cause_from_structured_judge_deltas() -> Non
                 evidence_id="e-structured",
                 step_name="baseline_replay",
                 trial=0,
+                image_artifacts=[
+                    {
+                        "artifact_id": "case-1:box-7:localized-candidate",
+                        "kind": "affected_box_candidate",
+                        "source_image_uri": "file:///tmp/case-1.png",
+                    }
+                ],
                 raw_output=case.predictions[0].raw_output,
                 judge=JudgeResult(
                     score=0,
@@ -138,6 +145,15 @@ def test_generate_report_infers_root_cause_from_structured_judge_deltas() -> Non
     assert report.root_cause.confidence == "high"
     assert "student_answer_mismatch" in report.root_cause.evidence_summary
     assert "box 7" in report.suggested_sheet_fields["错误原因"]
+    assert report.evidence_citations == [
+        {
+            "evidence_id": "e-structured",
+            "step_name": "baseline_replay",
+            "box_id": 7,
+            "reason": "student_answer_mismatch",
+            "artifact_ids": ["case-1:box-7:localized-candidate"],
+        }
+    ]
 
 
 def test_generate_report_prioritizes_runtime_failures_before_answer_mismatch() -> None:

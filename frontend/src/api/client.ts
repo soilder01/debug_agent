@@ -22,6 +22,13 @@ export type DebugReport = {
     confidence: string;
     evidence_summary: string;
   };
+  evidence_citations?: Array<{
+    evidence_id: string;
+    step_name: string;
+    box_id: number | null;
+    reason: string;
+    artifact_ids: string[];
+  }>;
   suggested_sheet_fields: Record<string, string>;
 };
 

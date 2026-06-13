@@ -34,6 +34,15 @@ describe("ReportPanel", () => {
         confidence: "medium",
         evidence_summary: "需要查看局部作答区域。"
       },
+      evidence_citations: [
+        {
+          evidence_id: "case-1:localized_observation_request:0",
+          step_name: "localized_observation_request",
+          box_id: 7,
+          reason: "student_answer_mismatch",
+          artifact_ids: ["case-1:box-7:localized-candidate"]
+        }
+      ],
       suggested_sheet_fields: {
         错误原因: "局部识别失败"
       }
@@ -43,6 +52,11 @@ describe("ReportPanel", () => {
 
     expect(screen.getByText("可视证据：1")).toBeInTheDocument();
     expect(screen.getByText("case-1:box-7:localized-candidate")).toBeInTheDocument();
+    expect(screen.getByText("Evidence Citations")).toBeInTheDocument();
+    expect(screen.getByText("引用证据：case-1:localized_observation_request:0")).toBeInTheDocument();
+    expect(screen.getByText("引用步骤：localized_observation_request")).toBeInTheDocument();
+    expect(screen.getByText("引用 box：7")).toBeInTheDocument();
+    expect(screen.getByText("引用原因：student_answer_mismatch")).toBeInTheDocument();
   });
 
   it("renders replay stability metrics from experiment summary", () => {
