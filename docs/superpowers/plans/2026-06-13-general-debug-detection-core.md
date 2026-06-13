@@ -77,7 +77,7 @@ The final target is not only handwriting OCR badcase debug. Handwriting OCR is t
 - [x] Introduce a recipe protocol for planner steps and prompt augmentation.
 - [x] Move current OCR replay/localized prompt behavior into `handwriting_ocr` recipe.
 - [x] Keep default behavior identical for current fixtures.
-- [ ] Run focused tests and commit as `feat(core): route experiments by task recipe`.
+- [x] Run focused tests and commit as `feat(core): route experiments by task recipe`.
 
 ### Task 4: Generic Evidence Artifacts
 
@@ -89,9 +89,9 @@ The final target is not only handwriting OCR badcase debug. Handwriting OCR is t
 - Test: `backend/tests/experiments/test_runner.py`
 - Test: `frontend/src/evidence/EvidenceDetail.test.tsx`
 
-- [ ] Introduce generic artifact fields while preserving `image_artifacts`.
-- [ ] Support artifact kinds beyond `affected_box_candidate`, such as `context_region`, `input_snapshot`, and `structured_output`.
-- [ ] Update front-end display to use generic artifact labels.
+- [x] Introduce generic artifact fields while preserving `image_artifacts`.
+- [x] Support artifact kinds beyond `affected_box_candidate`, such as `context_region`, `input_snapshot`, and `structured_output`.
+- [x] Update front-end display to use generic artifact labels.
 - [ ] Run focused tests and commit as `feat(core): generalize evidence artifacts`.
 
 ### Task 5: Report Taxonomy Profiles

@@ -24,6 +24,7 @@ class ExperimentSummary(BaseModel):
     success_rate: float = 0.0
     stability_label: str = "not_run"
     evidence_ids: list[str]
+    artifact_ids: list[str] = Field(default_factory=list)
     image_artifact_ids: list[str]
 
 
@@ -55,6 +56,11 @@ def generate_initial_report(
             success_rate=_success_rate(run_result.success_count, run_result.total_trials),
             stability_label=_stability_label(run_result.success_count, failed_trial_count, run_result.total_trials),
             evidence_ids=[evidence.evidence_id for evidence in run_result.evidence],
+            artifact_ids=[
+                artifact.artifact_id
+                for evidence in run_result.evidence
+                for artifact in evidence.artifacts
+            ],
             image_artifact_ids=[
                 artifact.artifact_id
                 for evidence in run_result.evidence
@@ -257,7 +263,7 @@ def _build_evidence_citations(run_result: ExperimentRunResult | None) -> list[di
         return []
     citations: list[dict[str, object]] = []
     for item in run_result.evidence:
-        artifact_ids = [artifact.artifact_id for artifact in item.image_artifacts]
+        artifact_ids = _citation_artifact_ids(item)
         for delta in item.judge.deltas:
             box_id = _box_id_from_delta(delta)
             reason = delta.get("reason", "")
@@ -291,6 +297,13 @@ def _build_evidence_citations(run_result: ExperimentRunResult | None) -> list[di
                 }
             )
     return citations
+
+
+def _citation_artifact_ids(item: ExperimentEvidence) -> list[str]:
+    artifact_ids = [artifact.artifact_id for artifact in item.artifacts]
+    if artifact_ids:
+        return artifact_ids
+    return [artifact.artifact_id for artifact in item.image_artifacts]
 
 
 def _box_id_from_delta(delta: dict[str, object]) -> int | None:

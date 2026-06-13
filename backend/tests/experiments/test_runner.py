@@ -170,6 +170,34 @@ async def test_run_experiments_adds_localized_image_artifacts_for_affected_boxes
     assert artifact.region.width == 56
     assert artifact.region.height == 78
     assert artifact.region.label == "box-7"
+    generic_artifact = result.evidence[0].artifacts[0]
+    assert generic_artifact.artifact_id == "case-localized:box-7:localized-candidate"
+    assert generic_artifact.kind == "affected_box_candidate"
+    assert generic_artifact.artifact_type == "image"
+    assert generic_artifact.source_uri == "file:///tmp/case-localized.png"
+    assert generic_artifact.derived_uri == ""
+    assert generic_artifact.preview_url == ""
+    assert generic_artifact.region is not None
+    assert generic_artifact.region.label == "box-7"
+    assert generic_artifact.metadata == {"target_id": "box:7", "legacy_kind": "affected_box_candidate"}
+
+
+@pytest.mark.asyncio
+async def test_run_experiments_adds_generic_input_and_output_artifacts() -> None:
+    fixture_path = Path(__file__).parents[1] / "fixtures" / "handwrite233.json"
+    case = DebugCase.model_validate(json.loads(fixture_path.read_text(encoding="utf-8")))
+    plan = ExperimentPlan(
+        case_id=case.case_id,
+        max_model_calls=1,
+        steps=[ExperimentStep(name="baseline_replay", description="Replay baseline.", trials=1)],
+    )
+    adapter = FakeModelAdapter(outputs=[case.predictions[0].raw_output])
+
+    result = await run_experiments(case=case, plan=plan, adapter=adapter)
+
+    artifact_kinds = [artifact.kind for artifact in result.evidence[0].artifacts]
+    assert "input_snapshot" in artifact_kinds
+    assert "structured_output" in artifact_kinds
 
 
 @pytest.mark.asyncio

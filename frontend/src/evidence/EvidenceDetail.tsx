@@ -9,6 +9,7 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
     return null;
   }
   const imageArtifacts = evidence.image_artifacts ?? [];
+  const genericArtifacts = evidence.artifacts ?? [];
 
   return (
     <section>
@@ -26,7 +27,43 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
       {evidence.response_parse_error ? <p>解析错误：{evidence.response_parse_error}</p> : null}
       {evidence.model_call_error_type ? <p>模型调用错误类型：{evidence.model_call_error_type}</p> : null}
       {evidence.model_call_error_message ? <p>模型调用错误信息：{evidence.model_call_error_message}</p> : null}
-      {imageArtifacts.length > 0 ? (
+      {genericArtifacts.length > 0 ? (
+        <>
+          <h3>Evidence Artifacts</h3>
+          <ul>
+            {genericArtifacts.map((artifact) => (
+              <li key={artifact.artifact_id}>
+                <h4>Artifact {artifact.artifact_id}</h4>
+                <p>类型：{artifact.kind}</p>
+                <p>媒介：{artifact.artifact_type}</p>
+                <p>源 URI：{artifact.source_uri || "无"}</p>
+                <p>派生 URI：{artifact.derived_uri || "无"}</p>
+                <p>元数据：{JSON.stringify(artifact.metadata)}</p>
+                {artifact.preview_url ? (
+                  <>
+                    <p>
+                      <a href={artifact.preview_url} target="_blank" rel="noreferrer">
+                        打开证据预览 {artifact.artifact_id}
+                      </a>
+                    </p>
+                    <img alt={`Artifact preview ${artifact.artifact_id}`} src={artifact.preview_url} />
+                  </>
+                ) : (
+                  <p>预览：无</p>
+                )}
+                {artifact.region ? (
+                  <p>
+                    区域：x={artifact.region.x}, y={artifact.region.y}, width={artifact.region.width}, height=
+                    {artifact.region.height}, unit={artifact.region.unit}, label={artifact.region.label || "无"}
+                  </p>
+                ) : (
+                  <p>区域：无</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : imageArtifacts.length > 0 ? (
         <>
           <h3>Image Artifacts</h3>
           <ul>

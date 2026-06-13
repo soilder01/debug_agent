@@ -9,6 +9,69 @@ afterEach(() => {
 });
 
 describe("EvidenceDetail", () => {
+  it("renders generic evidence artifacts before legacy image artifacts", () => {
+    const evidence = {
+      evidence_id: "case-1:baseline_replay:0",
+      step_name: "baseline_replay",
+      trial: 0,
+      model_name: "ark-seed2-lite",
+      model_provider: "ark",
+      model_id: "ep-seed2-lite",
+      request_summary: {
+        prompt_length: 42,
+        has_image: true,
+        image_uri_scheme: "file"
+      },
+      latency_ms: 25,
+      response_parse_error: "",
+      model_call_error_type: "",
+      model_call_error_message: "",
+      artifacts: [
+        {
+          artifact_id: "case-1:baseline_replay:0:input-snapshot",
+          kind: "input_snapshot",
+          artifact_type: "request",
+          source_uri: "file:///tmp/case-1.png",
+          derived_uri: "",
+          preview_url: "",
+          region: null,
+          metadata: {
+            task_type: "classification",
+            prompt_length: 42
+          }
+        },
+        {
+          artifact_id: "case-1:baseline_replay:0:structured-output",
+          kind: "structured_output",
+          artifact_type: "model_output",
+          source_uri: "",
+          derived_uri: "",
+          preview_url: "",
+          region: null,
+          metadata: {
+            raw_output_length: 128
+          }
+        }
+      ],
+      image_artifacts: [],
+      raw_output: "{\"label\":\"negative\"}",
+      judge: {
+        score: 0,
+        reasons: ["label mismatch"]
+      }
+    } satisfies ExperimentEvidence;
+
+    render(<EvidenceDetail evidence={evidence} />);
+
+    expect(screen.getByText("Evidence Artifacts")).toBeInTheDocument();
+    expect(screen.getByText("Artifact case-1:baseline_replay:0:input-snapshot")).toBeInTheDocument();
+    expect(screen.getByText("类型：input_snapshot")).toBeInTheDocument();
+    expect(screen.getByText("媒介：request")).toBeInTheDocument();
+    expect(screen.getByText("源 URI：file:///tmp/case-1.png")).toBeInTheDocument();
+    expect(screen.getByText('元数据：{"task_type":"classification","prompt_length":42}')).toBeInTheDocument();
+    expect(screen.queryByText("Image Artifacts")).not.toBeInTheDocument();
+  });
+
   it("renders image artifact metadata for localized OCR debugging", () => {
     const evidence = {
       evidence_id: "case-1:localized_observation_request:0",

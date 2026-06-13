@@ -258,6 +258,56 @@ def test_repository_persists_evidence_image_artifacts() -> None:
     assert restored.image_artifacts[0].region.label == "box-7"
 
 
+def test_repository_persists_generic_evidence_artifacts() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    evidence = ExperimentEvidence(
+        evidence_id="case-1:baseline:0",
+        step_name="baseline",
+        trial=0,
+        artifacts=[
+            {
+                "artifact_id": "case-1:baseline:0:input-snapshot",
+                "kind": "input_snapshot",
+                "artifact_type": "request",
+                "source_uri": "file:///tmp/case-1.png",
+                "derived_uri": "",
+                "preview_url": "",
+                "region": None,
+                "metadata": {"task_type": "classification", "prompt_length": 42},
+            },
+            {
+                "artifact_id": "case-1:baseline:0:structured-output",
+                "kind": "structured_output",
+                "artifact_type": "model_output",
+                "source_uri": "",
+                "derived_uri": "",
+                "preview_url": "",
+                "region": None,
+                "metadata": {"raw_output_length": 128},
+            },
+        ],
+        raw_output="{\"label\":\"negative\"}",
+        judge=JudgeResult(score=0, reasons=["label mismatch"]),
+    )
+
+    repository.create_job(job_id="job-1", case_id="case-1")
+    repository.save_evidence(job_id="job-1", case_id="case-1", evidence=[evidence])
+
+    with session_factory() as session:
+        row = session.get(EvidenceRow, ("job-1", "case-1:baseline:0"))
+        assert row is not None
+        assert "input_snapshot" in row.artifacts_json
+        assert "structured_output" in row.artifacts_json
+
+    restored = repository.get_evidence("job-1", "case-1:baseline:0")
+
+    assert restored is not None
+    assert [artifact.kind for artifact in restored.artifacts] == ["input_snapshot", "structured_output"]
+    assert restored.artifacts[0].metadata == {"task_type": "classification", "prompt_length": 42}
+
+
 def test_repository_created_job_starts_with_zero_attempts() -> None:
     session_factory, engine = create_sqlite_memory_session_factory()
     Base.metadata.create_all(engine)

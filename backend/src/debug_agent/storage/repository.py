@@ -386,6 +386,7 @@ class DebugJobRepository:
                             image_artifacts_json=json.dumps(
                                 [artifact.model_dump() for artifact in item.image_artifacts]
                             ),
+                            artifacts_json=json.dumps([artifact.model_dump() for artifact in item.artifacts]),
                             score=item.judge.score,
                             reasons_json=json.dumps(item.judge.model_dump()),
                             raw_output=item.raw_output,
@@ -474,6 +475,9 @@ class DebugJobRepository:
                 image_artifacts = json.loads(row.image_artifacts_json)
                 if not isinstance(image_artifacts, list):
                     raise ValueError(f"Evidence image artifacts must be a list: {evidence_id}")
+                artifacts = json.loads(row.artifacts_json)
+                if not isinstance(artifacts, list):
+                    raise ValueError(f"Evidence artifacts must be a list: {evidence_id}")
                 return ExperimentEvidence(
                     evidence_id=row.evidence_id,
                     step_name=row.step_name,
@@ -487,6 +491,7 @@ class DebugJobRepository:
                     model_call_error_type=row.model_call_error_type,
                     model_call_error_message=row.model_call_error_message,
                     image_artifacts=image_artifacts,
+                    artifacts=artifacts,
                     raw_output=row.raw_output,
                     judge=_judge_result_from_payload(score=row.score, evidence_id=evidence_id, payload=judge_payload),
                 )

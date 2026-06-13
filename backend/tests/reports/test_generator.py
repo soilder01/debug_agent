@@ -41,6 +41,18 @@ def test_generate_report_includes_experiment_summary() -> None:
                         "source_image_uri": "file:///tmp/case-1.png",
                     }
                 ],
+                artifacts=[
+                    {
+                        "artifact_id": "case-1:baseline:0:input-snapshot",
+                        "kind": "input_snapshot",
+                        "artifact_type": "request",
+                        "source_uri": "file:///tmp/case-1.png",
+                        "derived_uri": "",
+                        "preview_url": "",
+                        "region": None,
+                        "metadata": {"task_type": "handwriting_ocr"},
+                    }
+                ],
                 raw_output=case.predictions[0].raw_output,
                 judge=JudgeResult(score=0, reasons=["box 1 student_answer_mismatch"]),
             )
@@ -54,6 +66,7 @@ def test_generate_report_includes_experiment_summary() -> None:
     assert report.experiment_summary.success_count == 0
     assert report.experiment_summary.evidence_ids == ["e1"]
     assert report.experiment_summary.image_artifact_ids == ["case-1:box-7:localized-candidate"]
+    assert report.experiment_summary.artifact_ids == ["case-1:baseline:0:input-snapshot"]
 
 
 def test_generate_report_summarizes_replay_stability() -> None:
@@ -117,6 +130,18 @@ def test_generate_report_infers_root_cause_from_structured_judge_deltas() -> Non
                         "source_image_uri": "file:///tmp/case-1.png",
                     }
                 ],
+                artifacts=[
+                    {
+                        "artifact_id": "case-1:baseline:0:input-snapshot",
+                        "kind": "input_snapshot",
+                        "artifact_type": "request",
+                        "source_uri": "file:///tmp/case-1.png",
+                        "derived_uri": "",
+                        "preview_url": "",
+                        "region": None,
+                        "metadata": {"task_type": "handwriting_ocr"},
+                    }
+                ],
                 raw_output=case.predictions[0].raw_output,
                 judge=JudgeResult(
                     score=0,
@@ -156,7 +181,7 @@ def test_generate_report_infers_root_cause_from_structured_judge_deltas() -> Non
             "step_name": "baseline_replay",
             "box_id": 7,
             "reason": "student_answer_mismatch",
-            "artifact_ids": ["case-1:box-7:localized-candidate"],
+            "artifact_ids": ["case-1:baseline:0:input-snapshot"],
         }
     ]
 

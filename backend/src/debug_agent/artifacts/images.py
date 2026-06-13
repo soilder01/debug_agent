@@ -2,7 +2,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 from PIL import Image
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ImageRegion(BaseModel):
@@ -21,6 +21,17 @@ class ImageArtifact(BaseModel):
     region: ImageRegion | None = None
     derived_image_uri: str = ""
     preview_image_url: str = ""
+
+
+class EvidenceArtifact(BaseModel):
+    artifact_id: str
+    kind: str
+    artifact_type: str
+    source_uri: str = ""
+    derived_uri: str = ""
+    preview_url: str = ""
+    region: ImageRegion | None = None
+    metadata: dict[str, object] = Field(default_factory=dict)
 
 
 def materialize_image_crop(

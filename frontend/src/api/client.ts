@@ -15,6 +15,7 @@ export type DebugReport = {
     success_rate?: number;
     stability_label?: string;
     evidence_ids: string[];
+    artifact_ids?: string[];
     image_artifact_ids?: string[];
   } | null;
   root_cause: {
@@ -125,6 +126,24 @@ export type ImageArtifact = {
     unit: string;
     label: string;
   } | null;
+};
+
+export type EvidenceArtifact = {
+  artifact_id: string;
+  kind: string;
+  artifact_type: string;
+  source_uri: string;
+  derived_uri: string;
+  preview_url?: string;
+  region: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    unit: string;
+    label: string;
+  } | null;
+  metadata: Record<string, unknown>;
 };
 
 export type DebugCaseDetail = {
@@ -297,6 +316,7 @@ export type ExperimentEvidence = {
   model_call_error_type: string;
   model_call_error_message: string;
   image_artifacts?: ImageArtifact[];
+  artifacts?: EvidenceArtifact[];
   raw_output: string;
   judge: {
     score: number;

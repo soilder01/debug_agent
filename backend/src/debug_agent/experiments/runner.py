@@ -1,10 +1,12 @@
 from pathlib import Path
 from time import perf_counter
+from typing import Self
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from debug_agent.artifacts.images import (
+    EvidenceArtifact,
     ImageArtifact,
     ImageRegion,
     image_artifact_preview_url,
@@ -31,8 +33,15 @@ class ExperimentEvidence(BaseModel):
     model_call_error_type: str = ""
     model_call_error_message: str = ""
     image_artifacts: list[ImageArtifact] = Field(default_factory=list)
+    artifacts: list[EvidenceArtifact] = Field(default_factory=list)
     raw_output: str
     judge: JudgeResult
+
+    @model_validator(mode="after")
+    def _populate_generic_artifacts_from_images(self) -> Self:
+        if not self.artifacts and self.image_artifacts:
+            self.artifacts = _image_artifacts_to_evidence_artifacts(self.image_artifacts)
+        return self
 
 
 class ExperimentRunResult(BaseModel):
@@ -76,6 +85,14 @@ async def run_experiments(
                         latency_ms=latency_ms,
                         model_call_error_type=model_call_error_type,
                         model_call_error_message=model_call_error_message,
+                        artifacts=_build_generic_artifacts(
+                            case=case,
+                            step_name=step.name,
+                            trial_index=trial_index,
+                            raw_output="",
+                            image_artifacts=[],
+                            response_parse_error="",
+                        ),
                         raw_output="",
                         judge=judge,
                     )
@@ -115,6 +132,14 @@ async def run_experiments(
                     model_call_error_type=model_call_error_type,
                     model_call_error_message=model_call_error_message,
                     image_artifacts=image_artifacts,
+                    artifacts=_build_generic_artifacts(
+                        case=case,
+                        step_name=step.name,
+                        trial_index=trial_index,
+                        raw_output=response.raw_output,
+                        image_artifacts=image_artifacts,
+                        response_parse_error=response_parse_error,
+                    ),
                     raw_output=response.raw_output,
                     judge=judge,
                 )
@@ -140,6 +165,73 @@ def _build_request_summary(prompt: str, image_uri: str, scoring_standard: str) -
 def _build_step_prompt(case: DebugCase, step_name: str) -> str:
     recipe = recipe_for_task_type(case.task_type)
     return recipe.build_step_prompt(case=case, step_name=step_name)
+
+
+def _build_generic_artifacts(
+    *,
+    case: DebugCase,
+    step_name: str,
+    trial_index: int,
+    raw_output: str,
+    image_artifacts: list[ImageArtifact],
+    response_parse_error: str,
+) -> list[EvidenceArtifact]:
+    artifacts = _image_artifacts_to_evidence_artifacts(image_artifacts)
+    artifacts.append(
+        EvidenceArtifact(
+            artifact_id=f"{case.case_id}:{step_name}:{trial_index}:input-snapshot",
+            kind="input_snapshot",
+            artifact_type="request",
+            source_uri=case.image_uri,
+            metadata={
+                "task_type": case.task_type,
+                "prompt_length": len(case.prompt),
+                "scoring_standard_present": bool(case.scoring_standard.strip()),
+            },
+        )
+    )
+    artifacts.append(
+        EvidenceArtifact(
+            artifact_id=f"{case.case_id}:{step_name}:{trial_index}:structured-output",
+            kind="structured_output",
+            artifact_type="model_output",
+            metadata={
+                "raw_output_length": len(raw_output),
+                "response_parse_error": response_parse_error,
+            },
+        )
+    )
+    return artifacts
+
+
+def _image_artifacts_to_evidence_artifacts(image_artifacts: list[ImageArtifact]) -> list[EvidenceArtifact]:
+    return [_image_artifact_to_evidence_artifact(artifact) for artifact in image_artifacts]
+
+
+def _image_artifact_to_evidence_artifact(artifact: ImageArtifact) -> EvidenceArtifact:
+    target_id = _target_id_from_image_artifact(artifact)
+    metadata: dict[str, object] = {"legacy_kind": artifact.kind}
+    if target_id:
+        metadata["target_id"] = target_id
+    return EvidenceArtifact(
+        artifact_id=artifact.artifact_id,
+        kind=artifact.kind,
+        artifact_type="image",
+        source_uri=artifact.source_image_uri,
+        derived_uri=artifact.derived_image_uri,
+        preview_url=artifact.preview_image_url,
+        region=artifact.region,
+        metadata=metadata,
+    )
+
+
+def _target_id_from_image_artifact(artifact: ImageArtifact) -> str:
+    for token in artifact.artifact_id.split(":"):
+        if token.startswith("box-"):
+            box_id = token.removeprefix("box-")
+            if box_id.isdigit():
+                return f"box:{box_id}"
+    return ""
 
 
 def _build_localized_image_artifacts(
