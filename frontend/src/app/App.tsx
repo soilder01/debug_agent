@@ -47,6 +47,7 @@ import { EvidenceDetail } from "../evidence/EvidenceDetail";
 import { ExperimentTimeline } from "../experiments/ExperimentTimeline";
 import { CSVImportResultPanel } from "../imports/CSVImportResultPanel";
 import { JSONLImportResultPanel } from "../imports/JSONLImportResultPanel";
+import { BatchJobListPanel } from "../jobs/BatchJobListPanel";
 import { JobStatusPanel } from "../jobs/JobStatusPanel";
 import { WorkerStatusPanel } from "../jobs/WorkerStatusPanel";
 import { ReportPanel } from "../reports/ReportPanel";
@@ -692,63 +693,18 @@ export function App() {
         </button>
         {batchResult ? (
           <>
-            <p>{jobListSummaryLabel}：{batchResult.jobs.length}</p>
-            <p>总任务：{jobListTotalCount ?? batchResult.jobs.length}</p>
-            <p>未加载：{unloadedJobCount}</p>
-            <p>拒绝：{batchResult.rejected_case_ids.join(", ") || "无"}</p>
-            <p>
-              批量进度：{completedBatchJobs}/{batchResult.jobs.length}
-            </p>
-            <button type="button" onClick={startWorkerLoop}>
-              Start worker for batch
-            </button>
-            {unloadedJobCount > 0 ? (
-              <button type="button" onClick={() => void loadMoreDebugJobs()}>
-                Load more debug jobs
-              </button>
-            ) : null}
-            {batchJobs.length > 0 ? (
-              <ul aria-label="Batch job statuses">
-                {batchJobs.map((job) => (
-                  <li key={job.job_id}>
-                    <span>
-                      {job.job_id}：{job.status}
-                    </span>
-                    {job.created_at ? (
-                      <span title={job.created_at}>
-                        {" "}
-                        {job.job_id} 创建：{formatJobTimestamp(job.created_at)}
-                      </span>
-                    ) : null}
-                    {job.updated_at ? (
-                      <span title={job.updated_at}>
-                        {" "}
-                        {job.job_id} 更新：{formatJobTimestamp(job.updated_at)}
-                      </span>
-                    ) : null}
-                    {job.error_message ? <span> {job.job_id} 错误：{job.error_message}</span> : null}
-                    {job.retry_recommendation_detail ? (
-                      <>
-                        <span> {job.job_id} 建议：{job.retry_recommendation_detail.label}</span>
-                        <span> {job.job_id} 级别：{job.retry_recommendation_detail.severity}</span>
-                      </>
-                    ) : null}
-                    <button type="button" onClick={() => openBatchJob(job)}>
-                      Open job {job.job_id}
-                    </button>
-                    {job.evidence_ids?.map((evidenceId) => (
-                      <button
-                        key={evidenceId}
-                        type="button"
-                        onClick={() => void selectBatchJobEvidence(job.job_id, evidenceId)}
-                      >
-                        Open evidence {evidenceId} for job {job.job_id}
-                      </button>
-                    ))}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
+            <BatchJobListPanel
+              jobs={batchJobs}
+              summaryLabel={jobListSummaryLabel}
+              totalCount={jobListTotalCount ?? batchResult.jobs.length}
+              unloadedCount={unloadedJobCount}
+              rejectedCaseIds={batchResult.rejected_case_ids}
+              completedCount={completedBatchJobs}
+              onStartWorker={startWorkerLoop}
+              onLoadMore={() => void loadMoreDebugJobs()}
+              onOpenJob={openBatchJob}
+              onSelectEvidence={(jobId, evidenceId) => void selectBatchJobEvidence(jobId, evidenceId)}
+            />
           </>
         ) : null}
       </section>
@@ -813,22 +769,6 @@ export function App() {
       )}
     </main>
   );
-}
-
-function formatJobTimestamp(timestamp: string): string {
-  const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) {
-    return timestamp;
-  }
-  return [
-    date.getFullYear(),
-    padDatePart(date.getMonth() + 1),
-    padDatePart(date.getDate())
-  ].join("-") + ` ${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}:${padDatePart(date.getSeconds())}`;
-}
-
-function padDatePart(value: number): string {
-  return String(value).padStart(2, "0");
 }
 
 function parseLarkSpreadsheetUrl(value: string): { spreadsheetId: string; sheetId: string } {
