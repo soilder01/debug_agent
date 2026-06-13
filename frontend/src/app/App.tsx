@@ -13,6 +13,7 @@ import {
   fetchJobReport,
   fetchJobStatus,
   fetchLarkSpreadsheetStatus,
+  fetchObservabilitySummary,
   fetchSpreadsheetWritebackAudit,
   fetchSpreadsheetWritebackAudits,
   fetchSpreadsheetWritebackAuditSummary,
@@ -22,6 +23,7 @@ import {
   importSpreadsheetRows,
   type JsonlImportResponse,
   type LarkSpreadsheetStatus,
+  type ObservabilitySummary,
   startWorker,
   submitBatchDebugJobs,
   submitDebugJob,
@@ -45,6 +47,7 @@ import { ImportWorkspace } from "../imports/ImportWorkspace";
 import { BatchJobsPanel } from "../jobs/BatchJobsPanel";
 import { CurrentJobPanel } from "../jobs/CurrentJobPanel";
 import { WorkerControlsPanel } from "../jobs/WorkerControlsPanel";
+import { ObservabilitySummaryPanel } from "../observability/ObservabilitySummaryPanel";
 import { DebugReportWorkspace } from "../reports/DebugReportWorkspace";
 import { SpreadsheetSyncPanel } from "../spreadsheets/SpreadsheetSyncPanel";
 import { parseLarkSpreadsheetUrl } from "../spreadsheets/larkUrl";
@@ -85,6 +88,7 @@ export function App() {
   const [activeWritebackAuditStatus, setActiveWritebackAuditStatus] = useState<string | null | undefined>(undefined);
   const [larkSpreadsheetStatus, setLarkSpreadsheetStatus] = useState<LarkSpreadsheetStatus | null>(null);
   const [workerStatus, setWorkerStatus] = useState<WorkerStatus | null>(null);
+  const [observabilitySummary, setObservabilitySummary] = useState<ObservabilitySummary | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<ExperimentEvidence | null>(null);
   const [importedCaseTotalCount, setImportedCaseTotalCount] = useState(0);
   const [importedCaseFilteredCount, setImportedCaseFilteredCount] = useState<number | null>(null);
@@ -278,6 +282,15 @@ export function App() {
     setError("");
     try {
       setWorkerStatus(await startWorker());
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
+  async function loadObservabilitySummary() {
+    setError("");
+    try {
+      setObservabilitySummary(await fetchObservabilitySummary());
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
     }
@@ -528,6 +541,13 @@ export function App() {
         Submit debug job
       </button>
       <WorkerControlsPanel status={workerStatus} onStart={startWorkerLoop} onStop={stopWorkerLoop} />
+      <section>
+        <h2>Operational Monitoring</h2>
+        <button type="button" onClick={() => void loadObservabilitySummary()}>
+          Load observability summary
+        </button>
+      </section>
+      {observabilitySummary ? <ObservabilitySummaryPanel summary={observabilitySummary} /> : null}
       <ImportWorkspace
         jsonlCases={jsonlCases}
         jsonlImportResult={jsonlImportResult}

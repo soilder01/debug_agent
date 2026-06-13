@@ -213,6 +213,21 @@ class WorkerRuntimeStatus(AsyncJobWorkerStatus):
     auto_writeback_enabled: bool
 
 
+class ObservabilityJobSummary(BaseModel):
+    by_status: dict[str, int]
+    total_count: int
+    pending_count: int
+    running_count: int
+    failed_count: int
+    completed_count: int
+
+
+class ObservabilitySummaryResponse(BaseModel):
+    jobs: ObservabilityJobSummary
+    worker: WorkerRuntimeStatus
+    writeback_audits: SpreadsheetWritebackAuditSummaryResponse
+
+
 class DebugCaseSummary(BaseModel):
     case_id: str
     image_uri: str
@@ -231,6 +246,27 @@ class DebugCaseListResponse(BaseModel):
 @router.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "debug-agent-backend"}
+
+
+@router.get("/observability/summary")
+def get_observability_summary() -> ObservabilitySummaryResponse:
+    job_counts = job_repository.count_jobs_by_status()
+    writeback_counts = job_repository.count_spreadsheet_writeback_audits_by_status()
+    return ObservabilitySummaryResponse(
+        jobs=ObservabilityJobSummary(
+            by_status=job_counts,
+            total_count=sum(job_counts.values()),
+            pending_count=job_counts.get("created", 0),
+            running_count=job_counts.get("running", 0),
+            failed_count=job_counts.get("failed", 0),
+            completed_count=job_counts.get("completed", 0),
+        ),
+        worker=_build_worker_runtime_status(),
+        writeback_audits=SpreadsheetWritebackAuditSummaryResponse(
+            by_status=writeback_counts,
+            total_count=sum(writeback_counts.values()),
+        ),
+    )
 
 
 @router.get("/cases")

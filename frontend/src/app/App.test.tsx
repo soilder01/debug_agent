@@ -10,6 +10,54 @@ afterEach(() => {
 });
 
 describe("App", () => {
+  it("loads observability summary for operational monitoring", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          jobs: {
+            by_status: {
+              created: 4,
+              running: 1,
+              completed: 12,
+              failed: 2
+            },
+            total_count: 19,
+            pending_count: 4,
+            running_count: 1,
+            failed_count: 2,
+            completed_count: 12
+          },
+          worker: {
+            running: true,
+            processed_count: 18,
+            error_count: 1,
+            last_error: "hook failed",
+            completion_hook_enabled: true,
+            report_base_url: "https://debug-agent.local",
+            auto_writeback_enabled: true
+          },
+          writeback_audits: {
+            by_status: {
+              succeeded: 10,
+              failed: 2,
+              skipped: 1
+            },
+            total_count: 13
+          }
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load observability summary" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/observability/summary");
+    expect(await screen.findByText("Observed jobs pending：4")).toBeInTheDocument();
+    expect(screen.getByText("Observed worker running：true")).toBeInTheDocument();
+    expect(screen.getByText("Observed writeback failed：2")).toBeInTheDocument();
+  });
+
   it("submits a single-case debug job and renders the created job state", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")

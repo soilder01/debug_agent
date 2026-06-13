@@ -324,6 +324,14 @@ class DebugJobRepository:
                     query = query.where(DebugJobRow.status == status)
                 return session.scalar(query) or 0
 
+    def count_jobs_by_status(self) -> dict[str, int]:
+        with self._lock:
+            with self._session_factory() as session:
+                rows = session.execute(
+                    select(DebugJobRow.status, func.count()).group_by(DebugJobRow.status).order_by(DebugJobRow.status)
+                )
+                return {str(status): int(count) for status, count in rows}
+
     def get_next_created_job(self) -> DebugJobRow | None:
         with self._lock:
             with self._session_factory() as session:

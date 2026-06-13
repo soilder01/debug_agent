@@ -162,6 +162,19 @@ export type WorkerStatus = {
   auto_writeback_enabled: boolean;
 };
 
+export type ObservabilitySummary = {
+  jobs: {
+    by_status: Record<string, number>;
+    total_count: number;
+    pending_count: number;
+    running_count: number;
+    failed_count: number;
+    completed_count: number;
+  };
+  worker: WorkerStatus;
+  writeback_audits: SpreadsheetWritebackAuditCounts;
+};
+
 export type JsonlRejectedLine = {
   line_number: number;
   error_message: string;
@@ -499,6 +512,14 @@ export async function fetchWorkerStatus(): Promise<WorkerStatus> {
     throw new Error(`Failed to fetch worker status: ${response.status}`);
   }
   return (await response.json()) as WorkerStatus;
+}
+
+export async function fetchObservabilitySummary(): Promise<ObservabilitySummary> {
+  const response = await fetch("/api/observability/summary");
+  if (!response.ok) {
+    throw new Error(`Failed to fetch observability summary: ${response.status}`);
+  }
+  return (await response.json()) as ObservabilitySummary;
 }
 
 export async function startWorker(): Promise<WorkerStatus> {

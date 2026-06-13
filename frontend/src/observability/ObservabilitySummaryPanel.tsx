@@ -1,0 +1,28 @@
+import type { ObservabilitySummary } from "../api/client";
+
+type ObservabilitySummaryPanelProps = {
+  summary: ObservabilitySummary;
+};
+
+export function ObservabilitySummaryPanel({ summary }: ObservabilitySummaryPanelProps) {
+  return (
+    <section>
+      <h2>Observability</h2>
+      <p>Observed jobs total：{summary.jobs.total_count}</p>
+      <p>Observed jobs pending：{summary.jobs.pending_count}</p>
+      <p>Observed jobs running：{summary.jobs.running_count}</p>
+      <p>Observed jobs completed：{summary.jobs.completed_count}</p>
+      <p>Observed jobs failed：{summary.jobs.failed_count}</p>
+      <p>Observed worker running：{String(summary.worker.running)}</p>
+      <p>Observed worker processed：{summary.worker.processed_count}</p>
+      <p>Observed worker errors：{summary.worker.error_count}</p>
+      <p>Observed worker auto writeback：{summary.worker.auto_writeback_enabled ? "enabled" : "disabled"}</p>
+      <p>Observed worker completion hook：{summary.worker.completion_hook_enabled ? "enabled" : "disabled"}</p>
+      {summary.worker.last_error ? <p role="alert">Observed worker last error：{summary.worker.last_error}</p> : null}
+      <p>Observed writeback audits total：{summary.writeback_audits.total_count}</p>
+      <p>Observed writeback succeeded：{summary.writeback_audits.by_status.succeeded ?? 0}</p>
+      <p>Observed writeback failed：{summary.writeback_audits.by_status.failed ?? 0}</p>
+      <p>Observed writeback skipped：{summary.writeback_audits.by_status.skipped ?? 0}</p>
+    </section>
+  );
+}
