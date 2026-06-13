@@ -92,7 +92,7 @@ The final target is not only handwriting OCR badcase debug. Handwriting OCR is t
 - [x] Introduce generic artifact fields while preserving `image_artifacts`.
 - [x] Support artifact kinds beyond `affected_box_candidate`, such as `context_region`, `input_snapshot`, and `structured_output`.
 - [x] Update front-end display to use generic artifact labels.
-- [ ] Run focused tests and commit as `feat(core): generalize evidence artifacts`.
+- [x] Run focused tests and commit as `feat(core): generalize evidence artifacts`.
 
 ### Task 5: Report Taxonomy Profiles
 
@@ -101,10 +101,10 @@ The final target is not only handwriting OCR badcase debug. Handwriting OCR is t
 - Modify: `backend/src/debug_agent/reports/generator.py`
 - Test: `backend/tests/reports/test_generator.py`
 
-- [ ] Move OCR labels like `erasure_revision_failure` into an OCR taxonomy profile.
-- [ ] Add generic labels: `evaluation_asset_issue`, `model_call_error`, `parse_error`, `output_mismatch`, `unstable_prediction`.
-- [ ] Keep existing report output compatible for OCR cases while allowing generic cases to avoid OCR wording.
-- [ ] Run focused tests and commit as `feat(core): add report taxonomy profiles`.
+- [x] Move OCR labels like `erasure_revision_failure` into an OCR taxonomy profile.
+- [x] Add generic labels: `evaluation_asset_issue`, `model_call_error`, `parse_error`, `output_mismatch`, `unstable_prediction`.
+- [x] Keep existing report output compatible for OCR cases while allowing generic cases to avoid OCR wording.
+- [x] Run focused tests and commit as `feat(core): add report taxonomy profiles`.
 
 ### Task 6: Frontend Product Generalization
 

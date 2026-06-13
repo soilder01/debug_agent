@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 from debug_agent.cases.models import DebugCase
 from debug_agent.experiments.planner import ExperimentPlan
 from debug_agent.experiments.runner import ExperimentEvidence, ExperimentRunResult
+from debug_agent.reports.taxonomy import taxonomy_for_task_type
 
 
 class ObservedFailure(BaseModel):
@@ -102,6 +103,7 @@ def _infer_report_findings(
     case: DebugCase,
     run_result: ExperimentRunResult | None,
 ) -> tuple[ObservedFailure, RootCause, dict[str, str]]:
+    taxonomy = taxonomy_for_task_type(case.task_type)
     asset_issue = _evaluation_asset_issue(case=case, run_result=run_result)
     if asset_issue is not None:
         return asset_issue
@@ -126,47 +128,89 @@ def _infer_report_findings(
                     "错误原因": f"模型调用失败：{error_summary}",
                 },
             )
+        parse_error = _first_parse_error(run_result.evidence)
+        if parse_error is not None:
+            return (
+                ObservedFailure(
+                    type="parse_error",
+                    summary="模型输出解析失败，无法形成可评分的结构化结果。",
+                    affected_box_ids=[],
+                ),
+                RootCause(
+                    label="parse_error",
+                    confidence="high",
+                    evidence_summary=f"Evidence {parse_error.evidence_id} 解析失败：{parse_error.response_parse_error}",
+                ),
+                {
+                    "debug1状态": "待人工确认",
+                    "模型可做对次数": f"{run_result.success_count}次",
+                    "错误原因": f"模型输出解析失败：{parse_error.response_parse_error}",
+                },
+            )
         structured_deltas = _structured_answer_deltas(run_result.evidence)
         if structured_deltas:
             affected_box_ids = _affected_box_ids_from_deltas(structured_deltas)
+            target_summary = _target_summary_from_deltas(structured_deltas, affected_box_ids)
             reason_labels = sorted({str(delta.get("reason", "")) for delta in structured_deltas if delta.get("reason")})
-            box_summary = ", ".join(f"box {box_id}" for box_id in affected_box_ids)
             reason_summary = ", ".join(reason_labels)
             return (
                 ObservedFailure(
-                    type="answer_mismatch",
-                    summary=f"结构化评分发现 {box_summary} 存在答案差异：{reason_summary}。",
+                    type=taxonomy.structured_mismatch_label,
+                    summary=f"结构化评分发现 {target_summary} 存在输出差异：{reason_summary}。",
                     affected_box_ids=affected_box_ids,
                 ),
                 RootCause(
-                    label="answer_mismatch",
+                    label=taxonomy.structured_mismatch_label,
                     confidence="high",
                     evidence_summary=(
-                        f"Structured judge deltas cite {box_summary} with reasons {reason_summary}; "
+                        f"Structured judge deltas cite {target_summary} with reasons {reason_summary}; "
                         "compare predicted answers against the scoring standard and golden answer."
                     ),
                 ),
                 {
                     "debug1状态": "待人工确认",
                     "模型可做对次数": f"{run_result.success_count}次",
-                    "错误原因": f"结构化评分显示 {box_summary} 存在 {reason_summary}。",
+                    "错误原因": f"结构化评分显示 {target_summary} 存在 {reason_summary}。",
+                },
+            )
+        if 0 < run_result.success_count < run_result.total_trials:
+            return (
+                ObservedFailure(
+                    type="unstable_prediction",
+                    summary="多次复测结果不稳定，模型在相同输入下未保持一致输出。",
+                    affected_box_ids=[],
+                ),
+                RootCause(
+                    label="unstable_prediction",
+                    confidence="medium",
+                    evidence_summary=(
+                        f"Replay success ratio is {run_result.success_count}/{run_result.total_trials}; "
+                        "inspect prompt sensitivity and sampling variance."
+                    ),
+                ),
+                {
+                    "debug1状态": "待人工确认",
+                    "模型可做对次数": f"{run_result.success_count}次",
+                    "错误原因": (
+                        f"同一样本复测不稳定：{run_result.success_count}/{run_result.total_trials} 次成功。"
+                    ),
                 },
             )
     return (
         ObservedFailure(
-            type="erasure_revision_failure",
-            summary="模型在涂改、错字或相近字符场景下存在语义猜测和纠偏风险。",
+            type=taxonomy.fallback_failure_type,
+            summary=taxonomy.fallback_summary,
             affected_box_ids=[1, 2],
         ),
         RootCause(
-            label="erasure_revision_failure",
+            label=taxonomy.fallback_root_cause_label,
             confidence="medium",
-            evidence_summary="当前样本低分且人工备注指向涂改区域识别失败，需要复测确认。",
+            evidence_summary=taxonomy.fallback_evidence_summary,
         ),
         {
             "debug1状态": "待人工确认",
             "模型可做对次数": "0次",
-            "错误原因": "模型无法稳定识别涂改后的最终答案，存在语义补全倾向。",
+            "错误原因": taxonomy.fallback_sheet_reason,
         },
     )
 
@@ -233,6 +277,13 @@ def _first_runtime_error(evidence: list[ExperimentEvidence]) -> ExperimentEviden
     return None
 
 
+def _first_parse_error(evidence: list[ExperimentEvidence]) -> ExperimentEvidence | None:
+    for item in evidence:
+        if item.response_parse_error:
+            return item
+    return None
+
+
 def _has_response_parse_error(evidence: list[ExperimentEvidence]) -> bool:
     return any(item.response_parse_error for item in evidence)
 
@@ -256,6 +307,19 @@ def _affected_box_ids_from_deltas(deltas: list[dict[str, object]]) -> list[int]:
         if box_id is not None:
             box_ids.add(box_id)
     return sorted(box_ids)
+
+
+def _target_summary_from_deltas(deltas: list[dict[str, object]], affected_box_ids: list[int]) -> str:
+    if affected_box_ids:
+        return ", ".join(f"box {box_id}" for box_id in affected_box_ids)
+    target_ids = sorted(
+        {
+            str(delta["target_id"])
+            for delta in deltas
+            if isinstance(delta.get("target_id"), str) and str(delta.get("target_id")).strip()
+        }
+    )
+    return ", ".join(target_ids) if target_ids else "global target"
 
 
 def _build_evidence_citations(run_result: ExperimentRunResult | None) -> list[dict[str, object]]:

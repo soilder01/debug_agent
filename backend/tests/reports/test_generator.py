@@ -21,6 +21,35 @@ def test_generate_initial_report_for_failed_case() -> None:
     assert report.suggested_sheet_fields["debug1状态"] == "待人工确认"
 
 
+def test_generate_initial_report_uses_generic_fallback_for_non_ocr_case() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "classification-1",
+            "task_type": "classification",
+            "image_uri": "",
+            "prompt": "Classify sentiment and return JSON.",
+            "golden_answer": {"answers": [{"box_id": 1, "student_answer": "positive"}]},
+            "scoring_standard": "label must match exactly.",
+            "predictions": [
+                {
+                    "trial": 0,
+                    "raw_output": "{\"answers\":[{\"box_id\":1,\"student_answer\":\"negative\"}]}",
+                    "score": 0,
+                }
+            ],
+            "avg_score": 0.0,
+        }
+    )
+    plan = plan_experiments(case)
+
+    report = generate_initial_report(case, plan)
+
+    assert report.observed_failure.type == "output_mismatch"
+    assert report.root_cause.label == "output_mismatch"
+    assert "涂改" not in report.observed_failure.summary
+    assert "通用检测任务" in report.root_cause.evidence_summary
+
+
 def test_generate_report_includes_experiment_summary() -> None:
     fixture_path = Path(__file__).parents[1] / "fixtures" / "handwrite233.json"
     case = DebugCase.model_validate(json.loads(fixture_path.read_text(encoding="utf-8")))
@@ -184,6 +213,149 @@ def test_generate_report_infers_root_cause_from_structured_judge_deltas() -> Non
             "artifact_ids": ["case-1:baseline:0:input-snapshot"],
         }
     ]
+
+
+def test_generate_report_uses_generic_output_mismatch_for_non_ocr_structured_deltas() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "classification-structured",
+            "task_type": "classification",
+            "image_uri": "",
+            "prompt": "Classify sentiment and return JSON.",
+            "golden_answer": {"answers": [{"box_id": 1, "student_answer": "positive"}]},
+            "scoring_standard": "label must match exactly.",
+            "predictions": [
+                {
+                    "trial": 0,
+                    "raw_output": "{\"answers\":[{\"box_id\":1,\"student_answer\":\"negative\"}]}",
+                    "score": 0,
+                }
+            ],
+            "avg_score": 0.0,
+        }
+    )
+    plan = plan_experiments(case)
+    run_result = ExperimentRunResult(
+        case_id=case.case_id,
+        total_trials=1,
+        success_count=0,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="e-classification",
+                step_name="baseline_replay",
+                trial=0,
+                raw_output=case.predictions[0].raw_output,
+                judge=JudgeResult(
+                    score=0,
+                    reasons=["label mismatch"],
+                    scoring_standard=case.scoring_standard,
+                    deltas=[
+                        {
+                            "target_id": "label:sentiment",
+                            "expected": "positive",
+                            "actual": "negative",
+                            "reason": "label_mismatch",
+                            "metadata": {"field": "sentiment"},
+                        }
+                    ],
+                ),
+            )
+        ],
+    )
+
+    report = generate_initial_report(case, plan, run_result)
+
+    assert report.observed_failure.type == "output_mismatch"
+    assert report.root_cause.label == "output_mismatch"
+    assert "label:sentiment" in report.root_cause.evidence_summary
+    assert "box" not in report.observed_failure.summary
+
+
+def test_generate_report_uses_parse_error_when_schema_prompt_still_fails_to_parse() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "classification-parse",
+            "task_type": "classification",
+            "image_uri": "",
+            "prompt": "Classify sentiment and return JSON.",
+            "golden_answer": {"answers": [{"box_id": 1, "student_answer": "positive"}]},
+            "scoring_standard": "label must match exactly.",
+            "predictions": [{"trial": 0, "raw_output": "not-json", "score": 0}],
+            "avg_score": 0.0,
+        }
+    )
+    plan = plan_experiments(case)
+    run_result = ExperimentRunResult(
+        case_id=case.case_id,
+        total_trials=1,
+        success_count=0,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="e-parse",
+                step_name="baseline_replay",
+                trial=0,
+                response_parse_error="Expecting value",
+                raw_output="not-json",
+                judge=JudgeResult(score=0, reasons=["response_parse_error"]),
+            )
+        ],
+    )
+
+    report = generate_initial_report(case, plan, run_result)
+
+    assert report.observed_failure.type == "parse_error"
+    assert report.root_cause.label == "parse_error"
+    assert "解析失败" in report.root_cause.evidence_summary
+
+
+def test_generate_report_uses_unstable_prediction_for_mixed_success_without_deltas() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "classification-unstable",
+            "task_type": "classification",
+            "image_uri": "",
+            "prompt": "Classify sentiment and return JSON.",
+            "golden_answer": {"answers": [{"box_id": 1, "student_answer": "positive"}]},
+            "scoring_standard": "label must match exactly.",
+            "predictions": [{"trial": 0, "raw_output": "{\"answers\":[]}", "score": 0}],
+            "avg_score": 0.33,
+        }
+    )
+    plan = plan_experiments(case)
+    run_result = ExperimentRunResult(
+        case_id=case.case_id,
+        total_trials=3,
+        success_count=1,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="e-pass",
+                step_name="baseline_replay",
+                trial=0,
+                raw_output="{\"answers\":[]}",
+                judge=JudgeResult(score=1, reasons=[]),
+            ),
+            ExperimentEvidence(
+                evidence_id="e-fail-1",
+                step_name="baseline_replay",
+                trial=1,
+                raw_output="{\"answers\":[]}",
+                judge=JudgeResult(score=0, reasons=[]),
+            ),
+            ExperimentEvidence(
+                evidence_id="e-fail-2",
+                step_name="baseline_replay",
+                trial=2,
+                raw_output="{\"answers\":[]}",
+                judge=JudgeResult(score=0, reasons=[]),
+            ),
+        ],
+    )
+
+    report = generate_initial_report(case, plan, run_result)
+
+    assert report.observed_failure.type == "unstable_prediction"
+    assert report.root_cause.label == "unstable_prediction"
+    assert "1/3" in report.root_cause.evidence_summary
 
 
 def test_generate_report_prioritizes_runtime_failures_before_answer_mismatch() -> None:
