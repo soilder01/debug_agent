@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
 
 import type { ObservabilitySummary } from "../api/client";
 import { ObservabilitySummaryPanel } from "./ObservabilitySummaryPanel";
@@ -56,8 +57,19 @@ function makeSummary(): ObservabilitySummary {
 }
 
 describe("ObservabilitySummaryPanel", () => {
-  it("renders job, worker, and writeback operational metrics", () => {
-    render(<ObservabilitySummaryPanel summary={makeSummary()} />);
+  it("renders job, worker, and writeback operational metrics", async () => {
+    const onLoadFailedJobs = vi.fn();
+    const onLoadFailedWritebacks = vi.fn();
+    const onStartWorker = vi.fn();
+
+    render(
+      <ObservabilitySummaryPanel
+        summary={makeSummary()}
+        onLoadFailedJobs={onLoadFailedJobs}
+        onLoadFailedWritebacks={onLoadFailedWritebacks}
+        onStartWorker={onStartWorker}
+      />
+    );
 
     expect(screen.getByRole("heading", { name: "Observability" })).toBeInTheDocument();
     expect(screen.getByText("Observed jobs total：19")).toBeInTheDocument();
@@ -91,5 +103,13 @@ describe("ObservabilitySummaryPanel", () => {
     expect(
       screen.getByText("Recommended action：Check model endpoint health, timeout settings, and retry affected jobs.")
     ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Open failed jobs from observability" }));
+    await userEvent.click(screen.getByRole("button", { name: "Open failed writebacks from observability" }));
+    await userEvent.click(screen.getByRole("button", { name: "Start worker from observability" }));
+
+    expect(onLoadFailedJobs).toHaveBeenCalledTimes(1);
+    expect(onLoadFailedWritebacks).toHaveBeenCalledTimes(1);
+    expect(onStartWorker).toHaveBeenCalledTimes(1);
   });
 });

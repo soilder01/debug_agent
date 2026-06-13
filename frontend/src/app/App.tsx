@@ -547,7 +547,14 @@ export function App() {
           Load observability summary
         </button>
       </section>
-      {observabilitySummary ? <ObservabilitySummaryPanel summary={observabilitySummary} /> : null}
+      {observabilitySummary ? (
+        <ObservabilitySummaryPanel
+          summary={observabilitySummary}
+          onLoadFailedJobs={() => void loadDebugJobs("failed")}
+          onLoadFailedWritebacks={() => void loadWritebackAudits("failed")}
+          onStartWorker={() => void startWorkerLoop()}
+        />
+      ) : null}
       <ImportWorkspace
         jsonlCases={jsonlCases}
         jsonlImportResult={jsonlImportResult}

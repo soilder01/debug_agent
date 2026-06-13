@@ -2,9 +2,17 @@ import type { ObservabilitySummary } from "../api/client";
 
 type ObservabilitySummaryPanelProps = {
   summary: ObservabilitySummary;
+  onLoadFailedJobs?: () => void;
+  onLoadFailedWritebacks?: () => void;
+  onStartWorker?: () => void;
 };
 
-export function ObservabilitySummaryPanel({ summary }: ObservabilitySummaryPanelProps) {
+export function ObservabilitySummaryPanel({
+  summary,
+  onLoadFailedJobs,
+  onLoadFailedWritebacks,
+  onStartWorker
+}: ObservabilitySummaryPanelProps) {
   return (
     <section>
       <h2>Observability</h2>
@@ -35,6 +43,21 @@ export function ObservabilitySummaryPanel({ summary }: ObservabilitySummaryPanel
       {summary.health.actions.map((action) => (
         <p key={action}>Recommended action：{action}</p>
       ))}
+      {onLoadFailedJobs ? (
+        <button type="button" onClick={onLoadFailedJobs}>
+          Open failed jobs from observability
+        </button>
+      ) : null}
+      {onLoadFailedWritebacks ? (
+        <button type="button" onClick={onLoadFailedWritebacks}>
+          Open failed writebacks from observability
+        </button>
+      ) : null}
+      {onStartWorker ? (
+        <button type="button" onClick={onStartWorker}>
+          Start worker from observability
+        </button>
+      ) : null}
     </section>
   );
 }
