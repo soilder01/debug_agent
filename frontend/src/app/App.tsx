@@ -41,11 +41,10 @@ import {
   writeJobReportToSpreadsheet
 } from "../api/client";
 import { ImportedCasesPanel } from "../cases/ImportedCasesPanel";
-import { EvidenceDetail } from "../evidence/EvidenceDetail";
 import { CSVImportPanel } from "../imports/CSVImportPanel";
 import { JSONLImportPanel } from "../imports/JSONLImportPanel";
 import { BatchJobsPanel } from "../jobs/BatchJobsPanel";
-import { JobStatusPanel } from "../jobs/JobStatusPanel";
+import { CurrentJobPanel } from "../jobs/CurrentJobPanel";
 import { WorkerControlsPanel } from "../jobs/WorkerControlsPanel";
 import { DebugReportWorkspace } from "../reports/DebugReportWorkspace";
 import { SpreadsheetImportPanel } from "../spreadsheets/SpreadsheetImportPanel";
@@ -602,14 +601,12 @@ export function App() {
       />
       {error ? <p role="alert">{error}</p> : null}
       {submittedJob ? (
-        <>
-          <JobStatusPanel
-            job={jobStatus ?? submittedJob}
-            onSelectEvidence={selectJobEvidence}
-            onLoadReport={() => void loadCurrentJobReport()}
-          />
-          <EvidenceDetail evidence={selectedEvidence} />
-        </>
+        <CurrentJobPanel
+          job={jobStatus ?? submittedJob}
+          selectedEvidence={selectedEvidence}
+          onSelectEvidence={selectJobEvidence}
+          onLoadReport={() => void loadCurrentJobReport()}
+        />
       ) : null}
       {report ? (
         <DebugReportWorkspace
