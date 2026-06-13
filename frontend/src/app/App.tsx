@@ -46,7 +46,7 @@ import { ImportedCaseListPanel } from "../cases/ImportedCaseListPanel";
 import { EvidenceDetail } from "../evidence/EvidenceDetail";
 import { ExperimentTimeline } from "../experiments/ExperimentTimeline";
 import { CSVImportResultPanel } from "../imports/CSVImportResultPanel";
-import { JSONLImportResultPanel } from "../imports/JSONLImportResultPanel";
+import { JSONLImportPanel } from "../imports/JSONLImportPanel";
 import { BatchJobListPanel } from "../jobs/BatchJobListPanel";
 import { JobStatusPanel } from "../jobs/JobStatusPanel";
 import { WorkerStatusPanel } from "../jobs/WorkerStatusPanel";
@@ -550,16 +550,7 @@ export function App() {
       </section>
       <section>
         <h2>JSONL Import</h2>
-        <label htmlFor="jsonl-cases">JSONL cases</label>
-        <textarea
-          id="jsonl-cases"
-          value={jsonlCases}
-          onChange={(event) => setJsonlCases(event.target.value)}
-        />
-        <button type="button" onClick={importJsonl}>
-          Import JSONL cases
-        </button>
-        {jsonlImportResult ? <JSONLImportResultPanel result={jsonlImportResult} /> : null}
+        <JSONLImportPanel value={jsonlCases} result={jsonlImportResult} onChange={setJsonlCases} onImport={importJsonl} />
       </section>
       <section>
         <h2>CSV Import</h2>
