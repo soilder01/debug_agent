@@ -36,12 +36,12 @@ These are not separate deployed services yet. The next goal is to make their con
 - Test: `backend/tests/recipes/test_registry.py`
 - Test: `backend/tests/experiments/test_planner.py`
 
-- [ ] Write a failing test that `recipe_for_task_type("unknown")` returns a generic default recipe instead of `HandwritingOcrRecipe`.
-- [ ] Write a failing test that planner routes `handwriting_ocr` to `HandwritingOcrRecipe` and `classification` to a non-OCR recipe.
-- [ ] Implement `RecipeRegistry` with explicit `handwriting_ocr` registration and a generic fallback recipe.
-- [ ] Update planner and runner imports to use `debug_agent.recipes.recipe_for_task_type`.
-- [ ] Run `python -m pytest backend/tests/recipes/test_registry.py backend/tests/experiments/test_planner.py -q`.
-- [ ] Commit as `feat(core): add task recipe registry`.
+- [x] Write a failing test that `recipe_for_task_type("unknown")` returns a generic default recipe instead of `HandwritingOcrRecipe`.
+- [x] Write a failing test that planner routes `handwriting_ocr` to `HandwritingOcrRecipe` and `classification` to a non-OCR recipe.
+- [x] Implement `RecipeRegistry` with explicit `handwriting_ocr` registration and a generic fallback recipe.
+- [x] Update planner and runner imports to use `debug_agent.recipes.recipe_for_task_type`.
+- [x] Run `python -m pytest backend/tests/recipes/test_registry.py backend/tests/experiments/test_planner.py -q`.
+- [x] Commit as `feat(core): add task recipe registry`.
 
 ### Task 2: Classification Debug Recipe
 

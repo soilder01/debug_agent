@@ -17,7 +17,7 @@ from debug_agent.cases.models import AnswerSet, DebugCase
 from debug_agent.experiments.planner import ExperimentPlan
 from debug_agent.judging.runner import JudgeResult, judge_answer
 from debug_agent.models.adapters import ModelAdapter
-from debug_agent.recipes.handwriting_ocr import recipe_for_task_type
+from debug_agent.recipes import recipe_for_task_type
 
 
 class ExperimentEvidence(BaseModel):
