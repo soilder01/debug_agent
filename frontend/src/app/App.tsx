@@ -53,7 +53,7 @@ import { WorkerStatusPanel } from "../jobs/WorkerStatusPanel";
 import { ReportPanel } from "../reports/ReportPanel";
 import { LarkSpreadsheetStatusPanel } from "../spreadsheets/LarkSpreadsheetStatusPanel";
 import { SpreadsheetControlsPanel } from "../spreadsheets/SpreadsheetControlsPanel";
-import { SpreadsheetImportResultPanel } from "../spreadsheets/SpreadsheetImportResultPanel";
+import { SpreadsheetImportPanel } from "../spreadsheets/SpreadsheetImportPanel";
 import { SpreadsheetSyncResultPanel } from "../spreadsheets/SpreadsheetSyncResultPanel";
 import { SpreadsheetWritebackPanel } from "../spreadsheets/SpreadsheetWritebackPanel";
 import { parseLarkSpreadsheetUrl } from "../spreadsheets/larkUrl";
@@ -558,16 +558,12 @@ export function App() {
       </section>
       <section>
         <h2>Spreadsheet Rows Import</h2>
-        <label htmlFor="spreadsheet-rows-json">Spreadsheet rows JSON</label>
-        <textarea
-          id="spreadsheet-rows-json"
+        <SpreadsheetImportPanel
           value={spreadsheetRowsJson}
-          onChange={(event) => setSpreadsheetRowsJson(event.target.value)}
+          result={spreadsheetImportResult}
+          onChange={setSpreadsheetRowsJson}
+          onImport={importSpreadsheetRowsJson}
         />
-        <button type="button" onClick={importSpreadsheetRowsJson}>
-          Import spreadsheet rows JSON
-        </button>
-        {spreadsheetImportResult ? <SpreadsheetImportResultPanel result={spreadsheetImportResult} /> : null}
       </section>
       <section>
         <h2>Spreadsheet Sync</h2>
