@@ -50,14 +50,10 @@ import { BatchJobsPanel } from "../jobs/BatchJobsPanel";
 import { JobStatusPanel } from "../jobs/JobStatusPanel";
 import { WorkerControlsPanel } from "../jobs/WorkerControlsPanel";
 import { ReportPanel } from "../reports/ReportPanel";
-import { LarkSpreadsheetStatusPanel } from "../spreadsheets/LarkSpreadsheetStatusPanel";
-import { SpreadsheetControlsPanel } from "../spreadsheets/SpreadsheetControlsPanel";
 import { SpreadsheetImportPanel } from "../spreadsheets/SpreadsheetImportPanel";
-import { SpreadsheetSyncResultPanel } from "../spreadsheets/SpreadsheetSyncResultPanel";
+import { SpreadsheetSyncPanel } from "../spreadsheets/SpreadsheetSyncPanel";
 import { SpreadsheetWritebackPanel } from "../spreadsheets/SpreadsheetWritebackPanel";
 import { parseLarkSpreadsheetUrl } from "../spreadsheets/larkUrl";
-import { WritebackAuditList } from "../spreadsheets/WritebackAuditList";
-import { WritebackAuditSummary } from "../spreadsheets/WritebackAuditSummary";
 
 const jobListLimit = 50;
 const caseListLimit = 50;
@@ -555,41 +551,28 @@ export function App() {
           onImport={importSpreadsheetRowsJson}
         />
       </section>
-      <section>
-        <h2>Spreadsheet Sync</h2>
-        <SpreadsheetControlsPanel
-          spreadsheetUrl={spreadsheetUrl}
-          spreadsheetId={spreadsheetId}
-          sheetId={sheetId}
-          onSpreadsheetUrlChange={setSpreadsheetUrl}
-          onSpreadsheetIdChange={setSpreadsheetId}
-          onSheetIdChange={setSheetId}
-          onUseSpreadsheetUrl={useSpreadsheetUrl}
-          onCheckLarkStatus={() => void checkLarkStatus()}
-          onSyncSpreadsheet={() => void syncSpreadsheet()}
-          onLoadWritebackAuditSummary={() => void loadWritebackAuditSummary()}
-          onLoadWritebackAudits={(status) => void loadWritebackAudits(status)}
-        />
-        {larkSpreadsheetStatus ? <LarkSpreadsheetStatusPanel status={larkSpreadsheetStatus} /> : null}
-        {spreadsheetSyncResult ? <SpreadsheetSyncResultPanel result={spreadsheetSyncResult} /> : null}
-        {spreadsheetWritebackAuditSummary ? (
-          <WritebackAuditSummary
-            summary={spreadsheetWritebackAuditSummary}
-            onLoadStatus={(status) => void loadWritebackAudits(status)}
-          />
-        ) : null}
-        {spreadsheetWritebackAuditList ? (
-          <WritebackAuditList
-            audits={spreadsheetWritebackAuditList.audits}
-            activeFilter={activeWritebackAuditStatus ?? null}
-            totalCount={spreadsheetWritebackAuditList.total_count}
-            writebackResult={spreadsheetWritebackResult}
-            onOpenJob={(jobId) => void openWritebackAuditJob(jobId)}
-            onRetry={(auditToRetry) => void retryWritebackAudit(auditToRetry)}
-            onLoadMore={() => void loadMoreWritebackAudits()}
-          />
-        ) : null}
-      </section>
+      <SpreadsheetSyncPanel
+        spreadsheetUrl={spreadsheetUrl}
+        spreadsheetId={spreadsheetId}
+        sheetId={sheetId}
+        larkSpreadsheetStatus={larkSpreadsheetStatus}
+        syncResult={spreadsheetSyncResult}
+        writebackAuditSummary={spreadsheetWritebackAuditSummary}
+        writebackAuditList={spreadsheetWritebackAuditList}
+        activeWritebackAuditStatus={activeWritebackAuditStatus ?? null}
+        writebackResult={spreadsheetWritebackResult}
+        onSpreadsheetUrlChange={setSpreadsheetUrl}
+        onSpreadsheetIdChange={setSpreadsheetId}
+        onSheetIdChange={setSheetId}
+        onUseSpreadsheetUrl={useSpreadsheetUrl}
+        onCheckLarkStatus={() => void checkLarkStatus()}
+        onSyncSpreadsheet={() => void syncSpreadsheet()}
+        onLoadWritebackAuditSummary={() => void loadWritebackAuditSummary()}
+        onLoadWritebackAudits={(status) => void loadWritebackAudits(status)}
+        onOpenAuditJob={(jobId) => void openWritebackAuditJob(jobId)}
+        onRetryAudit={(auditToRetry) => void retryWritebackAudit(auditToRetry)}
+        onLoadMoreWritebackAudits={() => void loadMoreWritebackAudits()}
+      />
       <ImportedCasesPanel
         cases={visibleImportedCases}
         totalCount={importedCaseTotalCount}
