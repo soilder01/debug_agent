@@ -33,6 +33,7 @@ class BoxRegion(BaseModel):
 
 class DebugCase(BaseModel):
     case_id: str
+    task_type: str = "handwriting_ocr"
     image_uri: str
     prompt: str
     golden_answer: AnswerSet
@@ -41,3 +42,9 @@ class DebugCase(BaseModel):
     avg_score: float = Field(ge=0.0, le=1.0)
     human_notes: HumanNotes = Field(default_factory=HumanNotes)
     box_regions: list[BoxRegion] = Field(default_factory=list)
+
+
+DetectionOutput = AnswerSet
+DetectionPrediction = Prediction
+DetectionRegion = BoxRegion
+DetectionCase = DebugCase
