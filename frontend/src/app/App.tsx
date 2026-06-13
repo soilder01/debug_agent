@@ -47,6 +47,7 @@ import { EvidenceDetail } from "../evidence/EvidenceDetail";
 import { ExperimentTimeline } from "../experiments/ExperimentTimeline";
 import { CSVImportPanel } from "../imports/CSVImportPanel";
 import { JSONLImportPanel } from "../imports/JSONLImportPanel";
+import { BatchJobControlsPanel } from "../jobs/BatchJobControlsPanel";
 import { BatchJobListPanel } from "../jobs/BatchJobListPanel";
 import { JobStatusPanel } from "../jobs/JobStatusPanel";
 import { WorkerControlsPanel } from "../jobs/WorkerControlsPanel";
@@ -619,25 +620,12 @@ export function App() {
         ) : null}
       </section>
       <section>
-        <h2>Batch Jobs</h2>
-        <label htmlFor="batch-case-ids">Batch case ids</label>
-        <textarea
-          id="batch-case-ids"
-          value={batchCaseIds}
-          onChange={(event) => setBatchCaseIds(event.target.value)}
+        <BatchJobControlsPanel
+          caseIds={batchCaseIds}
+          onCaseIdsChange={setBatchCaseIds}
+          onSubmit={submitBatchJobs}
+          onLoadJobs={(status, sort) => void loadDebugJobs(status, sort)}
         />
-        <button type="button" onClick={submitBatchJobs}>
-          Submit batch jobs
-        </button>
-        <button type="button" onClick={() => void loadDebugJobs()}>
-          Load debug jobs
-        </button>
-        <button type="button" onClick={() => void loadDebugJobs("failed")}>
-          Load failed jobs
-        </button>
-        <button type="button" onClick={() => void loadDebugJobs(undefined, "created_at_desc")}>
-          Load newest debug jobs
-        </button>
         {batchResult ? (
           <>
             <BatchJobListPanel
