@@ -41,6 +41,7 @@ import {
   writeJobReportToSpreadsheet
 } from "../api/client";
 import { CaseDetail } from "../cases/CaseDetail";
+import { ImportedCaseListPanel } from "../cases/ImportedCaseListPanel";
 import { EvidenceDetail } from "../evidence/EvidenceDetail";
 import { ExperimentTimeline } from "../experiments/ExperimentTimeline";
 import { CSVImportResultPanel } from "../imports/CSVImportResultPanel";
@@ -648,36 +649,17 @@ export function App() {
         </button>
         {importedCases.length > 0 ? (
           <>
-            <p>已导入样本：{importedCaseTotalCount}</p>
-            <p>
-              已显示样本：{visibleImportedCases.length}/{effectiveImportedCaseCount}
-            </p>
-            <p>未加载样本：{unloadedCaseCount}</p>
-            <button type="button" onClick={() => void loadImportedCases(true)}>
-              Only cases with regions
-            </button>
-            <button type="button" onClick={() => void loadImportedCases(false)}>
-              Show all imported cases
-            </button>
-            {unloadedCaseCount > 0 ? (
-              <button type="button" onClick={() => void loadMoreImportedCases()}>
-                Load more imported cases
-              </button>
-            ) : null}
-            <button type="button" onClick={useImportedCasesForBatch}>
-              Use imported cases for batch
-            </button>
-            <ul aria-label="Imported case summaries">
-              {visibleImportedCases.map((caseSummary) => (
-                <li key={caseSummary.case_id}>
-                  {caseSummary.case_id}｜avg_score {caseSummary.avg_score}｜regions {caseSummary.box_region_count ?? 0}｜
-                  {caseSummary.debug_status || "未标记"}｜{caseSummary.root_cause || "未归因"}
-                  <button type="button" onClick={() => void loadCaseDetail(caseSummary.case_id)}>
-                    View case detail {caseSummary.case_id}
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <ImportedCaseListPanel
+              cases={visibleImportedCases}
+              totalCount={importedCaseTotalCount}
+              effectiveCount={effectiveImportedCaseCount}
+              unloadedCount={unloadedCaseCount}
+              onLoadWithRegions={() => void loadImportedCases(true)}
+              onLoadAll={() => void loadImportedCases(false)}
+              onLoadMore={() => void loadMoreImportedCases()}
+              onUseForBatch={useImportedCasesForBatch}
+              onViewCaseDetail={(caseId) => void loadCaseDetail(caseId)}
+            />
             {selectedCaseDetail ? (
               <section aria-label="Selected case detail">
                 <h3>样本详情：{selectedCaseDetail.case_id}</h3>
