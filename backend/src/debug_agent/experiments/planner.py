@@ -16,22 +16,9 @@ class ExperimentPlan(BaseModel):
 
 
 def plan_experiments(case: DebugCase, baseline_trials: int | None = None) -> ExperimentPlan:
+    from debug_agent.recipes.handwriting_ocr import recipe_for_task_type
+
     resolved_baseline_trials = baseline_trials if baseline_trials is not None else min(5, max(1, len(case.predictions)))
-    steps = [
-        ExperimentStep(
-            name="baseline_replay",
-            description="Replay the original prompt and image condition to confirm the failure.",
-            trials=resolved_baseline_trials,
-        ),
-        ExperimentStep(
-            name="strict_prompt_replay",
-            description="Replay with stronger instruction to avoid semantic correction and guessing.",
-            trials=3,
-        ),
-        ExperimentStep(
-            name="localized_observation_request",
-            description="Ask the model to describe the affected answer region before extracting final JSON.",
-            trials=2,
-        ),
-    ]
+    recipe = recipe_for_task_type(case.task_type)
+    steps = recipe.plan_steps(case=case, baseline_trials=resolved_baseline_trials)
     return ExperimentPlan(case_id=case.case_id, max_model_calls=10, steps=steps)

@@ -15,6 +15,7 @@ from debug_agent.cases.models import AnswerSet, DebugCase
 from debug_agent.experiments.planner import ExperimentPlan
 from debug_agent.judging.runner import JudgeResult, judge_answer
 from debug_agent.models.adapters import ModelAdapter
+from debug_agent.recipes.handwriting_ocr import recipe_for_task_type
 
 
 class ExperimentEvidence(BaseModel):
@@ -137,46 +138,8 @@ def _build_request_summary(prompt: str, image_uri: str, scoring_standard: str) -
 
 
 def _build_step_prompt(case: DebugCase, step_name: str) -> str:
-    if step_name != "localized_observation_request":
-        return case.prompt
-
-    affected_box_ids = _affected_box_ids_from_predictions(case)
-    if not affected_box_ids:
-        return case.prompt
-
-    regions_by_box_id = {region.box_id: region for region in case.box_regions}
-    region_lines: list[str] = []
-    for box_id in affected_box_ids:
-        region = regions_by_box_id.get(box_id)
-        if region is None:
-            region_lines.append(f"- box {box_id}: region unknown")
-            continue
-        region_lines.append(
-            f"- box {box_id}: x={region.x}, y={region.y}, width={region.width}, "
-            f"height={region.height}, unit={region.unit}, label={region.label}"
-        )
-
-    return "\n".join(
-        [
-            case.prompt,
-            "",
-            "localized_observation_request:",
-            "Focus on the following affected answer regions before producing final JSON.",
-            *region_lines,
-        ]
-    )
-
-
-def _affected_box_ids_from_predictions(case: DebugCase) -> list[int]:
-    for prediction in case.predictions:
-        try:
-            predicted = parse_prediction_answer(prediction.raw_output)
-        except Exception:
-            continue
-        diff = compare_answer_sets(case.golden_answer, predicted)
-        if diff.affected_box_ids:
-            return diff.affected_box_ids
-    return []
+    recipe = recipe_for_task_type(case.task_type)
+    return recipe.build_step_prompt(case=case, step_name=step_name)
 
 
 def _build_localized_image_artifacts(

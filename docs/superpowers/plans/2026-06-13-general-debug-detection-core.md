@@ -74,9 +74,9 @@ The final target is not only handwriting OCR badcase debug. Handwriting OCR is t
 - Test: `backend/tests/recipes/test_handwriting_ocr.py`
 - Test: `backend/tests/experiments/test_runner.py`
 
-- [ ] Introduce a recipe protocol for planner steps, prompt augmentation, artifact strategy, and report taxonomy hints.
-- [ ] Move current OCR replay/localized prompt behavior into `handwriting_ocr` recipe.
-- [ ] Keep default behavior identical for current fixtures.
+- [x] Introduce a recipe protocol for planner steps and prompt augmentation.
+- [x] Move current OCR replay/localized prompt behavior into `handwriting_ocr` recipe.
+- [x] Keep default behavior identical for current fixtures.
 - [ ] Run focused tests and commit as `feat(core): route experiments by task recipe`.
 
 ### Task 4: Generic Evidence Artifacts

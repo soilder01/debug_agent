@@ -11,6 +11,7 @@ from debug_agent.experiments.planner import ExperimentPlan, ExperimentStep, plan
 from debug_agent.experiments.runner import run_experiments
 from debug_agent.models.adapters import ModelResponse
 from debug_agent.models.fake import FakeModelAdapter
+from debug_agent.recipes.handwriting_ocr import HandwritingOcrRecipe
 
 
 @pytest.mark.asyncio
@@ -297,3 +298,25 @@ async def test_run_experiments_sends_localized_prompt_with_affected_region_conte
     assert "localized_observation_request" in adapter.prompts[0]
     assert "box 7" in adapter.prompts[0]
     assert "x=12, y=34, width=56, height=78, unit=pixel, label=box-7" in adapter.prompts[0]
+
+
+@pytest.mark.asyncio
+async def test_run_experiments_builds_prompts_through_task_recipe(monkeypatch) -> None:
+    fixture_path = Path(__file__).parents[1] / "fixtures" / "handwrite233.json"
+    case = DebugCase.model_validate(json.loads(fixture_path.read_text(encoding="utf-8")))
+    plan = ExperimentPlan(
+        case_id=case.case_id,
+        max_model_calls=1,
+        steps=[ExperimentStep(name="baseline_replay", description="Replay baseline.", trials=1)],
+    )
+    adapter = PromptRecordingModelAdapter(raw_output=case.predictions[0].raw_output)
+
+    def recording_prompt(self, *, case: DebugCase, step_name: str) -> str:
+        del self
+        return f"recipe prompt for {case.case_id}:{step_name}"
+
+    monkeypatch.setattr(HandwritingOcrRecipe, "build_step_prompt", recording_prompt)
+
+    await run_experiments(case=case, plan=plan, adapter=adapter)
+
+    assert adapter.prompts == ["recipe prompt for handwrite233:baseline_replay"]
