@@ -41,13 +41,11 @@ import {
   writeJobReportToSpreadsheet
 } from "../api/client";
 import { ImportedCasesPanel } from "../cases/ImportedCasesPanel";
-import { CSVImportPanel } from "../imports/CSVImportPanel";
-import { JSONLImportPanel } from "../imports/JSONLImportPanel";
+import { ImportWorkspace } from "../imports/ImportWorkspace";
 import { BatchJobsPanel } from "../jobs/BatchJobsPanel";
 import { CurrentJobPanel } from "../jobs/CurrentJobPanel";
 import { WorkerControlsPanel } from "../jobs/WorkerControlsPanel";
 import { DebugReportWorkspace } from "../reports/DebugReportWorkspace";
-import { SpreadsheetImportPanel } from "../spreadsheets/SpreadsheetImportPanel";
 import { SpreadsheetSyncPanel } from "../spreadsheets/SpreadsheetSyncPanel";
 import { parseLarkSpreadsheetUrl } from "../spreadsheets/larkUrl";
 
@@ -530,23 +528,20 @@ export function App() {
         Submit debug job
       </button>
       <WorkerControlsPanel status={workerStatus} onStart={startWorkerLoop} onStop={stopWorkerLoop} />
-      <section>
-        <h2>JSONL Import</h2>
-        <JSONLImportPanel value={jsonlCases} result={jsonlImportResult} onChange={setJsonlCases} onImport={importJsonl} />
-      </section>
-      <section>
-        <h2>CSV Import</h2>
-        <CSVImportPanel value={csvCases} result={csvImportResult} onChange={setCsvCases} onImport={importCsv} />
-      </section>
-      <section>
-        <h2>Spreadsheet Rows Import</h2>
-        <SpreadsheetImportPanel
-          value={spreadsheetRowsJson}
-          result={spreadsheetImportResult}
-          onChange={setSpreadsheetRowsJson}
-          onImport={importSpreadsheetRowsJson}
-        />
-      </section>
+      <ImportWorkspace
+        jsonlCases={jsonlCases}
+        jsonlImportResult={jsonlImportResult}
+        csvCases={csvCases}
+        csvImportResult={csvImportResult}
+        spreadsheetRowsJson={spreadsheetRowsJson}
+        spreadsheetImportResult={spreadsheetImportResult}
+        onJsonlChange={setJsonlCases}
+        onCsvChange={setCsvCases}
+        onSpreadsheetRowsJsonChange={setSpreadsheetRowsJson}
+        onImportJsonl={importJsonl}
+        onImportCsv={importCsv}
+        onImportSpreadsheetRowsJson={importSpreadsheetRowsJson}
+      />
       <SpreadsheetSyncPanel
         spreadsheetUrl={spreadsheetUrl}
         spreadsheetId={spreadsheetId}
