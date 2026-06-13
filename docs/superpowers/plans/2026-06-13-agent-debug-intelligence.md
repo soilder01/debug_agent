@@ -133,3 +133,31 @@ python -m pytest backend/tests/reports/test_generator.py backend/tests/reports/t
 - [ ] **Step 5: Full verification and commit**
 
 Run full verification and commit as `feat(agent): infer root cause from evidence`.
+
+## Task 3: Evaluation Asset Diagnostics
+
+**Files:**
+- Modify: `backend/src/debug_agent/reports/generator.py`
+- Test: `backend/tests/reports/test_generator.py`
+
+- [ ] **Step 1: Write failing diagnostic tests**
+
+Add tests requiring `generate_initial_report()` to identify missing scoring standards, empty golden answers, and parse errors caused by prompts without JSON/schema instructions.
+
+- [ ] **Step 2: Run tests and verify RED**
+
+Run:
+
+```powershell
+python -m pytest backend/tests/reports/test_generator.py
+```
+
+Expected: fail because report inference only handles runtime failures and answer mismatches.
+
+- [ ] **Step 3: Implement minimal asset diagnostics**
+
+Pass `DebugCase` into report inference and add deterministic asset checks before model-capability root cause inference.
+
+- [ ] **Step 4: Full verification and commit**
+
+Run full verification and commit as `feat(agent): diagnose evaluation assets`.

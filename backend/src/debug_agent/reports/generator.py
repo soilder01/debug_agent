@@ -60,7 +60,7 @@ def generate_initial_report(
                 for artifact in evidence.image_artifacts
             ],
         )
-    observed_failure, root_cause, suggested_sheet_fields = _infer_report_findings(run_result)
+    observed_failure, root_cause, suggested_sheet_fields = _infer_report_findings(case=case, run_result=run_result)
     return DebugReport(
         job_id=job_id,
         case_id=case.case_id,
@@ -90,8 +90,13 @@ def _stability_label(success_count: int, failed_trial_count: int, total_trials: 
 
 
 def _infer_report_findings(
+    *,
+    case: DebugCase,
     run_result: ExperimentRunResult | None,
 ) -> tuple[ObservedFailure, RootCause, dict[str, str]]:
+    asset_issue = _evaluation_asset_issue(case=case, run_result=run_result)
+    if asset_issue is not None:
+        return asset_issue
     if run_result is not None:
         runtime_error = _first_runtime_error(run_result.evidence)
         if runtime_error is not None:
@@ -158,11 +163,75 @@ def _infer_report_findings(
     )
 
 
+def _evaluation_asset_issue(
+    *,
+    case: DebugCase,
+    run_result: ExperimentRunResult | None,
+) -> tuple[ObservedFailure, RootCause, dict[str, str]] | None:
+    if not case.scoring_standard.strip():
+        return _evaluation_asset_report(
+            label="scoring_standard_issue",
+            confidence="high",
+            summary="评分标准缺失，当前 0/1 结论缺少可审计的判分依据。",
+            feedback="评分标准缺失：请补充 exact match、可接受别字/格式、box_id 对齐等规则。",
+        )
+    if not case.golden_answer.answers:
+        return _evaluation_asset_report(
+            label="golden_answer_issue",
+            confidence="high",
+            summary="标答为空，无法判断模型输出是否真正错误。",
+            feedback="标答为空：请补充至少一个 box_id 与 student_answer。",
+        )
+    if run_result is not None and _has_response_parse_error(run_result.evidence) and not _prompt_requests_json(case.prompt):
+        return _evaluation_asset_report(
+            label="prompt_schema_issue",
+            confidence="medium",
+            summary="prompt 未明确 JSON 输出格式，且 evidence 中出现解析失败。",
+            feedback="prompt 未明确 JSON/schema：请要求模型只输出 {\"answers\":[...]} 结构。",
+        )
+    return None
+
+
+def _evaluation_asset_report(
+    *,
+    label: str,
+    confidence: str,
+    summary: str,
+    feedback: str,
+) -> tuple[ObservedFailure, RootCause, dict[str, str]]:
+    return (
+        ObservedFailure(
+            type="evaluation_asset_issue",
+            summary=summary,
+            affected_box_ids=[],
+        ),
+        RootCause(
+            label=label,
+            confidence=confidence,
+            evidence_summary=feedback,
+        ),
+        {
+            "debug1状态": "待人工确认",
+            "模型可做对次数": "0次",
+            "错误原因": f"评测资产问题：{feedback}",
+        },
+    )
+
+
 def _first_runtime_error(evidence: list[ExperimentEvidence]) -> ExperimentEvidence | None:
     for item in evidence:
         if item.model_call_error_type:
             return item
     return None
+
+
+def _has_response_parse_error(evidence: list[ExperimentEvidence]) -> bool:
+    return any(item.response_parse_error for item in evidence)
+
+
+def _prompt_requests_json(prompt: str) -> bool:
+    normalized = prompt.lower()
+    return "json" in normalized or "schema" in normalized
 
 
 def _structured_answer_deltas(evidence: list[ExperimentEvidence]) -> list[dict[str, object]]:

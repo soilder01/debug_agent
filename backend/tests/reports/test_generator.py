@@ -167,3 +167,112 @@ def test_generate_report_prioritizes_runtime_failures_before_answer_mismatch() -
     assert report.root_cause.label == "model_call_error"
     assert report.root_cause.confidence == "high"
     assert "TimeoutError" in report.root_cause.evidence_summary
+
+
+def test_generate_report_flags_missing_scoring_standard_as_evaluation_asset_issue() -> None:
+    case = _diagnostic_case(scoring_standard="")
+    plan = plan_experiments(case)
+    run_result = _one_failed_answer_mismatch_result(case)
+
+    report = generate_initial_report(case, plan, run_result)
+
+    assert report.observed_failure.type == "evaluation_asset_issue"
+    assert report.root_cause.label == "scoring_standard_issue"
+    assert report.root_cause.confidence == "high"
+    assert "评分标准缺失" in report.root_cause.evidence_summary
+    assert report.suggested_sheet_fields["错误原因"].startswith("评测资产问题")
+
+
+def test_generate_report_flags_empty_golden_answer_as_evaluation_asset_issue() -> None:
+    case = _diagnostic_case(golden_answer={"answers": []})
+    plan = plan_experiments(case)
+    run_result = _one_failed_answer_mismatch_result(case)
+
+    report = generate_initial_report(case, plan, run_result)
+
+    assert report.observed_failure.type == "evaluation_asset_issue"
+    assert report.root_cause.label == "golden_answer_issue"
+    assert report.root_cause.confidence == "high"
+    assert "标答为空" in report.root_cause.evidence_summary
+
+
+def test_generate_report_flags_prompt_schema_issue_when_parse_errors_repeat() -> None:
+    case = _diagnostic_case(prompt="请识别图片中的学生答案。")
+    plan = plan_experiments(case)
+    run_result = ExperimentRunResult(
+        case_id=case.case_id,
+        total_trials=1,
+        success_count=0,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="e-parse-error",
+                step_name="baseline_replay",
+                trial=0,
+                response_parse_error="Expecting value: line 1 column 1",
+                raw_output="答案是42",
+                judge=JudgeResult(score=0, reasons=["response_parse_error"]),
+            )
+        ],
+    )
+
+    report = generate_initial_report(case, plan, run_result)
+
+    assert report.observed_failure.type == "evaluation_asset_issue"
+    assert report.root_cause.label == "prompt_schema_issue"
+    assert report.root_cause.confidence == "medium"
+    assert "prompt 未明确 JSON" in report.root_cause.evidence_summary
+
+
+def _diagnostic_case(
+    *,
+    prompt: str = "Return JSON with answers.",
+    scoring_standard: str = "box_id and student_answer must match exactly.",
+    golden_answer: dict[str, object] | None = None,
+) -> DebugCase:
+    return DebugCase.model_validate(
+        {
+            "case_id": "diagnostic-case",
+            "image_uri": "file:///tmp/diagnostic.png",
+            "prompt": prompt,
+            "golden_answer": golden_answer or {"answers": [{"box_id": 1, "student_answer": "42"}]},
+            "scoring_standard": scoring_standard,
+            "predictions": [
+                {
+                    "trial": 0,
+                    "raw_output": "{\"answers\":[{\"box_id\":1,\"student_answer\":\"24\"}]}",
+                    "score": 0,
+                }
+            ],
+            "avg_score": 0.0,
+        }
+    )
+
+
+def _one_failed_answer_mismatch_result(case: DebugCase) -> ExperimentRunResult:
+    return ExperimentRunResult(
+        case_id=case.case_id,
+        total_trials=1,
+        success_count=0,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="e-asset-diagnostic",
+                step_name="baseline_replay",
+                trial=0,
+                raw_output=case.predictions[0].raw_output,
+                judge=JudgeResult(
+                    score=0,
+                    reasons=["box 1 student_answer_mismatch"],
+                    scoring_standard=case.scoring_standard,
+                    affected_box_ids=[1],
+                    deltas=[
+                        {
+                            "box_id": 1,
+                            "expected": "42",
+                            "predicted": "24",
+                            "reason": "student_answer_mismatch",
+                        }
+                    ],
+                ),
+            )
+        ],
+    )
