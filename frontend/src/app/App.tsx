@@ -45,7 +45,7 @@ import { ImportedCaseDetailPanel } from "../cases/ImportedCaseDetailPanel";
 import { ImportedCaseListPanel } from "../cases/ImportedCaseListPanel";
 import { EvidenceDetail } from "../evidence/EvidenceDetail";
 import { ExperimentTimeline } from "../experiments/ExperimentTimeline";
-import { CSVImportResultPanel } from "../imports/CSVImportResultPanel";
+import { CSVImportPanel } from "../imports/CSVImportPanel";
 import { JSONLImportPanel } from "../imports/JSONLImportPanel";
 import { BatchJobListPanel } from "../jobs/BatchJobListPanel";
 import { JobStatusPanel } from "../jobs/JobStatusPanel";
@@ -554,16 +554,7 @@ export function App() {
       </section>
       <section>
         <h2>CSV Import</h2>
-        <label htmlFor="csv-cases">CSV cases</label>
-        <textarea
-          id="csv-cases"
-          value={csvCases}
-          onChange={(event) => setCsvCases(event.target.value)}
-        />
-        <button type="button" onClick={importCsv}>
-          Import CSV cases
-        </button>
-        {csvImportResult ? <CSVImportResultPanel result={csvImportResult} /> : null}
+        <CSVImportPanel value={csvCases} result={csvImportResult} onChange={setCsvCases} onImport={importCsv} />
       </section>
       <section>
         <h2>Spreadsheet Rows Import</h2>
