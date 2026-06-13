@@ -383,6 +383,7 @@ async def submit_debug_job(
 
 @router.post("/debug-jobs/batch", status_code=202)
 def submit_batch_debug_jobs(request: BatchDebugJobRequest) -> BatchDebugJobResponse:
+    _raise_if_usage_budget_blocks_submission()
     jobs: list[SubmittedDebugJob] = []
     rejected_case_ids: list[str] = []
     for case_id in request.case_ids:
@@ -395,6 +396,8 @@ def submit_batch_debug_jobs(request: BatchDebugJobRequest) -> BatchDebugJobRespo
 
 @router.post("/imports/jsonl", status_code=202)
 def import_jsonl_cases(request: JsonlImportRequest) -> JsonlImportResponse:
+    if request.create_jobs:
+        _raise_if_usage_budget_blocks_submission()
     imported_case_ids: list[str] = []
     jobs: list[SubmittedDebugJob] = []
     rejected_lines: list[JsonlRejectedLine] = []
@@ -414,6 +417,8 @@ def import_jsonl_cases(request: JsonlImportRequest) -> JsonlImportResponse:
 
 @router.post("/imports/csv", status_code=202)
 def import_csv_cases(request: CsvImportRequest) -> CsvImportResponse:
+    if request.create_jobs:
+        _raise_if_usage_budget_blocks_submission()
     parse_result = parse_csv_cases(request.csv_text)
     imported_case_ids: list[str] = []
     jobs: list[SubmittedDebugJob] = []
@@ -431,6 +436,8 @@ def import_csv_cases(request: CsvImportRequest) -> CsvImportResponse:
 
 @router.post("/imports/spreadsheet-rows", status_code=202)
 def import_spreadsheet_rows(request: SpreadsheetRowImportRequest) -> SpreadsheetRowImportResponse:
+    if request.create_jobs:
+        _raise_if_usage_budget_blocks_submission()
     parse_result = parse_spreadsheet_rows(request.rows)
     imported_case_ids: list[str] = []
     imported_rows: list[SpreadsheetImportedRowResponse] = []
@@ -499,6 +506,8 @@ def get_lark_spreadsheet_status(check_connectivity: bool = False) -> LarkSpreads
 def sync_spreadsheet(request: SpreadsheetSyncRequest) -> SpreadsheetSyncResult:
     if spreadsheet_sync_client is None:
         raise HTTPException(status_code=503, detail="Spreadsheet sync client is not configured")
+    if request.create_jobs:
+        _raise_if_usage_budget_blocks_submission()
     try:
         return sync_spreadsheet_rows(
             client=spreadsheet_sync_client,
