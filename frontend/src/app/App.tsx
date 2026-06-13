@@ -52,6 +52,7 @@ import { JobStatusPanel } from "../jobs/JobStatusPanel";
 import { WorkerStatusPanel } from "../jobs/WorkerStatusPanel";
 import { ReportPanel } from "../reports/ReportPanel";
 import { LarkSpreadsheetStatusPanel } from "../spreadsheets/LarkSpreadsheetStatusPanel";
+import { SpreadsheetControlsPanel } from "../spreadsheets/SpreadsheetControlsPanel";
 import { SpreadsheetImportResultPanel } from "../spreadsheets/SpreadsheetImportResultPanel";
 import { SpreadsheetSyncResultPanel } from "../spreadsheets/SpreadsheetSyncResultPanel";
 import { SpreadsheetWritebackPanel } from "../spreadsheets/SpreadsheetWritebackPanel";
@@ -588,44 +589,19 @@ export function App() {
       </section>
       <section>
         <h2>Spreadsheet Sync</h2>
-        <label htmlFor="lark-spreadsheet-url">Lark spreadsheet URL</label>
-        <input
-          id="lark-spreadsheet-url"
-          value={spreadsheetUrl}
-          onChange={(event) => setSpreadsheetUrl(event.target.value)}
+        <SpreadsheetControlsPanel
+          spreadsheetUrl={spreadsheetUrl}
+          spreadsheetId={spreadsheetId}
+          sheetId={sheetId}
+          onSpreadsheetUrlChange={setSpreadsheetUrl}
+          onSpreadsheetIdChange={setSpreadsheetId}
+          onSheetIdChange={setSheetId}
+          onUseSpreadsheetUrl={useSpreadsheetUrl}
+          onCheckLarkStatus={() => void checkLarkStatus()}
+          onSyncSpreadsheet={() => void syncSpreadsheet()}
+          onLoadWritebackAuditSummary={() => void loadWritebackAuditSummary()}
+          onLoadWritebackAudits={(status) => void loadWritebackAudits(status)}
         />
-        <button type="button" onClick={useSpreadsheetUrl}>
-          Use spreadsheet URL
-        </button>
-        <label htmlFor="spreadsheet-id">Spreadsheet ID</label>
-        <input
-          id="spreadsheet-id"
-          value={spreadsheetId}
-          onChange={(event) => setSpreadsheetId(event.target.value)}
-        />
-        <label htmlFor="sheet-id">Sheet ID</label>
-        <input id="sheet-id" value={sheetId} onChange={(event) => setSheetId(event.target.value)} />
-        <button type="button" onClick={() => void checkLarkStatus()}>
-          Check Lark status
-        </button>
-        <button type="button" onClick={() => void syncSpreadsheet()}>
-          Sync spreadsheet rows
-        </button>
-        <button type="button" onClick={() => void loadWritebackAuditSummary()}>
-          Load writeback audit summary
-        </button>
-        <button type="button" onClick={() => void loadWritebackAudits(null)}>
-          Load all writeback audits
-        </button>
-        <button type="button" onClick={() => void loadWritebackAudits("succeeded")}>
-          Load succeeded writeback audits
-        </button>
-        <button type="button" onClick={() => void loadWritebackAudits("failed")}>
-          Load failed writeback audits
-        </button>
-        <button type="button" onClick={() => void loadWritebackAudits("skipped")}>
-          Load skipped writeback audits
-        </button>
         {larkSpreadsheetStatus ? <LarkSpreadsheetStatusPanel status={larkSpreadsheetStatus} /> : null}
         {spreadsheetSyncResult ? <SpreadsheetSyncResultPanel result={spreadsheetSyncResult} /> : null}
         {spreadsheetWritebackAuditSummary ? (
