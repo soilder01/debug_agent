@@ -59,6 +59,22 @@ def test_debug_agent_settings_read_usage_budget_units_from_env(monkeypatch) -> N
     assert settings.usage_budget_units == 25.5
 
 
+def test_debug_agent_settings_do_not_enforce_usage_budget_by_default(monkeypatch) -> None:
+    monkeypatch.delenv("DEBUG_AGENT_ENFORCE_USAGE_BUDGET", raising=False)
+
+    settings = DebugAgentSettings.from_env()
+
+    assert settings.enforce_usage_budget is False
+
+
+def test_debug_agent_settings_read_enforce_usage_budget_from_env(monkeypatch) -> None:
+    monkeypatch.setenv("DEBUG_AGENT_ENFORCE_USAGE_BUDGET", "true")
+
+    settings = DebugAgentSettings.from_env()
+
+    assert settings.enforce_usage_budget is True
+
+
 def test_load_env_file_populates_missing_environment_values(monkeypatch) -> None:
     monkeypatch.delenv("DEBUG_AGENT_MODEL_PROVIDER", raising=False)
     env_file = Path(__file__).with_name(".settings-provider-test.env")

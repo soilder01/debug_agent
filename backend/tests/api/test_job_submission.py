@@ -1,5 +1,9 @@
 from fastapi.testclient import TestClient
 
+from debug_agent.api import routes
+from debug_agent.api.routes import job_repository
+from debug_agent.experiments.runner import ExperimentEvidence
+from debug_agent.judging.runner import JudgeResult
 from debug_agent.main import app
 
 
@@ -57,3 +61,33 @@ def test_submit_debug_job_rejects_invalid_baseline_trial_count() -> None:
     response = client.post("/cases/handwrite233/debug-jobs?baseline_trials=6")
 
     assert response.status_code == 422
+
+
+def test_submit_debug_job_rejects_new_job_when_usage_budget_is_enforced_and_exceeded() -> None:
+    client = TestClient(app)
+    original_settings = routes.settings
+    try:
+        routes.settings = original_settings.model_copy(update={"usage_budget_units": 1.0, "enforce_usage_budget": True})
+        job_repository.create_job(job_id="budget-gate-existing-job", case_id="handwrite233")
+        job_repository.save_evidence(
+            job_id="budget-gate-existing-job",
+            case_id="handwrite233",
+            evidence=[
+                ExperimentEvidence(
+                    evidence_id="budget-gate-evidence-1",
+                    step_name="baseline_replay",
+                    trial=0,
+                    request_summary={"prompt_length": 1000},
+                    raw_output="{}",
+                    judge=JudgeResult(score=0, reasons=["budget fixture"]),
+                )
+            ],
+        )
+
+        response = client.post("/cases/handwrite233/debug-jobs")
+
+        assert response.status_code == 429
+        assert response.json()["detail"] == "Usage budget exceeded; new debug jobs are disabled."
+        job_repository.mark_failed("budget-gate-existing-job", "test cleanup")
+    finally:
+        routes.settings = original_settings

@@ -44,6 +44,7 @@ class DebugAgentSettings(BaseModel):
     report_base_url: str = "http://localhost:8000"
     auto_writeback_enabled: bool = False
     usage_budget_units: float = 0.0
+    enforce_usage_budget: bool = False
 
     @classmethod
     def from_env(cls) -> "DebugAgentSettings":
@@ -71,6 +72,7 @@ class DebugAgentSettings(BaseModel):
                     str(cls.model_fields["usage_budget_units"].default),
                 )
             ),
+            enforce_usage_budget=_env_bool("DEBUG_AGENT_ENFORCE_USAGE_BUDGET", default=False),
         )
 
 

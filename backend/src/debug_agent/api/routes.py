@@ -371,6 +371,7 @@ async def submit_debug_job(
     auto_run: bool = False,
     baseline_trials: int = Query(default=0, ge=0, le=5),
 ) -> SubmittedDebugJob:
+    _raise_if_usage_budget_blocks_submission()
     try:
         submitted = job_service.submit_case_debug(case_id, baseline_trials=baseline_trials)
         if auto_run:
@@ -714,6 +715,14 @@ def _build_usage_summary(raw_usage: dict[str, int | float], *, budget_units: flo
         budget_status=budget_status,
         budget_utilization=budget_utilization,
     )
+
+
+def _raise_if_usage_budget_blocks_submission() -> None:
+    if not settings.enforce_usage_budget:
+        return
+    usage = _build_usage_summary(job_repository.summarize_usage(), budget_units=settings.usage_budget_units)
+    if usage.budget_status == "over_budget":
+        raise HTTPException(status_code=429, detail="Usage budget exceeded; new debug jobs are disabled.")
 
 
 def _build_observability_health(
