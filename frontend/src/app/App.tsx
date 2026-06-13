@@ -46,8 +46,7 @@ import { EvidenceDetail } from "../evidence/EvidenceDetail";
 import { ExperimentTimeline } from "../experiments/ExperimentTimeline";
 import { CSVImportPanel } from "../imports/CSVImportPanel";
 import { JSONLImportPanel } from "../imports/JSONLImportPanel";
-import { BatchJobControlsPanel } from "../jobs/BatchJobControlsPanel";
-import { BatchJobListPanel } from "../jobs/BatchJobListPanel";
+import { BatchJobsPanel } from "../jobs/BatchJobsPanel";
 import { JobStatusPanel } from "../jobs/JobStatusPanel";
 import { WorkerControlsPanel } from "../jobs/WorkerControlsPanel";
 import { ReportPanel } from "../reports/ReportPanel";
@@ -605,30 +604,22 @@ export function App() {
         onViewCaseDetail={(caseId) => void loadCaseDetail(caseId)}
         onCreateDebugJob={(caseId) => void submitSelectedCaseJob(caseId)}
       />
-      <section>
-        <BatchJobControlsPanel
-          caseIds={batchCaseIds}
-          onCaseIdsChange={setBatchCaseIds}
-          onSubmit={submitBatchJobs}
-          onLoadJobs={(status, sort) => void loadDebugJobs(status, sort)}
-        />
-        {batchResult ? (
-          <>
-            <BatchJobListPanel
-              jobs={batchJobs}
-              summaryLabel={jobListSummaryLabel}
-              totalCount={jobListTotalCount ?? batchResult.jobs.length}
-              unloadedCount={unloadedJobCount}
-              rejectedCaseIds={batchResult.rejected_case_ids}
-              completedCount={completedBatchJobs}
-              onStartWorker={startWorkerLoop}
-              onLoadMore={() => void loadMoreDebugJobs()}
-              onOpenJob={openBatchJob}
-              onSelectEvidence={(jobId, evidenceId) => void selectBatchJobEvidence(jobId, evidenceId)}
-            />
-          </>
-        ) : null}
-      </section>
+      <BatchJobsPanel
+        caseIds={batchCaseIds}
+        batchResult={batchResult}
+        jobs={batchJobs}
+        summaryLabel={jobListSummaryLabel}
+        totalCount={jobListTotalCount ?? loadedJobCount}
+        unloadedCount={unloadedJobCount}
+        completedCount={completedBatchJobs}
+        onCaseIdsChange={setBatchCaseIds}
+        onSubmit={submitBatchJobs}
+        onLoadJobs={(status, sort) => void loadDebugJobs(status, sort)}
+        onStartWorker={startWorkerLoop}
+        onLoadMore={() => void loadMoreDebugJobs()}
+        onOpenJob={openBatchJob}
+        onSelectEvidence={(jobId, evidenceId) => void selectBatchJobEvidence(jobId, evidenceId)}
+      />
       {error ? <p role="alert">{error}</p> : null}
       {submittedJob ? (
         <>
