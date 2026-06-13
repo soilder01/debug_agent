@@ -54,6 +54,7 @@ import { ReportPanel } from "../reports/ReportPanel";
 import { LarkSpreadsheetStatusPanel } from "../spreadsheets/LarkSpreadsheetStatusPanel";
 import { SpreadsheetImportResultPanel } from "../spreadsheets/SpreadsheetImportResultPanel";
 import { SpreadsheetSyncResultPanel } from "../spreadsheets/SpreadsheetSyncResultPanel";
+import { SpreadsheetWritebackPanel } from "../spreadsheets/SpreadsheetWritebackPanel";
 import { WritebackAuditList } from "../spreadsheets/WritebackAuditList";
 import { WritebackAuditSummary } from "../spreadsheets/WritebackAuditSummary";
 
@@ -730,38 +731,12 @@ export function App() {
           <EvidenceDetail evidence={selectedEvidence} />
           <ReportPanel report={report} />
           {report.job_id ? (
-            <section>
-              <h2>Spreadsheet Writeback</h2>
-              <button type="button" onClick={() => void writeCurrentReportToSpreadsheet()}>
-                Write report to spreadsheet
-              </button>
-              <button type="button" onClick={() => void loadCurrentWritebackAudit()}>
-                Load writeback audit
-              </button>
-              {spreadsheetWritebackResult ? (
-                <>
-                  <p>Spreadsheet writeback row：{spreadsheetWritebackResult.row_id}</p>
-                  <ul aria-label="Spreadsheet writeback fields">
-                    {Object.entries(spreadsheetWritebackResult.fields).map(([key, value]) => (
-                      <li key={key}>
-                        {key}：{value}
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              ) : null}
-              {spreadsheetWritebackAudit ? (
-                <>
-                  <p>Writeback audit status：{spreadsheetWritebackAudit.status}</p>
-                  <p>Writeback audit row：{spreadsheetWritebackAudit.row_id}</p>
-                  <p>Writeback audit report URL：{spreadsheetWritebackAudit.report_url}</p>
-                  <p>Writeback audit updated：{spreadsheetWritebackAudit.updated_at}</p>
-                  {spreadsheetWritebackAudit.error_message ? (
-                    <p role="alert">Writeback audit error：{spreadsheetWritebackAudit.error_message}</p>
-                  ) : null}
-                </>
-              ) : null}
-            </section>
+            <SpreadsheetWritebackPanel
+              writebackResult={spreadsheetWritebackResult}
+              writebackAudit={spreadsheetWritebackAudit}
+              onWriteReport={() => void writeCurrentReportToSpreadsheet()}
+              onLoadAudit={() => void loadCurrentWritebackAudit()}
+            />
           ) : null}
         </>
       ) : submittedJob ? null : (
