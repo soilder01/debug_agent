@@ -39,6 +39,9 @@ export function ObservabilitySummaryPanel({
       <p>Observed model calls：{summary.usage.model_call_count}</p>
       <p>Observed prompt chars：{summary.usage.prompt_character_count}</p>
       <p>Observed estimated cost units：{summary.usage.estimated_cost_units}</p>
+      <p>Observed usage budget：{summary.usage.budget_units}</p>
+      <p>Observed budget status：{summary.usage.budget_status}</p>
+      <p>Observed budget utilization：{summary.usage.budget_utilization}</p>
       <p>Observed health：{summary.health.level}</p>
       {summary.health.reasons.map((reason) => (
         <p key={reason}>Observed health reason：{reason}</p>

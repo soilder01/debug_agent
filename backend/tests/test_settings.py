@@ -51,6 +51,14 @@ def test_debug_agent_settings_read_auto_writeback_enabled_from_env(monkeypatch) 
     assert settings.auto_writeback_enabled is True
 
 
+def test_debug_agent_settings_read_usage_budget_units_from_env(monkeypatch) -> None:
+    monkeypatch.setenv("DEBUG_AGENT_USAGE_BUDGET_UNITS", "25.5")
+
+    settings = DebugAgentSettings.from_env()
+
+    assert settings.usage_budget_units == 25.5
+
+
 def test_load_env_file_populates_missing_environment_values(monkeypatch) -> None:
     monkeypatch.delenv("DEBUG_AGENT_MODEL_PROVIDER", raising=False)
     env_file = Path(__file__).with_name(".settings-provider-test.env")

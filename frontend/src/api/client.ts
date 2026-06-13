@@ -184,6 +184,9 @@ export type ObservabilitySummary = {
     model_call_count: number;
     prompt_character_count: number;
     estimated_cost_units: number;
+    budget_units: number;
+    budget_status: "not_configured" | "within_budget" | "over_budget";
+    budget_utilization: number;
   };
   health: {
     level: "healthy" | "degraded" | "critical";

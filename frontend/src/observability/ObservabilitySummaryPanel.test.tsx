@@ -47,7 +47,10 @@ function makeSummary(): ObservabilitySummary {
     usage: {
       model_call_count: 42,
       prompt_character_count: 12345,
-      estimated_cost_units: 54.345
+      estimated_cost_units: 54.345,
+      budget_units: 50,
+      budget_status: "over_budget",
+      budget_utilization: 1.0869
     },
     health: {
       level: "critical",
@@ -98,6 +101,9 @@ describe("ObservabilitySummaryPanel", () => {
     expect(screen.getByText("Observed model calls：42")).toBeInTheDocument();
     expect(screen.getByText("Observed prompt chars：12345")).toBeInTheDocument();
     expect(screen.getByText("Observed estimated cost units：54.345")).toBeInTheDocument();
+    expect(screen.getByText("Observed usage budget：50")).toBeInTheDocument();
+    expect(screen.getByText("Observed budget status：over_budget")).toBeInTheDocument();
+    expect(screen.getByText("Observed budget utilization：1.0869")).toBeInTheDocument();
     expect(screen.getByText("Observed health：critical")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：failed jobs present")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：failed spreadsheet writebacks present")).toBeInTheDocument();

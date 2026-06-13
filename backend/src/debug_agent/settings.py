@@ -43,6 +43,7 @@ class DebugAgentSettings(BaseModel):
     image_artifact_dir: Path = Path("artifacts/image-crops")
     report_base_url: str = "http://localhost:8000"
     auto_writeback_enabled: bool = False
+    usage_budget_units: float = 0.0
 
     @classmethod
     def from_env(cls) -> "DebugAgentSettings":
@@ -64,6 +65,12 @@ class DebugAgentSettings(BaseModel):
                 cls.model_fields["report_base_url"].default,
             ),
             auto_writeback_enabled=_env_bool("DEBUG_AGENT_AUTO_WRITEBACK_ENABLED", default=False),
+            usage_budget_units=float(
+                os.environ.get(
+                    "DEBUG_AGENT_USAGE_BUDGET_UNITS",
+                    str(cls.model_fields["usage_budget_units"].default),
+                )
+            ),
         )
 
 

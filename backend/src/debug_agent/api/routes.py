@@ -240,6 +240,9 @@ class ObservabilityUsageSummary(BaseModel):
     model_call_count: int
     prompt_character_count: int
     estimated_cost_units: float
+    budget_units: float
+    budget_status: Literal["not_configured", "within_budget", "over_budget"]
+    budget_utilization: float
 
 
 class ObservabilitySummaryResponse(BaseModel):
@@ -277,7 +280,7 @@ def get_observability_summary() -> ObservabilitySummaryResponse:
     writeback_counts = job_repository.count_spreadsheet_writeback_audits_by_status()
     worker_status = _build_worker_runtime_status()
     evidence_summary = ObservabilityEvidenceSummary.model_validate(job_repository.summarize_evidence_quality())
-    usage_summary = ObservabilityUsageSummary.model_validate(job_repository.summarize_usage())
+    usage_summary = _build_usage_summary(job_repository.summarize_usage(), budget_units=settings.usage_budget_units)
     job_summary = ObservabilityJobSummary(
         by_status=job_counts,
         total_count=sum(job_counts.values()),
@@ -300,6 +303,7 @@ def get_observability_summary() -> ObservabilitySummaryResponse:
             worker=worker_status,
             writeback_audits=writeback_summary,
             evidence=evidence_summary,
+            usage=usage_summary,
         ),
         usage=usage_summary,
     )
@@ -695,12 +699,30 @@ def _build_worker_runtime_status() -> WorkerRuntimeStatus:
     )
 
 
+def _build_usage_summary(raw_usage: dict[str, int | float], *, budget_units: float) -> ObservabilityUsageSummary:
+    estimated_cost_units = float(raw_usage["estimated_cost_units"])
+    budget_status: Literal["not_configured", "within_budget", "over_budget"] = "not_configured"
+    budget_utilization = 0.0
+    if budget_units > 0:
+        budget_utilization = round(estimated_cost_units / budget_units, 4)
+        budget_status = "over_budget" if estimated_cost_units > budget_units else "within_budget"
+    return ObservabilityUsageSummary(
+        model_call_count=int(raw_usage["model_call_count"]),
+        prompt_character_count=int(raw_usage["prompt_character_count"]),
+        estimated_cost_units=estimated_cost_units,
+        budget_units=budget_units,
+        budget_status=budget_status,
+        budget_utilization=budget_utilization,
+    )
+
+
 def _build_observability_health(
     *,
     jobs: ObservabilityJobSummary,
     worker: WorkerRuntimeStatus,
     writeback_audits: SpreadsheetWritebackAuditSummaryResponse,
     evidence: ObservabilityEvidenceSummary,
+    usage: ObservabilityUsageSummary,
 ) -> ObservabilityHealthSummary:
     critical_reasons: list[str] = []
     degraded_reasons: list[str] = []
@@ -712,6 +734,8 @@ def _build_observability_health(
         critical_reasons.append("failed spreadsheet writebacks present")
     if evidence.model_call_errors > 0:
         critical_reasons.append("model call errors present")
+    if usage.budget_status == "over_budget":
+        critical_reasons.append("usage budget exceeded")
     if jobs.pending_count > 0:
         degraded_reasons.append("pending jobs present")
     if jobs.running_count > 0:
@@ -740,6 +764,7 @@ def _observability_actions(reasons: list[str]) -> list[str]:
             "Retry failed spreadsheet writebacks after checking Lark permissions and sheet headers."
         ),
         "model call errors present": "Check model endpoint health, timeout settings, and retry affected jobs.",
+        "usage budget exceeded": "Pause new submissions or raise the usage budget before continuing.",
         "pending jobs present": "Start or scale workers to drain the pending job backlog.",
         "jobs currently running": "Monitor running jobs for timeout or stuck execution.",
         "response parse errors present": "Inspect prompts and parser assumptions for malformed model outputs.",
