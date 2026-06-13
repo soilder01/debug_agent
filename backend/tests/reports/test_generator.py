@@ -125,10 +125,15 @@ def test_generate_report_infers_root_cause_from_structured_judge_deltas() -> Non
                     affected_box_ids=[7],
                     deltas=[
                         {
-                            "box_id": 7,
+                            "target_id": "box:7",
                             "expected": "低昷烘干",
-                            "predicted": "低温烘干",
+                            "actual": "低温烘干",
                             "reason": "student_answer_mismatch",
+                            "metadata": {
+                                "box_id": 7,
+                                "field": "student_answer",
+                                "legacy_reason": "student_answer_mismatch",
+                            },
                         }
                     ],
                 ),
@@ -282,10 +287,15 @@ def _one_failed_answer_mismatch_result(case: DebugCase) -> ExperimentRunResult:
                     affected_box_ids=[1],
                     deltas=[
                         {
-                            "box_id": 1,
+                            "target_id": "box:1",
                             "expected": "42",
-                            "predicted": "24",
+                            "actual": "24",
                             "reason": "student_answer_mismatch",
+                            "metadata": {
+                                "box_id": 1,
+                                "field": "student_answer",
+                                "legacy_reason": "student_answer_mismatch",
+                            },
                         }
                     ],
                 ),

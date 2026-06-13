@@ -21,5 +21,5 @@ def judge_answer(expected: AnswerSet, predicted: AnswerSet, scoring_standard: st
         reasons=[f"box {delta.box_id} {delta.reason}" for delta in diff.deltas],
         scoring_standard=scoring_standard,
         affected_box_ids=diff.affected_box_ids,
-        deltas=[delta.model_dump() for delta in diff.deltas],
+        deltas=[delta.model_dump() for delta in diff.detection_deltas],
     )

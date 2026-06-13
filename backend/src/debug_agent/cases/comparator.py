@@ -12,10 +12,19 @@ class AnswerDelta(BaseModel):
     reason: str
 
 
+class DetectionDelta(BaseModel):
+    target_id: str
+    expected: str | None
+    actual: str | None
+    reason: str
+    metadata: dict[str, object]
+
+
 class AnswerDiff(BaseModel):
     has_differences: bool
     affected_box_ids: list[int]
     deltas: list[AnswerDelta]
+    detection_deltas: list[DetectionDelta]
 
 
 def parse_prediction_answer(raw_output: str) -> AnswerSet:
@@ -52,4 +61,19 @@ def compare_answer_sets(expected: AnswerSet, predicted: AnswerSet) -> AnswerDiff
         has_differences=bool(deltas),
         affected_box_ids=[delta.box_id for delta in deltas],
         deltas=deltas,
+        detection_deltas=[_answer_delta_to_detection_delta(delta) for delta in deltas],
+    )
+
+
+def _answer_delta_to_detection_delta(delta: AnswerDelta) -> DetectionDelta:
+    return DetectionDelta(
+        target_id=f"box:{delta.box_id}",
+        expected=delta.expected,
+        actual=delta.predicted,
+        reason=delta.reason,
+        metadata={
+            "box_id": delta.box_id,
+            "field": "student_answer",
+            "legacy_reason": delta.reason,
+        },
     )

@@ -26,4 +26,14 @@ def test_compare_answer_sets_detects_text_delta() -> None:
     assert diff.has_differences is True
     assert diff.affected_box_ids == [1]
     assert diff.deltas[0].reason == "student_answer_mismatch"
+    assert diff.detection_deltas[0].target_id == "box:1"
+    assert diff.detection_deltas[0].expected == "低昷烘干"
+    assert diff.detection_deltas[0].actual == "低温烘干"
+    assert diff.detection_deltas[0].reason == "student_answer_mismatch"
+    assert diff.detection_deltas[0].metadata == {
+        "box_id": 1,
+        "field": "student_answer",
+        "legacy_reason": "student_answer_mismatch",
+    }
     assert json.loads(diff.model_dump_json())["affected_box_ids"] == [1]
+    assert json.loads(diff.model_dump_json())["detection_deltas"][0]["target_id"] == "box:1"

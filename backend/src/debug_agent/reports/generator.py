@@ -246,8 +246,8 @@ def _structured_answer_deltas(evidence: list[ExperimentEvidence]) -> list[dict[s
 def _affected_box_ids_from_deltas(deltas: list[dict[str, object]]) -> list[int]:
     box_ids: set[int] = set()
     for delta in deltas:
-        box_id = delta.get("box_id")
-        if isinstance(box_id, int):
+        box_id = _box_id_from_delta(delta)
+        if box_id is not None:
             box_ids.add(box_id)
     return sorted(box_ids)
 
@@ -259,7 +259,7 @@ def _build_evidence_citations(run_result: ExperimentRunResult | None) -> list[di
     for item in run_result.evidence:
         artifact_ids = [artifact.artifact_id for artifact in item.image_artifacts]
         for delta in item.judge.deltas:
-            box_id = delta.get("box_id")
+            box_id = _box_id_from_delta(delta)
             reason = delta.get("reason", "")
             citations.append(
                 {
@@ -291,3 +291,20 @@ def _build_evidence_citations(run_result: ExperimentRunResult | None) -> list[di
                 }
             )
     return citations
+
+
+def _box_id_from_delta(delta: dict[str, object]) -> int | None:
+    legacy_box_id = delta.get("box_id")
+    if isinstance(legacy_box_id, int):
+        return legacy_box_id
+    metadata = delta.get("metadata")
+    if isinstance(metadata, dict):
+        metadata_box_id = metadata.get("box_id")
+        if isinstance(metadata_box_id, int):
+            return metadata_box_id
+    target_id = delta.get("target_id")
+    if isinstance(target_id, str) and target_id.startswith("box:"):
+        box_id_text = target_id.removeprefix("box:")
+        if box_id_text.isdigit():
+            return int(box_id_text)
+    return None
