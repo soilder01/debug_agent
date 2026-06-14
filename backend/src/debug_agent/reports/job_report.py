@@ -19,4 +19,23 @@ def build_report_for_job(repository: DebugJobRepository, job_id: str) -> DebugRe
         success_count=sum(1 for item in evidence if item.judge.score == 1),
         evidence=evidence,
     )
-    return generate_initial_report(case=case, plan=plan, run_result=run_result, job_id=job_id)
+    report = generate_initial_report(case=case, plan=plan, run_result=run_result, job_id=job_id)
+    return _merge_recommended_action_statuses(repository, job_id, report)
+
+
+def _merge_recommended_action_statuses(
+    repository: DebugJobRepository,
+    job_id: str,
+    report: DebugReport,
+) -> DebugReport:
+    statuses = {
+        item.action_index: item.status
+        for item in repository.list_recommended_action_statuses(job_id)
+    }
+    if not statuses or not report.recommended_actions:
+        return report
+    report.recommended_actions = [
+        {**action, "status": statuses.get(index, action.get("status", "pending"))}
+        for index, action in enumerate(report.recommended_actions)
+    ]
+    return report

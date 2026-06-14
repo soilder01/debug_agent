@@ -410,6 +410,19 @@
 - [x] Delegate action status updates through the report workspace.
 - [x] Persist action status changes from the app and merge the returned status into the current report.
 
+### Task 28: Recommended Action Status Report Merge
+
+**Files:**
+- Modify: `backend/src/debug_agent/reports/job_report.py`
+- Test: `backend/tests/reports/test_job_report.py`
+- Test: `backend/tests/api/test_job_report.py`
+- Test: `backend/tests/api/test_recommended_action_status.py`
+
+- [x] Merge persisted recommended action statuses into regenerated job reports.
+- [x] Preserve generated `pending` status for actions without persisted reviewer state.
+- [x] Keep missing-job report behavior unchanged.
+- [x] Keep recommended action status update/list APIs compatible with report reconstruction.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

@@ -1,4 +1,5 @@
 from debug_agent.cases.fixtures import load_fixture_case
+from debug_agent.cases.models import DebugCase
 from debug_agent.experiments.runner import ExperimentEvidence
 from debug_agent.judging.runner import JudgeResult
 from debug_agent.reports.job_report import build_report_for_job
@@ -59,3 +60,79 @@ def test_build_report_for_job_returns_none_for_missing_job() -> None:
     report = build_report_for_job(repository, "missing-job")
 
     assert report is None
+
+
+def test_build_report_for_job_merges_recommended_action_statuses() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    case = DebugCase.model_validate(
+        {
+            "case_id": "status-merge-case",
+            "task_type": "multimodal_detection",
+            "image_uri": "file:///tmp/multimodal.mp4",
+            "prompt": "Compare image and caption, then return cross-modal conflict JSON.",
+            "golden_answer": {"answers": []},
+            "expected_output": {
+                "conflicts": [
+                    {
+                        "target_id": "multimodal:conflict:1",
+                        "conflict_type": "visual_text_conflict",
+                        "modalities": ["image", "text"],
+                        "expected": "caption matches image",
+                        "actual": "caption says cat but image shows dog",
+                    }
+                ]
+            },
+            "scoring_standard": "cross-modal claims must agree.",
+            "predictions": [{"trial": 0, "raw_output": "{\"conflicts\":[]}", "score": 0}],
+            "avg_score": 0.0,
+        }
+    )
+    repository.save_case(case)
+    repository.create_job(job_id="job-status-merge", case_id=case.case_id)
+    repository.save_evidence(
+        job_id="job-status-merge",
+        case_id=case.case_id,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="e-image-only",
+                step_name="modality_ablation_check",
+                trial=0,
+                request_summary={"ablation_variant": "image_only", "ablation_modalities": ["image"]},
+                raw_output=case.predictions[0].raw_output,
+                judge=JudgeResult(score=0, reasons=["multimodal:conflict:1 conflict_actual_mismatch"]),
+            ),
+            ExperimentEvidence(
+                evidence_id="e-text-only",
+                step_name="modality_ablation_check",
+                trial=1,
+                request_summary={"ablation_variant": "text_only", "ablation_modalities": ["text"]},
+                raw_output="{\"conflicts\":[]}",
+                judge=JudgeResult(score=1, reasons=[]),
+            ),
+        ],
+    )
+    repository.save_recommended_action_status(
+        job_id="job-status-merge",
+        action_index=0,
+        status="accepted",
+        actor="qa-reviewer",
+        note="approved prompt update",
+    )
+    repository.save_recommended_action_status(
+        job_id="job-status-merge",
+        action_index=2,
+        status="applied",
+        actor="qa-reviewer",
+        note="model capability ticket linked",
+    )
+
+    report = build_report_for_job(repository, "job-status-merge")
+
+    assert report is not None
+    assert [action["status"] for action in report.recommended_actions] == [
+        "accepted",
+        "pending",
+        "applied",
+    ]
