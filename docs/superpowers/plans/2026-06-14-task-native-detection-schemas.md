@@ -509,6 +509,17 @@
 - [x] Return web-accessible manifest URLs from video segment and multimodal conflict artifact generation.
 - [x] Preserve manifest file materialization and existing image crop serving.
 
+### Task 36: Frontend Manifest URL Normalization
+
+**Files:**
+- Modify: `frontend/src/evidence/EvidenceDetail.tsx`
+- Test: `frontend/src/evidence/EvidenceDetail.test.tsx`
+
+- [x] Normalize legacy `file://` manifest URIs into `/api/artifacts/manifests/{filename}` links.
+- [x] Preserve already web-accessible `/api/artifacts/manifests/...` URLs.
+- [x] Apply normalization to video segment and multimodal conflict manifest audit links.
+- [x] Keep non-manifest artifact links and preview behavior unchanged.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

@@ -409,7 +409,7 @@ describe("EvidenceDetail", () => {
     expect(screen.getByText("审计标签：person_enters → person_leaves")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "打开视频片段 manifest video-case:baseline:0:video_segment_1:delta" })
-    ).toHaveAttribute("href", "file:///tmp/artifacts/video-case_baseline_0_video_segment_1_delta.json");
+    ).toHaveAttribute("href", "/api/artifacts/manifests/video-case_baseline_0_video_segment_1_delta.json");
   });
 
   it("renders multimodal conflict manifest artifacts as audit links", () => {
@@ -472,7 +472,7 @@ describe("EvidenceDetail", () => {
       })
     ).toHaveAttribute(
       "href",
-      "file:///tmp/artifacts/multimodal-case_baseline_0_multimodal_conflict_1_delta.json"
+      "/api/artifacts/manifests/multimodal-case_baseline_0_multimodal_conflict_1_delta.json"
     );
   });
 

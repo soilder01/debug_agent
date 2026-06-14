@@ -156,6 +156,7 @@ function VideoSegmentAudit({ artifact }: VideoSegmentAuditProps) {
   const actualSegment = segmentValue(artifact.metadata.actual_segment);
   const auditSegment = actualSegment ?? expectedSegment;
   const manifestType = stringValue(artifact.metadata.manifest_type) || "video_segment_delta";
+  const manifestUrl = manifestArtifactUrl(artifact.derived_uri);
 
   return (
     <section aria-label="Video segment audit">
@@ -164,7 +165,7 @@ function VideoSegmentAudit({ artifact }: VideoSegmentAuditProps) {
       {auditSegment ? <p>审计片段：{auditSegment.start_ms}ms → {auditSegment.end_ms}ms</p> : null}
       <p>审计标签：{expectedSegment?.label ?? "无"} → {actualSegment?.label ?? "无"}</p>
       <p>
-        <a href={artifact.derived_uri} target="_blank" rel="noreferrer">
+        <a href={manifestUrl} target="_blank" rel="noreferrer">
           打开视频片段 manifest {artifact.artifact_id}
         </a>
       </p>
@@ -182,6 +183,7 @@ function MultimodalConflictAudit({ artifact }: VideoSegmentAuditProps) {
   const actualModalities = stringArrayValue(artifact.metadata.actual_modalities);
   const expected = stringValue(artifact.metadata.expected) || "无";
   const actual = stringValue(artifact.metadata.actual) || "无";
+  const manifestUrl = manifestArtifactUrl(artifact.derived_uri);
 
   return (
     <section aria-label="Multimodal conflict audit">
@@ -191,7 +193,7 @@ function MultimodalConflictAudit({ artifact }: VideoSegmentAuditProps) {
       <p>审计模态：{formatList(expectedModalities)} → {formatList(actualModalities)}</p>
       <p>审计结论：{expected} → {actual}</p>
       <p>
-        <a href={artifact.derived_uri} target="_blank" rel="noreferrer">
+        <a href={manifestUrl} target="_blank" rel="noreferrer">
           打开跨模态冲突 manifest {artifact.artifact_id}
         </a>
       </p>
@@ -306,6 +308,18 @@ function stringArrayValue(value: unknown): string[] {
 
 function formatList(values: string[]): string {
   return values.length > 0 ? values.join(", ") : "无";
+}
+
+function manifestArtifactUrl(uri: string): string {
+  if (uri.startsWith("/api/artifacts/manifests/")) {
+    return uri;
+  }
+  if (uri.startsWith("file://")) {
+    const pathParts = uri.split(/[\\/]/);
+    const filename = decodeURIComponent(pathParts[pathParts.length - 1] ?? "");
+    return filename ? `/api/artifacts/manifests/${filename}` : uri;
+  }
+  return uri;
 }
 
 function stringValue(value: unknown): string {
