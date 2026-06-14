@@ -12,7 +12,7 @@ from debug_agent.artifacts.images import (
     image_artifact_preview_url,
     materialize_image_crop,
 )
-from debug_agent.artifacts.videos import materialize_video_segment_manifest
+from debug_agent.artifacts.videos import materialize_multimodal_conflict_manifest, materialize_video_segment_manifest
 from debug_agent.cases.comparator import (
     compare_answer_sets,
     parse_classification_output,
@@ -395,6 +395,14 @@ def _build_native_delta_artifacts(
                 output_dir=image_artifact_dir,
             )
             metadata["manifest_type"] = "video_segment_delta"
+        if image_artifact_dir is not None and artifact_type == "multimodal_conflict":
+            derived_uri = materialize_multimodal_conflict_manifest(
+                artifact_id=artifact_id,
+                source_uri=source_image_uri,
+                metadata=metadata,
+                output_dir=image_artifact_dir,
+            )
+            metadata["manifest_type"] = "multimodal_conflict_delta"
         artifacts.append(
             EvidenceArtifact(
                 artifact_id=artifact_id,

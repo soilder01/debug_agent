@@ -482,6 +482,20 @@
 - [x] Link directly to the generated manifest artifact URI.
 - [x] Preserve existing native artifact metadata and no-preview fallback rendering.
 
+### Task 34: Multimodal Conflict Manifest Artifacts And Audit
+
+**Files:**
+- Modify: `backend/src/debug_agent/artifacts/videos.py`
+- Modify: `backend/src/debug_agent/experiments/runner.py`
+- Modify: `frontend/src/evidence/EvidenceDetail.tsx`
+- Test: `backend/tests/experiments/test_runner.py`
+- Test: `frontend/src/evidence/EvidenceDetail.test.tsx`
+
+- [x] Materialize `multimodal_conflict_delta` artifacts as JSON manifests when an artifact directory is configured.
+- [x] Include source URI, target id, reason, expected/actual conclusions, modalities, and conflict types in the manifest.
+- [x] Attach `derived_uri` and `manifest_type` metadata to multimodal conflict delta artifacts.
+- [x] Render multimodal conflict manifest artifacts as a dedicated frontend audit section.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

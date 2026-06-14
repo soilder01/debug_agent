@@ -46,6 +46,7 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
                 <p>元数据：{JSON.stringify(artifact.metadata)}</p>
                 <ArtifactNativeContext metadata={artifact.metadata} />
                 <VideoSegmentAudit artifact={artifact} />
+                <MultimodalConflictAudit artifact={artifact} />
                 {artifact.preview_url ? (
                   <>
                     <p>
@@ -171,6 +172,33 @@ function VideoSegmentAudit({ artifact }: VideoSegmentAuditProps) {
   );
 }
 
+function MultimodalConflictAudit({ artifact }: VideoSegmentAuditProps) {
+  if (artifact.kind !== "multimodal_conflict_delta" || !artifact.derived_uri) {
+    return null;
+  }
+  const manifestType = stringValue(artifact.metadata.manifest_type) || "multimodal_conflict_delta";
+  const targetId = stringValue(artifact.metadata.target_id);
+  const expectedModalities = stringArrayValue(artifact.metadata.expected_modalities);
+  const actualModalities = stringArrayValue(artifact.metadata.actual_modalities);
+  const expected = stringValue(artifact.metadata.expected) || "无";
+  const actual = stringValue(artifact.metadata.actual) || "无";
+
+  return (
+    <section aria-label="Multimodal conflict audit">
+      <h5>Multimodal Conflict Audit</h5>
+      <p>Manifest 类型：{manifestType}</p>
+      {targetId ? <p>审计目标：{targetId}</p> : null}
+      <p>审计模态：{formatList(expectedModalities)} → {formatList(actualModalities)}</p>
+      <p>审计结论：{expected} → {actual}</p>
+      <p>
+        <a href={artifact.derived_uri} target="_blank" rel="noreferrer">
+          打开跨模态冲突 manifest {artifact.artifact_id}
+        </a>
+      </p>
+    </section>
+  );
+}
+
 function ArtifactNativeContext({ metadata }: ArtifactNativeContextProps) {
   const targetId = stringValue(metadata.target_id);
   const expectedRegion = regionValue(metadata.expected_region);
@@ -274,6 +302,10 @@ function formatSegment(segment: SegmentMetadata): string {
 
 function stringArrayValue(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function formatList(values: string[]): string {
+  return values.length > 0 ? values.join(", ") : "无";
 }
 
 function stringValue(value: unknown): string {

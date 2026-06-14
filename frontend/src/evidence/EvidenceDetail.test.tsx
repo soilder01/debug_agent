@@ -412,6 +412,70 @@ describe("EvidenceDetail", () => {
     ).toHaveAttribute("href", "file:///tmp/artifacts/video-case_baseline_0_video_segment_1_delta.json");
   });
 
+  it("renders multimodal conflict manifest artifacts as audit links", () => {
+    const evidence = {
+      evidence_id: "multimodal-case:baseline_replay:0",
+      step_name: "baseline_replay",
+      trial: 0,
+      model_name: "ark-seed2-lite",
+      model_provider: "ark",
+      model_id: "ep-seed2-lite",
+      request_summary: {
+        prompt_length: 128,
+        has_image: true,
+        image_uri_scheme: "file"
+      },
+      latency_ms: 45,
+      response_parse_error: "",
+      model_call_error_type: "",
+      model_call_error_message: "",
+      artifacts: [
+        {
+          artifact_id: "multimodal-case:baseline:0:multimodal_conflict_1:delta",
+          kind: "multimodal_conflict_delta",
+          artifact_type: "multimodal_conflict",
+          source_uri: "file:///tmp/multimodal.mp4",
+          derived_uri: "file:///tmp/artifacts/multimodal-case_baseline_0_multimodal_conflict_1_delta.json",
+          preview_url: "",
+          region: null,
+          metadata: {
+            target_id: "multimodal:conflict:1",
+            reason: "conflict_actual_mismatch",
+            manifest_type: "multimodal_conflict_delta",
+            expected: "image and caption both describe a cat",
+            actual: "image shows dog while caption says cat",
+            expected_modalities: ["image", "text"],
+            actual_modalities: ["image", "text"],
+            expected_conflict_type: "visual_text_conflict",
+            actual_conflict_type: "visual_text_conflict"
+          }
+        }
+      ],
+      image_artifacts: [],
+      raw_output: "{\"conflicts\":[]}",
+      judge: {
+        score: 0,
+        reasons: ["multimodal conflict mismatch"]
+      }
+    } satisfies ExperimentEvidence;
+
+    render(<EvidenceDetail evidence={evidence} />);
+
+    expect(screen.getByText("Multimodal Conflict Audit")).toBeInTheDocument();
+    expect(screen.getByText("Manifest 类型：multimodal_conflict_delta")).toBeInTheDocument();
+    expect(screen.getByText("审计目标：multimodal:conflict:1")).toBeInTheDocument();
+    expect(screen.getByText("审计模态：image, text → image, text")).toBeInTheDocument();
+    expect(screen.getByText("审计结论：image and caption both describe a cat → image shows dog while caption says cat")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", {
+        name: "打开跨模态冲突 manifest multimodal-case:baseline:0:multimodal_conflict_1:delta"
+      })
+    ).toHaveAttribute(
+      "href",
+      "file:///tmp/artifacts/multimodal-case_baseline_0_multimodal_conflict_1_delta.json"
+    );
+  });
+
   it("hides judge deltas section when no structured deltas are present", () => {
     const evidence = {
       evidence_id: "classification-case:baseline_replay:0",

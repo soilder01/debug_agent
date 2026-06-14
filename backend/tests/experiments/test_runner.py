@@ -950,6 +950,80 @@ async def test_run_experiments_judges_multimodal_detection_output_natively() -> 
 
 
 @pytest.mark.asyncio
+async def test_run_experiments_materializes_multimodal_conflict_delta_manifest() -> None:
+    with TemporaryDirectory(dir=Path.cwd()) as temp_dir:
+        temp_path = Path(temp_dir)
+        input_path = temp_path / "multimodal-input.mp4"
+        input_path.write_bytes(b"fake-multimodal")
+        artifact_dir = temp_path / "artifacts"
+        case = DebugCase.model_validate(
+            {
+                "case_id": "multimodal-conflict-manifest",
+                "task_type": "multimodal_detection",
+                "image_uri": input_path.as_uri(),
+                "prompt": "Compare image and caption, then return cross-modal conflict JSON.",
+                "golden_answer": {"answers": []},
+                "expected_output": {
+                    "conflicts": [
+                        {
+                            "target_id": "multimodal:conflict:1",
+                            "conflict_type": "visual_text_conflict",
+                            "modalities": ["image", "text"],
+                            "expected": "caption matches the visual subject",
+                            "actual": "image and caption both describe a cat",
+                        }
+                    ]
+                },
+                "scoring_standard": "cross-modal claims must agree.",
+                "predictions": [
+                    {
+                        "trial": 0,
+                        "raw_output": (
+                            "{\"conflicts\":[{\"target_id\":\"multimodal:conflict:1\","
+                            "\"conflict_type\":\"visual_text_conflict\",\"modalities\":[\"image\",\"text\"],"
+                            "\"expected\":\"caption matches the visual subject\","
+                            "\"actual\":\"image shows dog while caption says cat\"}]}"
+                        ),
+                        "score": 0,
+                    }
+                ],
+                "avg_score": 0.0,
+            }
+        )
+        plan = ExperimentPlan(
+            case_id=case.case_id,
+            max_model_calls=1,
+            steps=[ExperimentStep(name="baseline_replay", description="Replay baseline.", trials=1)],
+        )
+        adapter = FakeModelAdapter(outputs=[case.predictions[0].raw_output])
+
+        result = await run_experiments(
+            case=case,
+            plan=plan,
+            adapter=adapter,
+            image_artifact_dir=artifact_dir,
+        )
+
+        native_artifact = next(
+            artifact for artifact in result.evidence[0].artifacts if artifact.kind == "multimodal_conflict_delta"
+        )
+        assert native_artifact.derived_uri
+        manifest_path = _path_from_file_uri(native_artifact.derived_uri)
+        assert manifest_path.exists()
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert manifest["artifact_id"] == native_artifact.artifact_id
+        assert manifest["manifest_type"] == "multimodal_conflict_delta"
+        assert manifest["source_uri"] == input_path.as_uri()
+        assert manifest["target_id"] == "multimodal:conflict:1"
+        assert manifest["reason"] == "conflict_actual_mismatch"
+        assert manifest["expected"] == "image and caption both describe a cat"
+        assert manifest["actual"] == "image shows dog while caption says cat"
+        assert manifest["expected_modalities"] == ["image", "text"]
+        assert manifest["actual_modalities"] == ["image", "text"]
+        assert native_artifact.metadata["manifest_type"] == "multimodal_conflict_delta"
+
+
+@pytest.mark.asyncio
 async def test_run_experiments_uses_multimodal_detection_recipe_prompt() -> None:
     case = DebugCase.model_validate(
         {
