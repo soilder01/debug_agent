@@ -1,12 +1,20 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from debug_agent.cases.models import DebugCase
+
+
+class AblationVariant(BaseModel):
+    name: str
+    modalities: list[str] = Field(default_factory=list)
+    prompt_instructions: str = ""
+    image_uri: str | None = None
 
 
 class ExperimentStep(BaseModel):
     name: str
     description: str
     trials: int
+    ablation_variants: list[AblationVariant] = Field(default_factory=list)
 
 
 class ExperimentPlan(BaseModel):

@@ -243,6 +243,21 @@
 - [x] Render an `Experiment Trajectory` section in the report UI.
 - [x] Preserve global replay stability and existing evidence artifact summaries.
 
+### Task 16: Executable Multimodal Ablation Variants
+
+**Files:**
+- Modify: `backend/src/debug_agent/experiments/planner.py`
+- Modify: `backend/src/debug_agent/experiments/runner.py`
+- Modify: `backend/src/debug_agent/recipes/multimodal_detection.py`
+- Test: `backend/tests/experiments/test_planner.py`
+- Test: `backend/tests/experiments/test_runner.py`
+
+- [x] Add explicit `AblationVariant` metadata to `ExperimentStep`.
+- [x] Plan multimodal `image_only`, `text_only`, and `cross_modal_compare` variants for `modality_ablation_check`.
+- [x] Apply variant prompt instructions and optional input URI overrides during runner execution.
+- [x] Persist variant name and modalities into evidence request summaries and input snapshot artifact metadata.
+- [x] Preserve non-ablation recipe behavior for existing OCR, classification, image, and video tasks.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

@@ -81,10 +81,11 @@ class PromptRecordingModelAdapter:
     def __init__(self, raw_output: str) -> None:
         self.raw_output = raw_output
         self.prompts: list[str] = []
+        self.image_uris: list[str] = []
 
     async def generate(self, prompt: str, image_uri: str) -> ModelResponse:
-        del image_uri
         self.prompts.append(prompt)
+        self.image_uris.append(image_uri)
         return ModelResponse(model_name="recording", trial=0, raw_output=self.raw_output)
 
 
@@ -849,3 +850,83 @@ async def test_run_experiments_uses_multimodal_detection_recipe_prompt() -> None
     assert "visual_text_conflict" in adapter.prompts[0]
     assert "cross-modal claims must agree." in adapter.prompts[0]
     assert "answer-box assumptions" not in adapter.prompts[0]
+
+
+@pytest.mark.asyncio
+async def test_run_experiments_applies_multimodal_ablation_variants_to_trials() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "multimodal-ablation-runner",
+            "task_type": "multimodal_detection",
+            "image_uri": "file:///tmp/multimodal-input.mp4",
+            "prompt": "Compare image and caption, then return cross-modal conflict JSON.",
+            "golden_answer": {"answers": []},
+            "expected_output": {
+                "conflicts": [
+                    {
+                        "target_id": "multimodal:conflict:1",
+                        "conflict_type": "visual_text_conflict",
+                        "modalities": ["image", "text"],
+                        "expected": "caption matches the visual subject",
+                        "actual": "image and caption both describe a cat",
+                    }
+                ]
+            },
+            "scoring_standard": "cross-modal claims must agree.",
+            "predictions": [{"trial": 0, "raw_output": "{\"conflicts\":[]}", "score": 0}],
+            "avg_score": 0.0,
+        }
+    )
+    plan = ExperimentPlan(
+        case_id=case.case_id,
+        max_model_calls=3,
+        steps=[
+            ExperimentStep(
+                name="modality_ablation_check",
+                description="Check modality ablation.",
+                trials=3,
+                ablation_variants=[
+                    {
+                        "name": "image_only",
+                        "modalities": ["image"],
+                        "prompt_instructions": "Use only visual/image evidence. Ignore text and transcript claims.",
+                    },
+                    {
+                        "name": "text_only",
+                        "modalities": ["text"],
+                        "prompt_instructions": "Use only text/caption evidence. Ignore visual frames.",
+                        "image_uri": "",
+                    },
+                    {
+                        "name": "cross_modal_compare",
+                        "modalities": ["image", "text"],
+                        "prompt_instructions": "Compare image and text evidence explicitly before returning conflicts.",
+                    },
+                ],
+            )
+        ],
+    )
+    adapter = PromptRecordingModelAdapter(raw_output=case.predictions[0].raw_output)
+
+    result = await run_experiments(case=case, plan=plan, adapter=adapter)
+
+    assert len(adapter.prompts) == 3
+    assert "Ablation variant: image_only" in adapter.prompts[0]
+    assert "Use only visual/image evidence" in adapter.prompts[0]
+    assert "Ablation variant: text_only" in adapter.prompts[1]
+    assert "Use only text/caption evidence" in adapter.prompts[1]
+    assert "Ablation variant: cross_modal_compare" in adapter.prompts[2]
+    assert adapter.image_uris == ["file:///tmp/multimodal-input.mp4", "", "file:///tmp/multimodal-input.mp4"]
+    assert [evidence.request_summary["ablation_variant"] for evidence in result.evidence] == [
+        "image_only",
+        "text_only",
+        "cross_modal_compare",
+    ]
+    assert result.evidence[0].request_summary["ablation_modalities"] == ["image"]
+    assert result.evidence[1].request_summary["ablation_modalities"] == ["text"]
+    assert result.evidence[2].request_summary["ablation_modalities"] == ["image", "text"]
+    input_snapshot = next(
+        artifact for artifact in result.evidence[1].artifacts if artifact.kind == "input_snapshot"
+    )
+    assert input_snapshot.metadata["ablation_variant"] == "text_only"
+    assert input_snapshot.metadata["ablation_modalities"] == ["text"]

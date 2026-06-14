@@ -246,3 +246,44 @@ def test_plan_experiments_routes_multimodal_detection_case_to_multimodal_recipe(
         "modality_ablation_check",
         "conflict_grounding_check",
     ]
+
+
+def test_plan_experiments_adds_multimodal_ablation_variants() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "multimodal-detection-ablation-variants",
+            "task_type": "multimodal_detection",
+            "image_uri": "file:///tmp/multimodal-input.mp4",
+            "prompt": "Compare the image and caption, then return cross-modal conflict JSON.",
+            "golden_answer": {"answers": []},
+            "expected_output": {
+                "conflicts": [
+                    {
+                        "target_id": "multimodal:conflict:1",
+                        "conflict_type": "visual_text_conflict",
+                        "modalities": ["image", "text"],
+                        "expected": "caption matches the visual subject",
+                        "actual": "image and caption both describe a cat",
+                    }
+                ]
+            },
+            "scoring_standard": "cross-modal claims must agree.",
+            "predictions": [{"trial": 0, "raw_output": "{\"conflicts\":[]}", "score": 0}],
+            "avg_score": 0.0,
+        }
+    )
+
+    plan = plan_experiments(case, baseline_trials=1)
+
+    ablation_step = next(step for step in plan.steps if step.name == "modality_ablation_check")
+    assert ablation_step.trials == 3
+    assert [variant.name for variant in ablation_step.ablation_variants] == [
+        "image_only",
+        "text_only",
+        "cross_modal_compare",
+    ]
+    assert ablation_step.ablation_variants[0].modalities == ["image"]
+    assert "Ignore text" in ablation_step.ablation_variants[0].prompt_instructions
+    assert ablation_step.ablation_variants[1].modalities == ["text"]
+    assert "Ignore visual" in ablation_step.ablation_variants[1].prompt_instructions
+    assert ablation_step.ablation_variants[2].modalities == ["image", "text"]

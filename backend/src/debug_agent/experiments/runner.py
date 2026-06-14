@@ -28,7 +28,7 @@ from debug_agent.cases.models import (
     MultimodalDetectionOutput,
     VideoDetectionOutput,
 )
-from debug_agent.experiments.planner import ExperimentPlan
+from debug_agent.experiments.planner import AblationVariant, ExperimentPlan, ExperimentStep
 from debug_agent.judging.runner import (
     JudgeResult,
     judge_answer,
@@ -85,9 +85,15 @@ async def run_experiments(
             started_at = perf_counter()
             model_call_error_type = ""
             model_call_error_message = ""
-            prompt = _build_step_prompt(case=case, step_name=step.name)
+            ablation_variant = _ablation_variant_for_trial(step=step, trial_index=trial_index)
+            prompt = _build_step_prompt(
+                case=case,
+                step_name=step.name,
+                ablation_variant=ablation_variant,
+            )
+            request_image_uri = _image_uri_for_variant(case=case, ablation_variant=ablation_variant)
             try:
-                response = await adapter.generate(prompt=prompt, image_uri=case.image_uri)
+                response = await adapter.generate(prompt=prompt, image_uri=request_image_uri)
             except Exception as exc:
                 latency_ms = int((perf_counter() - started_at) * 1000)
                 model_call_error_type = type(exc).__name__
@@ -100,8 +106,9 @@ async def run_experiments(
                         trial=trial_index,
                         request_summary=_build_request_summary(
                             prompt=prompt,
-                            image_uri=case.image_uri,
+                            image_uri=request_image_uri,
                             scoring_standard=case.scoring_standard,
+                            ablation_variant=ablation_variant,
                         ),
                         latency_ms=latency_ms,
                         model_call_error_type=model_call_error_type,
@@ -114,6 +121,8 @@ async def run_experiments(
                             image_artifacts=[],
                             response_parse_error="",
                             judge=judge,
+                            request_image_uri=request_image_uri,
+                            ablation_variant=ablation_variant,
                         ),
                         raw_output="",
                         judge=judge,
@@ -155,8 +164,9 @@ async def run_experiments(
                     model_id=response.model_id,
                     request_summary=_build_request_summary(
                         prompt=prompt,
-                        image_uri=case.image_uri,
+                        image_uri=request_image_uri,
                         scoring_standard=case.scoring_standard,
+                        ablation_variant=ablation_variant,
                     ),
                     latency_ms=latency_ms,
                     response_parse_error=response_parse_error,
@@ -171,6 +181,8 @@ async def run_experiments(
                         image_artifacts=image_artifacts,
                         response_parse_error=response_parse_error,
                         judge=judge,
+                        request_image_uri=request_image_uri,
+                        ablation_variant=ablation_variant,
                     ),
                     raw_output=response.raw_output,
                     judge=judge,
@@ -184,15 +196,24 @@ async def run_experiments(
     )
 
 
-def _build_request_summary(prompt: str, image_uri: str, scoring_standard: str) -> dict[str, object]:
+def _build_request_summary(
+    prompt: str,
+    image_uri: str,
+    scoring_standard: str,
+    ablation_variant: AblationVariant | None = None,
+) -> dict[str, object]:
     parsed_uri = urlparse(image_uri)
-    return {
+    summary: dict[str, object] = {
         "agent_role": "model_runner",
         "prompt_length": len(prompt),
         "has_image": bool(image_uri),
         "image_uri_scheme": parsed_uri.scheme,
         "scoring_standard_present": bool(scoring_standard.strip()),
     }
+    if ablation_variant is not None:
+        summary["ablation_variant"] = ablation_variant.name
+        summary["ablation_modalities"] = ablation_variant.modalities
+    return summary
 
 
 def _judge_classification_response(case: DebugCase, raw_output: str) -> JudgeResult:
@@ -232,9 +253,24 @@ def _judge_multimodal_detection_response(case: DebugCase, raw_output: str) -> Ju
     return judge_multimodal_detection_output(expected, predicted, scoring_standard=case.scoring_standard)
 
 
-def _build_step_prompt(case: DebugCase, step_name: str) -> str:
+def _build_step_prompt(
+    case: DebugCase,
+    step_name: str,
+    ablation_variant: AblationVariant | None = None,
+) -> str:
     recipe = recipe_for_task_type(case.task_type)
-    return recipe.build_step_prompt(case=case, step_name=step_name)
+    prompt = recipe.build_step_prompt(case=case, step_name=step_name)
+    if ablation_variant is None:
+        return prompt
+    return "\n".join(
+        [
+            prompt,
+            "",
+            f"Ablation variant: {ablation_variant.name}",
+            f"Ablation modalities: {', '.join(ablation_variant.modalities) or 'none'}",
+            ablation_variant.prompt_instructions,
+        ]
+    )
 
 
 def _build_generic_artifacts(
@@ -246,6 +282,8 @@ def _build_generic_artifacts(
     image_artifacts: list[ImageArtifact],
     response_parse_error: str,
     judge: JudgeResult | None = None,
+    request_image_uri: str | None = None,
+    ablation_variant: AblationVariant | None = None,
 ) -> list[EvidenceArtifact]:
     artifacts = _image_artifacts_to_evidence_artifacts(image_artifacts)
     if judge is not None:
@@ -262,12 +300,11 @@ def _build_generic_artifacts(
             artifact_id=f"{case.case_id}:{step_name}:{trial_index}:input-snapshot",
             kind="input_snapshot",
             artifact_type="request",
-            source_uri=case.image_uri,
-            metadata={
-                "task_type": case.task_type,
-                "prompt_length": len(case.prompt),
-                "scoring_standard_present": bool(case.scoring_standard.strip()),
-            },
+            source_uri=request_image_uri if request_image_uri is not None else case.image_uri,
+            metadata=_input_snapshot_metadata(
+                case=case,
+                ablation_variant=ablation_variant,
+            ),
         )
     )
     artifacts.append(
@@ -282,6 +319,34 @@ def _build_generic_artifacts(
         )
     )
     return artifacts
+
+
+def _input_snapshot_metadata(
+    *,
+    case: DebugCase,
+    ablation_variant: AblationVariant | None,
+) -> dict[str, object]:
+    metadata: dict[str, object] = {
+        "task_type": case.task_type,
+        "prompt_length": len(case.prompt),
+        "scoring_standard_present": bool(case.scoring_standard.strip()),
+    }
+    if ablation_variant is not None:
+        metadata["ablation_variant"] = ablation_variant.name
+        metadata["ablation_modalities"] = ablation_variant.modalities
+    return metadata
+
+
+def _ablation_variant_for_trial(*, step: ExperimentStep, trial_index: int) -> AblationVariant | None:
+    if not step.ablation_variants:
+        return None
+    return step.ablation_variants[trial_index % len(step.ablation_variants)]
+
+
+def _image_uri_for_variant(*, case: DebugCase, ablation_variant: AblationVariant | None) -> str:
+    if ablation_variant is not None and ablation_variant.image_uri is not None:
+        return ablation_variant.image_uri
+    return case.image_uri
 
 
 def _build_native_delta_artifacts(

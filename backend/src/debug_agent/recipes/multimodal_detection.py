@@ -1,5 +1,5 @@
 from debug_agent.cases.models import DebugCase, MultimodalDetectionOutput
-from debug_agent.experiments.planner import ExperimentStep
+from debug_agent.experiments.planner import AblationVariant, ExperimentStep
 
 
 class MultimodalDetectionRecipe:
@@ -21,7 +21,25 @@ class MultimodalDetectionRecipe:
             ExperimentStep(
                 name="modality_ablation_check",
                 description="Isolate modality contribution through prompt ablation and single-modality reasoning.",
-                trials=2,
+                trials=3,
+                ablation_variants=[
+                    AblationVariant(
+                        name="image_only",
+                        modalities=["image"],
+                        prompt_instructions="Use only visual/image evidence. Ignore text and transcript claims.",
+                    ),
+                    AblationVariant(
+                        name="text_only",
+                        modalities=["text"],
+                        prompt_instructions="Use only text/caption evidence. Ignore visual frames.",
+                        image_uri="",
+                    ),
+                    AblationVariant(
+                        name="cross_modal_compare",
+                        modalities=["image", "text"],
+                        prompt_instructions="Compare image and text evidence explicitly before returning conflicts.",
+                    ),
+                ],
             ),
             ExperimentStep(
                 name="conflict_grounding_check",
