@@ -68,12 +68,12 @@ These are not separate deployed services yet. The next goal is to make their con
 - Test: `backend/tests/orchestration/test_roles.py`
 - Test: `backend/tests/experiments/test_runner.py`
 
-- [ ] Write a failing test that lists the seven logical agent roles with stable ids and responsibilities.
-- [ ] Write a failing test that each evidence record includes `agent_role="model_runner"` in request metadata.
-- [ ] Implement `AgentRole` and `logical_agent_roles()`.
-- [ ] Add role metadata to evidence request summaries without changing existing keys.
-- [ ] Run `python -m pytest backend/tests/orchestration/test_roles.py backend/tests/experiments/test_runner.py -q`.
-- [ ] Commit as `feat(core): expose logical agent roles`.
+- [x] Write a failing test that lists the seven logical agent roles with stable ids and responsibilities.
+- [x] Write a failing test that each evidence record includes `agent_role="model_runner"` in request metadata.
+- [x] Implement `AgentRole` and `logical_agent_roles()`.
+- [x] Add role metadata to evidence request summaries without changing existing keys.
+- [x] Run `python -m pytest backend/tests/orchestration/test_roles.py backend/tests/experiments/test_runner.py -q`.
+- [x] Commit as `feat(core): expose logical agent roles`.
 
 ### Task 4: Frontend Agent Topology Panel
 

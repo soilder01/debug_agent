@@ -31,6 +31,7 @@ async def test_run_experiments_collects_judged_evidence() -> None:
     assert result.evidence[0].model_provider == "fake"
     assert result.evidence[0].model_id == "fake"
     assert result.evidence[0].request_summary == {
+        "agent_role": "model_runner",
         "prompt_length": len(case.prompt),
         "has_image": bool(case.image_uri),
         "image_uri_scheme": urlparse(case.image_uri).scheme,

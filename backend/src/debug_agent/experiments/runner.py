@@ -155,6 +155,7 @@ async def run_experiments(
 def _build_request_summary(prompt: str, image_uri: str, scoring_standard: str) -> dict[str, object]:
     parsed_uri = urlparse(image_uri)
     return {
+        "agent_role": "model_runner",
         "prompt_length": len(prompt),
         "has_image": bool(image_uri),
         "image_uri_scheme": parsed_uri.scheme,
