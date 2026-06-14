@@ -17,10 +17,17 @@ from debug_agent.cases.comparator import (
     parse_classification_output,
     parse_image_detection_output,
     parse_prediction_answer,
+    parse_video_detection_output,
 )
-from debug_agent.cases.models import AnswerSet, ClassificationOutput, DebugCase, ImageDetectionOutput
+from debug_agent.cases.models import AnswerSet, ClassificationOutput, DebugCase, ImageDetectionOutput, VideoDetectionOutput
 from debug_agent.experiments.planner import ExperimentPlan
-from debug_agent.judging.runner import JudgeResult, judge_answer, judge_classification_output, judge_image_detection_output
+from debug_agent.judging.runner import (
+    JudgeResult,
+    judge_answer,
+    judge_classification_output,
+    judge_image_detection_output,
+    judge_video_detection_output,
+)
 from debug_agent.models.adapters import ModelAdapter
 from debug_agent.recipes import recipe_for_task_type
 
@@ -111,6 +118,8 @@ async def run_experiments(
                     judge = _judge_classification_response(case=case, raw_output=response.raw_output)
                 elif case.task_type == "image_detection":
                     judge = _judge_image_detection_response(case=case, raw_output=response.raw_output)
+                elif case.task_type == "video_detection":
+                    judge = _judge_video_detection_response(case=case, raw_output=response.raw_output)
                 else:
                     predicted = parse_prediction_answer(response.raw_output)
                     judge = judge_answer(case.golden_answer, predicted, scoring_standard=case.scoring_standard)
@@ -196,6 +205,12 @@ def _judge_image_detection_response(case: DebugCase, raw_output: str) -> JudgeRe
     predicted = parse_image_detection_output(raw_output)
     expected = ImageDetectionOutput.model_validate(case.expected_output)
     return judge_image_detection_output(expected, predicted, scoring_standard=case.scoring_standard)
+
+
+def _judge_video_detection_response(case: DebugCase, raw_output: str) -> JudgeResult:
+    predicted = parse_video_detection_output(raw_output)
+    expected = VideoDetectionOutput.model_validate(case.expected_output)
+    return judge_video_detection_output(expected, predicted, scoring_standard=case.scoring_standard)
 
 
 def _build_step_prompt(case: DebugCase, step_name: str) -> str:

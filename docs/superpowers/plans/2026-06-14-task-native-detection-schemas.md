@@ -105,6 +105,30 @@
 - [x] Add `ImageDetectionRecipe` with baseline replay, region schema check, and localization prompt check steps.
 - [x] Keep OCR `AnswerSet`, `box_id`, and `student_answer` as compatibility-only paths.
 
+### Task 7: Video-Native Output Comparator And Recipe
+
+**Files:**
+- Modify: `backend/src/debug_agent/cases/models.py`
+- Modify: `backend/src/debug_agent/cases/comparator.py`
+- Modify: `backend/src/debug_agent/judging/runner.py`
+- Modify: `backend/src/debug_agent/experiments/runner.py`
+- Create: `backend/src/debug_agent/recipes/video_detection.py`
+- Modify: `backend/src/debug_agent/recipes/registry.py`
+- Modify: `backend/src/debug_agent/recipes/__init__.py`
+- Test: `backend/tests/cases/test_models.py`
+- Test: `backend/tests/cases/test_comparator.py`
+- Test: `backend/tests/judging/test_runner.py`
+- Test: `backend/tests/experiments/test_runner.py`
+- Test: `backend/tests/experiments/test_planner.py`
+- Test: `backend/tests/recipes/test_registry.py`
+
+- [x] Add `VideoSegmentOutput` and `VideoDetectionOutput` with task-native temporal target ids, time windows, labels, and confidence fields.
+- [x] Add `parse_video_detection_output(raw_output: str)`.
+- [x] Add `compare_video_detection_outputs(expected, predicted)` returning generic deltas such as `video:segment:1 segment_label_mismatch` and `missing_segment`.
+- [x] Add `judge_video_detection_output()` and route `task_type="video_detection"` runner parsing through `expected_output.temporal_segments`.
+- [x] Add `VideoDetectionRecipe` with baseline replay, temporal schema check, and temporal grounding check steps.
+- [x] Keep video harness prompts free of OCR answer-box assumptions.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

@@ -7,6 +7,7 @@ from debug_agent.recipes.classification import ClassificationRecipe
 from debug_agent.recipes.handwriting_ocr import HandwritingOcrRecipe
 from debug_agent.recipes.image_detection import ImageDetectionRecipe
 from debug_agent.recipes.registry import GenericDebugRecipe
+from debug_agent.recipes.video_detection import VideoDetectionRecipe
 
 
 def test_plan_experiments_for_low_score_case() -> None:
@@ -155,4 +156,47 @@ def test_plan_experiments_routes_image_detection_case_to_image_recipe(monkeypatc
         "baseline_replay",
         "region_schema_check",
         "localization_prompt_check",
+    ]
+
+
+def test_plan_experiments_routes_video_detection_case_to_video_recipe(monkeypatch) -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "video-detection-specific",
+            "task_type": "video_detection",
+            "image_uri": "file:///tmp/video.mp4",
+            "prompt": "Detect events and return temporal segment JSON.",
+            "golden_answer": {"answers": [{"box_id": 1, "student_answer": "legacy-event"}]},
+            "expected_output": {
+                "temporal_segments": [
+                    {
+                        "target_id": "video:segment:1",
+                        "start_ms": 1000,
+                        "end_ms": 2500,
+                        "label": "person_enters",
+                    }
+                ]
+            },
+            "scoring_standard": "temporal segment target ids and labels must match.",
+            "predictions": [{"trial": 0, "raw_output": "{\"temporal_segments\":[]}", "score": 0}],
+            "avg_score": 0.0,
+        }
+    )
+    called = False
+    original_plan_steps = VideoDetectionRecipe.plan_steps
+
+    def recording_steps(self, *, case: DebugCase, baseline_trials: int):
+        nonlocal called
+        called = True
+        return original_plan_steps(self, case=case, baseline_trials=baseline_trials)
+
+    monkeypatch.setattr(VideoDetectionRecipe, "plan_steps", recording_steps)
+
+    plan = plan_experiments(case, baseline_trials=2)
+
+    assert called is True
+    assert [step.name for step in plan.steps] == [
+        "baseline_replay",
+        "temporal_schema_check",
+        "temporal_grounding_check",
     ]

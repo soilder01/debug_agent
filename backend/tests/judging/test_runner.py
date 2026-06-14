@@ -1,5 +1,10 @@
-from debug_agent.cases.models import AnswerSet, ClassificationOutput, ImageDetectionOutput
-from debug_agent.judging.runner import judge_answer, judge_classification_output, judge_image_detection_output
+from debug_agent.cases.models import AnswerSet, ClassificationOutput, ImageDetectionOutput, VideoDetectionOutput
+from debug_agent.judging.runner import (
+    judge_answer,
+    judge_classification_output,
+    judge_image_detection_output,
+    judge_video_detection_output,
+)
 
 
 def test_judge_answer_passes_exact_match() -> None:
@@ -132,5 +137,44 @@ def test_judge_image_detection_output_returns_region_delta() -> None:
             "actual": "dog",
             "reason": "region_label_mismatch",
             "metadata": {"field": "label", "confidence": 0.57},
+        }
+    ]
+
+
+def test_judge_video_detection_output_returns_segment_delta() -> None:
+    expected = VideoDetectionOutput.model_validate(
+        {
+            "temporal_segments": [
+                {"target_id": "video:segment:1", "start_ms": 1000, "end_ms": 2500, "label": "person_enters"}
+            ]
+        }
+    )
+    predicted = VideoDetectionOutput.model_validate(
+        {
+            "temporal_segments": [
+                {
+                    "target_id": "video:segment:1",
+                    "start_ms": 1000,
+                    "end_ms": 2500,
+                    "label": "person_leaves",
+                    "confidence": 0.62,
+                }
+            ]
+        }
+    )
+
+    result = judge_video_detection_output(expected, predicted, scoring_standard="temporal segments must match.")
+
+    assert result.score == 0
+    assert result.reasons == ["video:segment:1 segment_label_mismatch"]
+    assert result.affected_box_ids == []
+    assert result.scoring_standard == "temporal segments must match."
+    assert result.deltas == [
+        {
+            "target_id": "video:segment:1",
+            "expected": "person_enters",
+            "actual": "person_leaves",
+            "reason": "segment_label_mismatch",
+            "metadata": {"field": "label", "confidence": 0.62},
         }
     ]

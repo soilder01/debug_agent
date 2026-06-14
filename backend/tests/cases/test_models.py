@@ -9,6 +9,7 @@ from debug_agent.cases.models import (
     DetectionPrediction,
     DetectionRegion,
     ImageDetectionOutput,
+    VideoDetectionOutput,
 )
 
 
@@ -147,3 +148,25 @@ def test_image_detection_output_parses_task_native_regions() -> None:
     assert output.regions[0].x == 10
     assert output.regions[0].label == "cat"
     assert output.regions[0].confidence == 0.91
+
+
+def test_video_detection_output_parses_task_native_temporal_segments() -> None:
+    output = VideoDetectionOutput.model_validate(
+        {
+            "temporal_segments": [
+                {
+                    "target_id": "video:segment:1",
+                    "start_ms": 1000,
+                    "end_ms": 2500,
+                    "label": "person_enters",
+                    "confidence": 0.84,
+                }
+            ]
+        }
+    )
+
+    assert output.temporal_segments[0].target_id == "video:segment:1"
+    assert output.temporal_segments[0].start_ms == 1000
+    assert output.temporal_segments[0].end_ms == 2500
+    assert output.temporal_segments[0].label == "person_enters"
+    assert output.temporal_segments[0].confidence == 0.84

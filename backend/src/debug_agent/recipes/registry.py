@@ -5,6 +5,7 @@ from debug_agent.experiments.planner import ExperimentStep
 from debug_agent.recipes.classification import ClassificationRecipe
 from debug_agent.recipes.handwriting_ocr import HandwritingOcrRecipe
 from debug_agent.recipes.image_detection import ImageDetectionRecipe
+from debug_agent.recipes.video_detection import VideoDetectionRecipe
 
 class GenericDebugRecipe:
     task_type = "generic"
@@ -37,7 +38,9 @@ class GenericDebugRecipe:
         )
 
 
-DebugRecipeInstance = ClassificationRecipe | HandwritingOcrRecipe | ImageDetectionRecipe | GenericDebugRecipe
+DebugRecipeInstance = (
+    ClassificationRecipe | HandwritingOcrRecipe | ImageDetectionRecipe | VideoDetectionRecipe | GenericDebugRecipe
+)
 DebugRecipeFactory = Callable[[], DebugRecipeInstance]
 
 
@@ -47,6 +50,7 @@ class RecipeRegistry:
             "classification": ClassificationRecipe,
             "handwriting_ocr": HandwritingOcrRecipe,
             "image_detection": ImageDetectionRecipe,
+            "video_detection": VideoDetectionRecipe,
         }
 
     def recipe_for_task_type(self, task_type: str) -> DebugRecipeInstance:

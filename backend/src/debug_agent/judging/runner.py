@@ -4,8 +4,9 @@ from debug_agent.cases.comparator import (
     compare_answer_sets,
     compare_classification_outputs,
     compare_image_detection_outputs,
+    compare_video_detection_outputs,
 )
-from debug_agent.cases.models import AnswerSet, ClassificationOutput, ImageDetectionOutput
+from debug_agent.cases.models import AnswerSet, ClassificationOutput, ImageDetectionOutput, VideoDetectionOutput
 
 
 class JudgeResult(BaseModel):
@@ -51,6 +52,22 @@ def judge_image_detection_output(
     scoring_standard: str = "",
 ) -> JudgeResult:
     diff = compare_image_detection_outputs(expected, predicted)
+    if not diff.has_differences:
+        return JudgeResult(score=1, reasons=[], scoring_standard=scoring_standard)
+    return JudgeResult(
+        score=0,
+        reasons=[f"{delta['target_id']} {delta['reason']}" for delta in diff.detection_deltas],
+        scoring_standard=scoring_standard,
+        deltas=diff.detection_deltas,
+    )
+
+
+def judge_video_detection_output(
+    expected: VideoDetectionOutput,
+    predicted: VideoDetectionOutput,
+    scoring_standard: str = "",
+) -> JudgeResult:
+    diff = compare_video_detection_outputs(expected, predicted)
     if not diff.has_differences:
         return JudgeResult(score=1, reasons=[], scoring_standard=scoring_standard)
     return JudgeResult(

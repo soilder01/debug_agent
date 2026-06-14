@@ -4,11 +4,13 @@ from debug_agent.cases.comparator import (
     compare_answer_sets,
     compare_classification_outputs,
     compare_image_detection_outputs,
+    compare_video_detection_outputs,
     parse_classification_output,
     parse_image_detection_output,
     parse_prediction_answer,
+    parse_video_detection_output,
 )
-from debug_agent.cases.models import AnswerSet, ClassificationOutput, ImageDetectionOutput
+from debug_agent.cases.models import AnswerSet, ClassificationOutput, ImageDetectionOutput, VideoDetectionOutput
 
 
 def test_parse_prediction_answer_reads_valid_json() -> None:
@@ -168,5 +170,97 @@ def test_compare_image_detection_outputs_detects_missing_region_without_ocr_fiel
             "actual": None,
             "reason": "missing_region",
             "metadata": {"field": "regions"},
+        }
+    ]
+
+
+def test_parse_video_detection_output_reads_temporal_segments() -> None:
+    parsed = parse_video_detection_output(
+        """
+        {
+          "temporal_segments": [
+            {
+              "target_id": "video:segment:1",
+              "start_ms": 1000,
+              "end_ms": 2500,
+              "label": "person_enters",
+              "confidence": 0.84
+            }
+          ]
+        }
+        """
+    )
+
+    assert parsed.temporal_segments[0].target_id == "video:segment:1"
+    assert parsed.temporal_segments[0].label == "person_enters"
+    assert parsed.temporal_segments[0].confidence == 0.84
+
+
+def test_compare_video_detection_outputs_detects_segment_label_delta() -> None:
+    expected = VideoDetectionOutput.model_validate(
+        {
+            "temporal_segments": [
+                {
+                    "target_id": "video:segment:1",
+                    "start_ms": 1000,
+                    "end_ms": 2500,
+                    "label": "person_enters",
+                }
+            ]
+        }
+    )
+    predicted = VideoDetectionOutput.model_validate(
+        {
+            "temporal_segments": [
+                {
+                    "target_id": "video:segment:1",
+                    "start_ms": 1000,
+                    "end_ms": 2500,
+                    "label": "person_leaves",
+                    "confidence": 0.62,
+                }
+            ]
+        }
+    )
+
+    diff = compare_video_detection_outputs(expected, predicted)
+
+    assert diff.has_differences is True
+    assert diff.detection_deltas == [
+        {
+            "target_id": "video:segment:1",
+            "expected": "person_enters",
+            "actual": "person_leaves",
+            "reason": "segment_label_mismatch",
+            "metadata": {"field": "label", "confidence": 0.62},
+        }
+    ]
+
+
+def test_compare_video_detection_outputs_detects_missing_segment_without_ocr_fields() -> None:
+    expected = VideoDetectionOutput.model_validate(
+        {
+            "temporal_segments": [
+                {
+                    "target_id": "video:segment:2",
+                    "start_ms": 3000,
+                    "end_ms": 4500,
+                    "label": "door_closes",
+                }
+            ]
+        }
+    )
+    predicted = VideoDetectionOutput(temporal_segments=[])
+
+    diff = compare_video_detection_outputs(expected, predicted)
+
+    assert diff.has_differences is True
+    assert diff.detection_deltas == [
+        {
+            "target_id": "video:segment:2",
+            "expected": "door_closes",
+            "actual": None,
+            "reason": "missing_segment",
+            "metadata": {"field": "temporal_segments"},
         }
     ]

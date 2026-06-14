@@ -2,7 +2,14 @@ import json
 
 from pydantic import BaseModel
 
-from debug_agent.cases.models import AnswerSet, ClassificationOutput, ImageDetectionOutput, ImageRegionOutput
+from debug_agent.cases.models import (
+    AnswerSet,
+    ClassificationOutput,
+    ImageDetectionOutput,
+    ImageRegionOutput,
+    VideoDetectionOutput,
+    VideoSegmentOutput,
+)
 
 
 class AnswerDelta(BaseModel):
@@ -37,6 +44,11 @@ class ImageDetectionDiff(BaseModel):
     detection_deltas: list[dict[str, object]]
 
 
+class VideoDetectionDiff(BaseModel):
+    has_differences: bool
+    detection_deltas: list[dict[str, object]]
+
+
 def parse_prediction_answer(raw_output: str) -> AnswerSet:
     payload = json.loads(raw_output)
     return AnswerSet.model_validate(payload)
@@ -50,6 +62,11 @@ def parse_classification_output(raw_output: str) -> ClassificationOutput:
 def parse_image_detection_output(raw_output: str) -> ImageDetectionOutput:
     payload = json.loads(raw_output)
     return ImageDetectionOutput.model_validate(payload)
+
+
+def parse_video_detection_output(raw_output: str) -> VideoDetectionOutput:
+    payload = json.loads(raw_output)
+    return VideoDetectionOutput.model_validate(payload)
 
 
 def compare_classification_outputs(
@@ -89,6 +106,25 @@ def compare_image_detection_outputs(
             deltas.append(delta)
 
     return ImageDetectionDiff(has_differences=bool(deltas), detection_deltas=deltas)
+
+
+def compare_video_detection_outputs(
+    expected: VideoDetectionOutput,
+    predicted: VideoDetectionOutput,
+) -> VideoDetectionDiff:
+    expected_by_target = {segment.target_id: segment for segment in expected.temporal_segments}
+    predicted_by_target = {segment.target_id: segment for segment in predicted.temporal_segments}
+    all_target_ids = sorted(set(expected_by_target) | set(predicted_by_target))
+    deltas: list[dict[str, object]] = []
+
+    for target_id in all_target_ids:
+        expected_segment = expected_by_target.get(target_id)
+        predicted_segment = predicted_by_target.get(target_id)
+        delta = _video_segment_delta(target_id, expected_segment, predicted_segment)
+        if delta is not None:
+            deltas.append(delta)
+
+    return VideoDetectionDiff(has_differences=bool(deltas), detection_deltas=deltas)
 
 
 def compare_answer_sets(expected: AnswerSet, predicted: AnswerSet) -> AnswerDiff:
@@ -176,3 +212,43 @@ def _region_label(region: ImageRegionOutput | None) -> str | None:
     if region is None or not region.label:
         return None
     return region.label
+
+
+def _video_segment_delta(
+    target_id: str,
+    expected_segment: VideoSegmentOutput | None,
+    predicted_segment: VideoSegmentOutput | None,
+) -> dict[str, object] | None:
+    if expected_segment is None and predicted_segment is None:
+        return None
+    if expected_segment is None:
+        return DetectionDelta(
+            target_id=target_id,
+            expected=None,
+            actual=_segment_label(predicted_segment),
+            reason="extra_segment",
+            metadata={"field": "temporal_segments"},
+        ).model_dump()
+    if predicted_segment is None:
+        return DetectionDelta(
+            target_id=target_id,
+            expected=_segment_label(expected_segment),
+            actual=None,
+            reason="missing_segment",
+            metadata={"field": "temporal_segments"},
+        ).model_dump()
+    if expected_segment.label != predicted_segment.label:
+        return DetectionDelta(
+            target_id=target_id,
+            expected=expected_segment.label,
+            actual=predicted_segment.label,
+            reason="segment_label_mismatch",
+            metadata={"field": "label", "confidence": predicted_segment.confidence},
+        ).model_dump()
+    return None
+
+
+def _segment_label(segment: VideoSegmentOutput | None) -> str | None:
+    if segment is None or not segment.label:
+        return None
+    return segment.label
