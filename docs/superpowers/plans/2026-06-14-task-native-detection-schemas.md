@@ -434,6 +434,20 @@
 - [x] Keep missing-job 404 behavior unchanged.
 - [x] Preserve valid status update/list behavior for jobs with generated recommendations.
 
+### Task 30: Recommended Action Status Event Audit
+
+**Files:**
+- Modify: `backend/src/debug_agent/storage/models.py`
+- Modify: `backend/src/debug_agent/storage/repository.py`
+- Modify: `backend/src/debug_agent/api/routes.py`
+- Test: `backend/tests/storage/test_repository.py`
+- Test: `backend/tests/api/test_recommended_action_status.py`
+
+- [x] Persist an immutable status event for every recommended action status update.
+- [x] Record action index, status, actor, note, and event timestamp.
+- [x] Expose status events from the recommended action status list API.
+- [x] Preserve existing latest-status response compatibility.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

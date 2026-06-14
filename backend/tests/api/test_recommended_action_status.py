@@ -33,6 +33,31 @@ def test_recommended_action_status_api_updates_and_lists_status() -> None:
     assert list_response.json()["statuses"] == [body]
 
 
+def test_recommended_action_status_api_lists_status_events() -> None:
+    client = TestClient(app)
+    job_id = _create_job_with_recommended_actions()
+    first_response = client.patch(
+        f"/jobs/{job_id}/recommended-actions/0/status",
+        json={"status": "accepted", "actor": "qa-reviewer", "note": "prompt fix approved"},
+    )
+    second_response = client.patch(
+        f"/jobs/{job_id}/recommended-actions/0/status",
+        json={"status": "applied", "actor": "owner", "note": "prompt fix landed"},
+    )
+    assert first_response.status_code == 200
+    assert second_response.status_code == 200
+
+    response = client.get(f"/jobs/{job_id}/recommended-actions/statuses")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [event["status"] for event in body["events"]] == ["accepted", "applied"]
+    assert [event["actor"] for event in body["events"]] == ["qa-reviewer", "owner"]
+    assert body["events"][0]["action_index"] == 0
+    assert body["events"][0]["note"] == "prompt fix approved"
+    assert body["events"][0]["created_at"]
+
+
 def test_recommended_action_status_api_returns_404_for_missing_job() -> None:
     client = TestClient(app)
 

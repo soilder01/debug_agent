@@ -8,7 +8,14 @@ from debug_agent.storage.database import (
     create_sqlite_session_factory,
     ensure_database_schema,
 )
-from debug_agent.storage.models import Base, DebugCaseRow, DebugJobRow, EvidenceRow, RecommendedActionStatusRow
+from debug_agent.storage.models import (
+    Base,
+    DebugCaseRow,
+    DebugJobRow,
+    EvidenceRow,
+    RecommendedActionStatusEventRow,
+    RecommendedActionStatusRow,
+)
 from debug_agent.storage.repository import DebugJobRepository
 
 
@@ -68,6 +75,20 @@ def test_storage_tables_can_be_created() -> None:
         assert row.model_name == "fake"
         assert row.model_provider == "fake"
         assert row.model_id == "fake"
+        session.add(
+            RecommendedActionStatusEventRow(
+                job_id="job-1",
+                action_index=0,
+                status="accepted",
+                actor="qa-reviewer",
+                note="approved",
+                created_at="2026-06-14T00:00:00+00:00",
+            )
+        )
+        session.commit()
+        event = session.get(RecommendedActionStatusEventRow, 1)
+        assert event is not None
+        assert event.status == "accepted"
 
 
 def test_sqlite_file_session_factory_persists_rows_between_sessions() -> None:
@@ -569,6 +590,36 @@ def test_repository_persists_recommended_action_status_updates() -> None:
         row = session.get(RecommendedActionStatusRow, ("job-action-status", 1))
         assert row is not None
         assert row.status == "accepted"
+
+
+def test_repository_records_recommended_action_status_events() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    repository.create_job(job_id="job-action-status-events", case_id="case-1")
+
+    repository.save_recommended_action_status(
+        job_id="job-action-status-events",
+        action_index=0,
+        status="accepted",
+        actor="qa-reviewer",
+        note="prompt approved",
+    )
+    repository.save_recommended_action_status(
+        job_id="job-action-status-events",
+        action_index=0,
+        status="applied",
+        actor="owner",
+        note="prompt change landed",
+    )
+
+    events = repository.list_recommended_action_status_events("job-action-status-events")
+
+    assert [event.status for event in events] == ["accepted", "applied"]
+    assert [event.actor for event in events] == ["qa-reviewer", "owner"]
+    assert events[0].action_index == 0
+    assert events[0].note == "prompt approved"
+    assert events[0].created_at
 
 
 def test_database_schema_migrates_legacy_global_evidence_primary_key() -> None:

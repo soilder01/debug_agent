@@ -29,7 +29,12 @@ from debug_agent.spreadsheets.writeback import (
 from debug_agent.spreadsheets.sync import SpreadsheetClient, SpreadsheetSyncResult, sync_spreadsheet_rows
 from debug_agent.storage.database import create_sqlite_session_factory, ensure_database_schema
 from debug_agent.storage.models import DebugJobRow
-from debug_agent.storage.repository import DebugJobRepository, RecommendedActionStatus, SpreadsheetWritebackAudit
+from debug_agent.storage.repository import (
+    DebugJobRepository,
+    RecommendedActionStatus,
+    RecommendedActionStatusEvent,
+    SpreadsheetWritebackAudit,
+)
 
 settings = DebugAgentSettings.from_env()
 session_factory, engine = create_sqlite_session_factory(settings.database_url)
@@ -190,6 +195,7 @@ class RecommendedActionStatusRequest(BaseModel):
 
 class RecommendedActionStatusListResponse(BaseModel):
     statuses: list[RecommendedActionStatus]
+    events: list[RecommendedActionStatusEvent] = Field(default_factory=list)
 
 
 class SpreadsheetSyncRequest(BaseModel):
@@ -664,7 +670,8 @@ def list_recommended_action_statuses(job_id: str) -> RecommendedActionStatusList
     if job_repository.get_job(job_id) is None:
         raise HTTPException(status_code=404, detail=f"Debug job not found: {job_id}")
     return RecommendedActionStatusListResponse(
-        statuses=job_repository.list_recommended_action_statuses(job_id)
+        statuses=job_repository.list_recommended_action_statuses(job_id),
+        events=job_repository.list_recommended_action_status_events(job_id),
     )
 
 

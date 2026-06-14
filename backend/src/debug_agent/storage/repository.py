@@ -14,6 +14,7 @@ from debug_agent.storage.models import (
     DebugCaseRow,
     DebugJobRow,
     EvidenceRow,
+    RecommendedActionStatusEventRow,
     RecommendedActionStatusRow,
     SpreadsheetRowMappingRow,
     SpreadsheetWritebackAuditRow,
@@ -49,6 +50,16 @@ class RecommendedActionStatus(BaseModel):
     note: str
     created_at: str
     updated_at: str
+
+
+class RecommendedActionStatusEvent(BaseModel):
+    event_id: int
+    job_id: str
+    action_index: int
+    status: str
+    actor: str
+    note: str
+    created_at: str
 
 
 class DebugJobRepository:
@@ -275,6 +286,16 @@ class DebugJobRepository:
                     updated_at=now,
                 )
                 session.merge(row)
+                session.add(
+                    RecommendedActionStatusEventRow(
+                        job_id=job_id,
+                        action_index=action_index,
+                        status=status,
+                        actor=actor,
+                        note=note,
+                        created_at=now,
+                    )
+                )
                 session.commit()
                 return RecommendedActionStatus(
                     job_id=job_id,
@@ -295,6 +316,25 @@ class DebugJobRepository:
                     .order_by(RecommendedActionStatusRow.action_index)
                 )
                 return [_recommended_action_status_from_row(row) for row in rows]
+
+    def list_recommended_action_status_events(
+        self,
+        job_id: str,
+        action_index: int | None = None,
+    ) -> list[RecommendedActionStatusEvent]:
+        with self._lock:
+            with self._session_factory() as session:
+                query = (
+                    select(RecommendedActionStatusEventRow)
+                    .where(RecommendedActionStatusEventRow.job_id == job_id)
+                    .order_by(
+                        RecommendedActionStatusEventRow.created_at,
+                        RecommendedActionStatusEventRow.event_id,
+                    )
+                )
+                if action_index is not None:
+                    query = query.where(RecommendedActionStatusEventRow.action_index == action_index)
+                return [_recommended_action_status_event_from_row(row) for row in session.scalars(query)]
 
     def list_cases(self, has_regions: bool = False, limit: int | None = None, offset: int = 0) -> list[DebugCase]:
         with self._lock:
@@ -602,4 +642,16 @@ def _recommended_action_status_from_row(row: RecommendedActionStatusRow) -> Reco
         note=row.note,
         created_at=row.created_at,
         updated_at=row.updated_at,
+    )
+
+
+def _recommended_action_status_event_from_row(row: RecommendedActionStatusEventRow) -> RecommendedActionStatusEvent:
+    return RecommendedActionStatusEvent(
+        event_id=row.event_id,
+        job_id=row.job_id,
+        action_index=row.action_index,
+        status=row.status,
+        actor=row.actor,
+        note=row.note,
+        created_at=row.created_at,
     )
