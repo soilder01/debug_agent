@@ -269,6 +269,8 @@ def test_generate_report_uses_generic_output_mismatch_for_non_ocr_structured_del
     assert report.root_cause.label == "output_mismatch"
     assert "label:sentiment" in report.root_cause.evidence_summary
     assert "box" not in report.observed_failure.summary
+    assert report.suggested_sheet_fields["影响目标"] == "label:sentiment"
+    assert report.suggested_sheet_fields["结构化差异"] == "label:sentiment label_mismatch: expected=positive actual=negative"
 
 
 def test_generate_report_uses_parse_error_when_schema_prompt_still_fails_to_parse() -> None:
@@ -356,6 +358,86 @@ def test_generate_report_uses_unstable_prediction_for_mixed_success_without_delt
     assert report.observed_failure.type == "unstable_prediction"
     assert report.root_cause.label == "unstable_prediction"
     assert "1/3" in report.root_cause.evidence_summary
+
+
+def test_generate_report_adds_native_target_and_artifact_fields_for_multimodal_deltas() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "multimodal-writeback",
+            "task_type": "multimodal_detection",
+            "image_uri": "file:///tmp/multimodal.mp4",
+            "prompt": "Compare image and caption, then return cross-modal conflict JSON.",
+            "golden_answer": {"answers": []},
+            "expected_output": {
+                "conflicts": [
+                    {
+                        "target_id": "multimodal:conflict:1",
+                        "conflict_type": "visual_text_conflict",
+                        "modalities": ["image", "text"],
+                        "expected": "caption matches visual subject",
+                        "actual": "image and caption both describe a cat",
+                    }
+                ]
+            },
+            "scoring_standard": "cross-modal claims must agree.",
+            "predictions": [{"trial": 0, "raw_output": "{\"conflicts\":[]}", "score": 0}],
+            "avg_score": 0.0,
+        }
+    )
+    plan = plan_experiments(case)
+    run_result = ExperimentRunResult(
+        case_id=case.case_id,
+        total_trials=1,
+        success_count=0,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="e-multimodal",
+                step_name="baseline_replay",
+                trial=0,
+                artifacts=[
+                    {
+                        "artifact_id": "multimodal-writeback:baseline:0:input-snapshot",
+                        "kind": "input_snapshot",
+                        "artifact_type": "request",
+                        "source_uri": "file:///tmp/multimodal.mp4",
+                        "derived_uri": "",
+                        "preview_url": "",
+                        "region": None,
+                        "metadata": {"task_type": "multimodal_detection"},
+                    }
+                ],
+                raw_output=case.predictions[0].raw_output,
+                judge=JudgeResult(
+                    score=0,
+                    reasons=["multimodal:conflict:1 conflict_actual_mismatch"],
+                    scoring_standard=case.scoring_standard,
+                    deltas=[
+                        {
+                            "target_id": "multimodal:conflict:1",
+                            "expected": "image and caption both describe a cat",
+                            "actual": "image shows dog while caption says cat",
+                            "reason": "conflict_actual_mismatch",
+                            "metadata": {
+                                "field": "actual",
+                                "conflict_type": "visual_text_conflict",
+                                "modalities": ["image", "text"],
+                                "confidence": 0.76,
+                            },
+                        }
+                    ],
+                ),
+            )
+        ],
+    )
+
+    report = generate_initial_report(case, plan, run_result)
+
+    assert report.suggested_sheet_fields["影响目标"] == "multimodal:conflict:1"
+    assert report.suggested_sheet_fields["结构化差异"] == (
+        "multimodal:conflict:1 conflict_actual_mismatch: "
+        "expected=image and caption both describe a cat actual=image shows dog while caption says cat"
+    )
+    assert report.suggested_sheet_fields["证据产物"] == "multimodal-writeback:baseline:0:input-snapshot"
 
 
 def test_generate_report_prioritizes_runtime_failures_before_answer_mismatch() -> None:

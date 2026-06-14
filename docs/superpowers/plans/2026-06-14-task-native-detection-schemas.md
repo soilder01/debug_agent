@@ -178,6 +178,18 @@
 - [x] Use empty `AnswerSet(answers=[])` only as a compatibility placeholder for task-native rows.
 - [x] Keep existing CSV and spreadsheet OCR imports compatible.
 
+### Task 11: Native Target Writeback Fields
+
+**Files:**
+- Modify: `backend/src/debug_agent/reports/generator.py`
+- Test: `backend/tests/reports/test_generator.py`
+- Test: `backend/tests/spreadsheets/test_writeback.py`
+
+- [x] Add suggested sheet fields for generic `影响目标`, `结构化差异`, and `证据产物`.
+- [x] Preserve existing `debug1状态`, `模型可做对次数`, and `错误原因` fields.
+- [x] Keep OCR box summaries compatible while supporting image, video, classification, and multimodal `target_id` values.
+- [x] Treat missing `golden_answer` as an OCR-only asset issue when task-native `expected_output` is present.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

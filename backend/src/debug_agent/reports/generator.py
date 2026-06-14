@@ -153,6 +153,13 @@ def _infer_report_findings(
             target_summary = _target_summary_from_deltas(structured_deltas, affected_box_ids)
             reason_labels = sorted({str(delta.get("reason", "")) for delta in structured_deltas if delta.get("reason")})
             reason_summary = ", ".join(reason_labels)
+            sheet_fields = _native_structured_sheet_fields(
+                deltas=structured_deltas,
+                target_summary=target_summary,
+                reason_summary=reason_summary,
+                success_count=run_result.success_count,
+                artifact_ids=_artifact_ids_from_run_result(run_result),
+            )
             return (
                 ObservedFailure(
                     type=taxonomy.structured_mismatch_label,
@@ -167,11 +174,7 @@ def _infer_report_findings(
                         "compare predicted answers against the scoring standard and golden answer."
                     ),
                 ),
-                {
-                    "debug1状态": "待人工确认",
-                    "模型可做对次数": f"{run_result.success_count}次",
-                    "错误原因": f"结构化评分显示 {target_summary} 存在 {reason_summary}。",
-                },
+                sheet_fields,
             )
         if 0 < run_result.success_count < run_result.total_trials:
             return (
@@ -227,12 +230,19 @@ def _evaluation_asset_issue(
             summary="评分标准缺失，当前 0/1 结论缺少可审计的判分依据。",
             feedback="评分标准缺失：请补充 exact match、可接受别字/格式、box_id 对齐等规则。",
         )
-    if not case.golden_answer.answers:
+    if case.task_type == "handwriting_ocr" and not case.golden_answer.answers:
         return _evaluation_asset_report(
             label="golden_answer_issue",
             confidence="high",
             summary="标答为空，无法判断模型输出是否真正错误。",
             feedback="标答为空：请补充至少一个 box_id 与 student_answer。",
+        )
+    if case.task_type != "handwriting_ocr" and not case.expected_output and not case.golden_answer.answers:
+        return _evaluation_asset_report(
+            label="expected_output_issue",
+            confidence="high",
+            summary="期望输出为空，无法判断 task-native 模型输出是否真正错误。",
+            feedback="期望输出为空：请补充 expected_output_json 作为通用任务的评分依据。",
         )
     if run_result is not None and _has_response_parse_error(run_result.evidence) and not _prompt_requests_json(case.prompt):
         return _evaluation_asset_report(
@@ -320,6 +330,58 @@ def _target_summary_from_deltas(deltas: list[dict[str, object]], affected_box_id
         }
     )
     return ", ".join(target_ids) if target_ids else "global target"
+
+
+def _native_structured_sheet_fields(
+    *,
+    deltas: list[dict[str, object]],
+    target_summary: str,
+    reason_summary: str,
+    success_count: int,
+    artifact_ids: list[str],
+) -> dict[str, str]:
+    fields = {
+        "debug1状态": "待人工确认",
+        "模型可做对次数": f"{success_count}次",
+        "错误原因": f"结构化评分显示 {target_summary} 存在 {reason_summary}。",
+        "影响目标": target_summary,
+        "结构化差异": _delta_summary(deltas),
+    }
+    if artifact_ids:
+        fields["证据产物"] = ", ".join(artifact_ids)
+    return fields
+
+
+def _delta_summary(deltas: list[dict[str, object]]) -> str:
+    summaries: list[str] = []
+    for delta in deltas:
+        target_id = str(delta.get("target_id") or "global target")
+        reason = str(delta.get("reason") or "mismatch")
+        expected = _sheet_value(delta.get("expected"))
+        actual = _sheet_value(delta.get("actual"))
+        summaries.append(f"{target_id} {reason}: expected={expected} actual={actual}")
+    return "; ".join(summaries)
+
+
+def _sheet_value(value: object) -> str:
+    if value is None:
+        return "None"
+    return str(value)
+
+
+def _artifact_ids_from_run_result(run_result: ExperimentRunResult) -> list[str]:
+    artifact_ids = [
+        artifact.artifact_id
+        for evidence in run_result.evidence
+        for artifact in evidence.artifacts
+    ]
+    if artifact_ids:
+        return artifact_ids
+    return [
+        artifact.artifact_id
+        for evidence in run_result.evidence
+        for artifact in evidence.image_artifacts
+    ]
 
 
 def _build_evidence_citations(run_result: ExperimentRunResult | None) -> list[dict[str, object]]:

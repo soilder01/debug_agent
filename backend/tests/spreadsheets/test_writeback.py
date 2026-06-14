@@ -52,6 +52,30 @@ def test_build_report_writeback_fields_includes_root_cause_feedback_and_link() -
     assert "失败次数：3/5" in fields["评估问题反馈"]
 
 
+def test_build_report_writeback_fields_preserves_native_target_delta_and_artifacts() -> None:
+    report = _make_report().model_copy(
+        update={
+            "suggested_sheet_fields": {
+                "debug1状态": "待人工确认",
+                "错误原因": "结构化评分显示 multimodal:conflict:1 存在 conflict_actual_mismatch。",
+                "影响目标": "multimodal:conflict:1",
+                "结构化差异": (
+                    "multimodal:conflict:1 conflict_actual_mismatch: "
+                    "expected=image and caption both describe a cat actual=image shows dog while caption says cat"
+                ),
+                "证据产物": "multimodal-writeback:baseline:0:input-snapshot",
+            }
+        }
+    )
+
+    fields = build_report_writeback_fields(report, report_url="https://debug-agent.local/reports/job-1")
+
+    assert fields["影响目标"] == "multimodal:conflict:1"
+    assert fields["结构化差异"].startswith("multimodal:conflict:1 conflict_actual_mismatch")
+    assert fields["证据产物"] == "multimodal-writeback:baseline:0:input-snapshot"
+    assert fields["分析报告链接"] == "https://debug-agent.local/reports/job-1"
+
+
 def test_write_report_to_spreadsheet_row_updates_client_with_payload() -> None:
     client = RecordingWritebackClient()
     report = _make_report()
