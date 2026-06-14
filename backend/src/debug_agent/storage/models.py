@@ -76,6 +76,17 @@ class RecommendedActionStatusEventRow(Base):
     created_at: Mapped[str] = mapped_column(String(40), default="", server_default="", index=True)
 
 
+class RecommendedActionVerificationRow(Base):
+    __tablename__ = "recommended_action_verifications"
+
+    job_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    action_index: Mapped[int] = mapped_column(Integer, primary_key=True)
+    verification_job_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    actor: Mapped[str] = mapped_column(String(120), default="", server_default="")
+    note: Mapped[str] = mapped_column(Text, default="", server_default="")
+    created_at: Mapped[str] = mapped_column(String(40), default="", server_default="", index=True)
+
+
 class EvidenceRow(Base):
     __tablename__ = "evidence"
 

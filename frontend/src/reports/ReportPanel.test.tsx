@@ -609,4 +609,57 @@ describe("ReportPanel", () => {
     expect(screen.getByText("备注：approved prompt update")).toBeInTheDocument();
     expect(screen.getByText("时间：2026-06-14T00:00:01+00:00")).toBeInTheDocument();
   });
+
+  it("renders recommended action verification job links", () => {
+    const report: DebugReport = {
+      job_id: "job-action-verifications",
+      case_id: "case-action-verifications",
+      status: "needs_human_review",
+      observed_failure: {
+        type: "cross_modal_alignment_failure",
+        summary: "cross-modal compare failed",
+        affected_box_ids: []
+      },
+      planned_experiments: ["modality_ablation_check"],
+      experiment_summary: null,
+      root_cause: {
+        label: "cross_modal_alignment_failure",
+        confidence: "high",
+        evidence_summary: "cross-modal variant failed."
+      },
+      recommended_actions: [
+        {
+          category: "prompt",
+          priority: "high",
+          status: "applied",
+          summary: "强化跨模态对比步骤。",
+          detail: "要求模型先分别列出 image/text 证据，再输出冲突结论。"
+        }
+      ],
+      suggested_sheet_fields: {
+        错误原因: "跨模态对齐问题"
+      }
+    };
+
+    render(
+      <ReportPanel
+        report={report}
+        recommendedActionVerifications={[
+          {
+            job_id: "job-action-verifications",
+            action_index: 0,
+            verification_job_id: "job-verify-1",
+            actor: "qa-reviewer",
+            note: "verify prompt fix",
+            created_at: "2026-06-14T00:00:02+00:00"
+          }
+        ]}
+      />
+    );
+
+    expect(screen.getByText("Recommended Action Verification Jobs")).toBeInTheDocument();
+    expect(screen.getByText("操作 1 验证任务：job-verify-1")).toBeInTheDocument();
+    expect(screen.getByText("操作者：qa-reviewer")).toBeInTheDocument();
+    expect(screen.getByText("备注：verify prompt fix")).toBeInTheDocument();
+  });
 });

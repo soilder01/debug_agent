@@ -1,8 +1,14 @@
-import type { DebugReport, RecommendedActionStatusEvent, RecommendedActionStatusValue } from "../api/client";
+import type {
+  DebugReport,
+  RecommendedActionStatusEvent,
+  RecommendedActionStatusValue,
+  RecommendedActionVerification
+} from "../api/client";
 
 type ReportPanelProps = {
   report: DebugReport;
   recommendedActionStatusEvents?: RecommendedActionStatusEvent[];
+  recommendedActionVerifications?: RecommendedActionVerification[];
   onSelectEvidence?: (evidenceId: string) => void;
   onUpdateRecommendedActionStatus?: (actionIndex: number, status: RecommendedActionStatusValue) => void;
   onVerifyRecommendedAction?: (actionIndex: number) => void;
@@ -11,6 +17,7 @@ type ReportPanelProps = {
 export function ReportPanel({
   report,
   recommendedActionStatusEvents = [],
+  recommendedActionVerifications = [],
   onSelectEvidence,
   onUpdateRecommendedActionStatus,
   onVerifyRecommendedAction
@@ -174,6 +181,23 @@ export function ReportPanel({
                 <p>操作者：{event.actor || "unknown"}</p>
                 {event.note ? <p>备注：{event.note}</p> : null}
                 <p>时间：{event.created_at}</p>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {recommendedActionVerifications.length > 0 ? (
+        <>
+          <h3>Recommended Action Verification Jobs</h3>
+          <ul aria-label="Recommended action verification jobs">
+            {recommendedActionVerifications.map((verification) => (
+              <li key={`${verification.action_index}:${verification.verification_job_id}`}>
+                <p>
+                  操作 {verification.action_index + 1} 验证任务：{verification.verification_job_id}
+                </p>
+                <p>操作者：{verification.actor || "unknown"}</p>
+                {verification.note ? <p>备注：{verification.note}</p> : null}
+                <p>时间：{verification.created_at}</p>
               </li>
             ))}
           </ul>

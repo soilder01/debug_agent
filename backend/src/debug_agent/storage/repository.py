@@ -16,6 +16,7 @@ from debug_agent.storage.models import (
     EvidenceRow,
     RecommendedActionStatusEventRow,
     RecommendedActionStatusRow,
+    RecommendedActionVerificationRow,
     SpreadsheetRowMappingRow,
     SpreadsheetWritebackAuditRow,
 )
@@ -57,6 +58,15 @@ class RecommendedActionStatusEvent(BaseModel):
     job_id: str
     action_index: int
     status: str
+    actor: str
+    note: str
+    created_at: str
+
+
+class RecommendedActionVerification(BaseModel):
+    job_id: str
+    action_index: int
+    verification_job_id: str
     actor: str
     note: str
     created_at: str
@@ -335,6 +345,49 @@ class DebugJobRepository:
                 if action_index is not None:
                     query = query.where(RecommendedActionStatusEventRow.action_index == action_index)
                 return [_recommended_action_status_event_from_row(row) for row in session.scalars(query)]
+
+    def save_recommended_action_verification(
+        self,
+        *,
+        job_id: str,
+        action_index: int,
+        verification_job_id: str,
+        actor: str = "",
+        note: str = "",
+    ) -> RecommendedActionVerification:
+        with self._lock:
+            with self._session_factory() as session:
+                now = _utc_now_iso()
+                row = RecommendedActionVerificationRow(
+                    job_id=job_id,
+                    action_index=action_index,
+                    verification_job_id=verification_job_id,
+                    actor=actor,
+                    note=note,
+                    created_at=now,
+                )
+                session.add(row)
+                session.commit()
+                return _recommended_action_verification_from_row(row)
+
+    def list_recommended_action_verifications(
+        self,
+        job_id: str,
+        action_index: int | None = None,
+    ) -> list[RecommendedActionVerification]:
+        with self._lock:
+            with self._session_factory() as session:
+                query = (
+                    select(RecommendedActionVerificationRow)
+                    .where(RecommendedActionVerificationRow.job_id == job_id)
+                    .order_by(
+                        RecommendedActionVerificationRow.created_at,
+                        RecommendedActionVerificationRow.verification_job_id,
+                    )
+                )
+                if action_index is not None:
+                    query = query.where(RecommendedActionVerificationRow.action_index == action_index)
+                return [_recommended_action_verification_from_row(row) for row in session.scalars(query)]
 
     def list_cases(self, has_regions: bool = False, limit: int | None = None, offset: int = 0) -> list[DebugCase]:
         with self._lock:
@@ -651,6 +704,17 @@ def _recommended_action_status_event_from_row(row: RecommendedActionStatusEventR
         job_id=row.job_id,
         action_index=row.action_index,
         status=row.status,
+        actor=row.actor,
+        note=row.note,
+        created_at=row.created_at,
+    )
+
+
+def _recommended_action_verification_from_row(row: RecommendedActionVerificationRow) -> RecommendedActionVerification:
+    return RecommendedActionVerification(
+        job_id=row.job_id,
+        action_index=row.action_index,
+        verification_job_id=row.verification_job_id,
         actor=row.actor,
         note=row.note,
         created_at=row.created_at,

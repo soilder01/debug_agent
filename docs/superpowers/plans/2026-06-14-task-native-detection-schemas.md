@@ -593,6 +593,28 @@
 - [x] Preserve non-applied action behavior without verification controls.
 - [x] Run focused report workspace and App tests.
 
+### Task 42: Recommended Action Verification Job Lineage
+
+**Files:**
+- Modify: `backend/src/debug_agent/storage/models.py`
+- Modify: `backend/src/debug_agent/storage/repository.py`
+- Modify: `backend/src/debug_agent/api/routes.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/app/App.tsx`
+- Modify: `frontend/src/reports/DebugReportWorkspace.tsx`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `backend/tests/api/test_recommended_action_status.py`
+- Test: `frontend/src/api/client.test.ts`
+- Test: `frontend/src/app/App.test.tsx`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Add persistent recommended action verification records linking source job, action index, and verification job id.
+- [x] Add `POST /jobs/{job_id}/recommended-actions/{action_index}/verification-jobs`.
+- [x] Return verification records from `GET /jobs/{job_id}/recommended-actions/statuses`.
+- [x] Route frontend verification reruns through the lineage-aware backend endpoint.
+- [x] Render recommended action verification job records in the report panel.
+- [x] Run focused backend API and frontend API/report/App tests.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

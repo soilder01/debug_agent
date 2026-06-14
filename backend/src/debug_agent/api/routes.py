@@ -33,6 +33,7 @@ from debug_agent.storage.repository import (
     DebugJobRepository,
     RecommendedActionStatus,
     RecommendedActionStatusEvent,
+    RecommendedActionVerification,
     SpreadsheetWritebackAudit,
 )
 
@@ -193,9 +194,19 @@ class RecommendedActionStatusRequest(BaseModel):
     note: str = ""
 
 
+class RecommendedActionVerificationRequest(BaseModel):
+    actor: str = ""
+    note: str = ""
+
+
+class RecommendedActionVerificationResponse(RecommendedActionVerification):
+    verification_job: SubmittedDebugJob
+
+
 class RecommendedActionStatusListResponse(BaseModel):
     statuses: list[RecommendedActionStatus]
     events: list[RecommendedActionStatusEvent] = Field(default_factory=list)
+    verifications: list[RecommendedActionVerification] = Field(default_factory=list)
 
 
 class SpreadsheetSyncRequest(BaseModel):
@@ -678,6 +689,38 @@ def update_recommended_action_status(
     )
 
 
+@router.post(
+    "/jobs/{job_id}/recommended-actions/{action_index}/verification-jobs",
+    status_code=202,
+)
+def create_recommended_action_verification_job(
+    job_id: str,
+    action_index: int,
+    request: RecommendedActionVerificationRequest,
+) -> RecommendedActionVerificationResponse:
+    job = job_repository.get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail=f"Debug job not found: {job_id}")
+    report = build_report_for_job(job_repository, job_id)
+    if report is None:
+        raise HTTPException(status_code=404, detail=f"Debug report not found for job: {job_id}")
+    if action_index < 0 or action_index >= len(report.recommended_actions):
+        raise HTTPException(status_code=404, detail=f"Recommended action not found: {action_index}")
+    _raise_if_usage_budget_blocks_submission()
+    verification_job = job_service.submit_case_debug(job.case_id, baseline_trials=job.baseline_trials)
+    verification = job_repository.save_recommended_action_verification(
+        job_id=job_id,
+        action_index=action_index,
+        verification_job_id=verification_job.job_id,
+        actor=request.actor,
+        note=request.note,
+    )
+    return RecommendedActionVerificationResponse(
+        **verification.model_dump(),
+        verification_job=verification_job,
+    )
+
+
 @router.get("/jobs/{job_id}/recommended-actions/statuses")
 def list_recommended_action_statuses(job_id: str) -> RecommendedActionStatusListResponse:
     if job_repository.get_job(job_id) is None:
@@ -685,6 +728,7 @@ def list_recommended_action_statuses(job_id: str) -> RecommendedActionStatusList
     return RecommendedActionStatusListResponse(
         statuses=job_repository.list_recommended_action_statuses(job_id),
         events=job_repository.list_recommended_action_status_events(job_id),
+        verifications=job_repository.list_recommended_action_verifications(job_id),
     )
 
 

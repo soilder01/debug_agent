@@ -89,9 +89,23 @@ export type RecommendedActionStatusEvent = {
   created_at: string;
 };
 
+export type RecommendedActionVerification = {
+  job_id: string;
+  action_index: number;
+  verification_job_id: string;
+  actor: string;
+  note: string;
+  created_at: string;
+};
+
+export type RecommendedActionVerificationResponse = RecommendedActionVerification & {
+  verification_job: SubmittedDebugJob;
+};
+
 export type RecommendedActionStatusListResponse = {
   statuses: RecommendedActionStatus[];
   events: RecommendedActionStatusEvent[];
+  verifications: RecommendedActionVerification[];
 };
 
 export type RetryRecommendationDetail = {
@@ -595,6 +609,31 @@ export async function fetchRecommendedActionStatuses(jobId: string): Promise<Rec
     throw new Error(`Failed to fetch recommended action statuses for job ${jobId}: ${response.status}`);
   }
   return (await response.json()) as RecommendedActionStatusListResponse;
+}
+
+export async function createRecommendedActionVerificationJob(
+  jobId: string,
+  actionIndex: number,
+  request: {
+    actor?: string;
+    note?: string;
+  }
+): Promise<RecommendedActionVerificationResponse> {
+  const response = await fetch(
+    `/api/jobs/${encodeURIComponent(jobId)}/recommended-actions/${actionIndex}/verification-jobs`,
+    {
+      body: JSON.stringify({
+        actor: request.actor ?? "",
+        note: request.note ?? ""
+      }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST"
+    }
+  );
+  if (!response.ok) {
+    throw new Error(`Failed to create recommended action verification job ${actionIndex} for ${jobId}: ${response.status}`);
+  }
+  return (await response.json()) as RecommendedActionVerificationResponse;
 }
 
 export async function fetchSpreadsheetWritebackAudit(jobId: string): Promise<SpreadsheetWritebackAudit> {

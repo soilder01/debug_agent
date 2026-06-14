@@ -58,6 +58,39 @@ def test_recommended_action_status_api_lists_status_events() -> None:
     assert body["events"][0]["created_at"]
 
 
+def test_recommended_action_status_api_creates_verification_job_link() -> None:
+    client = TestClient(app)
+    job_id = _create_job_with_recommended_actions()
+
+    response = client.post(
+        f"/jobs/{job_id}/recommended-actions/0/verification-jobs",
+        json={"actor": "frontend-operator", "note": "verify applied prompt fix"},
+    )
+
+    assert response.status_code == 202
+    body = response.json()
+    assert body["job_id"] == job_id
+    assert body["action_index"] == 0
+    assert body["actor"] == "frontend-operator"
+    assert body["note"] == "verify applied prompt fix"
+    assert body["verification_job"]["case_id"].startswith("case-action-status-")
+    assert body["verification_job_id"] == body["verification_job"]["job_id"]
+    assert body["verification_job"]["status"] == "created"
+
+    list_response = client.get(f"/jobs/{job_id}/recommended-actions/statuses")
+    assert list_response.status_code == 200
+    assert list_response.json()["verifications"] == [
+        {
+            "job_id": job_id,
+            "action_index": 0,
+            "verification_job_id": body["verification_job_id"],
+            "actor": "frontend-operator",
+            "note": "verify applied prompt fix",
+            "created_at": body["created_at"],
+        }
+    ]
+
+
 def test_recommended_action_status_api_returns_404_for_missing_job() -> None:
     client = TestClient(app)
 
@@ -77,6 +110,19 @@ def test_recommended_action_status_api_returns_404_for_missing_action_index() ->
     response = client.patch(
         f"/jobs/{job_id}/recommended-actions/99/status",
         json={"status": "accepted", "actor": "qa-reviewer", "note": ""},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Recommended action not found: 99"
+
+
+def test_recommended_action_verification_returns_404_for_missing_action_index() -> None:
+    client = TestClient(app)
+    job_id = _create_job_with_recommended_actions()
+
+    response = client.post(
+        f"/jobs/{job_id}/recommended-actions/99/verification-jobs",
+        json={"actor": "frontend-operator", "note": ""},
     )
 
     assert response.status_code == 404

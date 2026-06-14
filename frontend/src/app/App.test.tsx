@@ -838,7 +838,7 @@ describe("App", () => {
         )
       )
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ statuses: [], events: [] }), {
+        new Response(JSON.stringify({ statuses: [], events: [], verifications: [] }), {
           status: 200,
           headers: { "Content-Type": "application/json" }
         })
@@ -846,11 +846,38 @@ describe("App", () => {
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
-            job_id: "job-action-verify-rerun",
-            case_id: "case-action-verify",
-            status: "created"
+            job_id: "job-action-verify-source",
+            action_index: 0,
+            verification_job_id: "job-action-verify-rerun",
+            actor: "frontend-operator",
+            note: "",
+            created_at: "2026-06-14T00:00:02+00:00",
+            verification_job: {
+              job_id: "job-action-verify-rerun",
+              case_id: "case-action-verify",
+              status: "created"
+            }
           }),
           { status: 202, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            statuses: [],
+            events: [],
+            verifications: [
+              {
+                job_id: "job-action-verify-source",
+                action_index: 0,
+                verification_job_id: "job-action-verify-rerun",
+                actor: "frontend-operator",
+                note: "",
+                created_at: "2026-06-14T00:00:02+00:00"
+              }
+            ]
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
         )
       );
 
@@ -860,10 +887,17 @@ describe("App", () => {
     await userEvent.click(screen.getByRole("button", { name: "Load persisted report" }));
     await userEvent.click(await screen.findByRole("button", { name: "Verify recommended action 1" }));
 
-    expect(fetchMock).toHaveBeenCalledWith("/api/cases/case-action-verify/debug-jobs?auto_run=true&baseline_trials=5", {
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-action-verify-source/recommended-actions/0/verification-jobs", {
+      body: JSON.stringify({
+        actor: "frontend-operator",
+        note: ""
+      }),
+      headers: { "Content-Type": "application/json" },
       method: "POST"
     });
     expect(await screen.findByText("Job ID：job-action-verify-rerun")).toBeInTheDocument();
+    expect(await screen.findByText("Recommended Action Verification Jobs")).toBeInTheDocument();
+    expect(screen.getByText("操作 1 验证任务：job-action-verify-rerun")).toBeInTheDocument();
     expect(screen.getAllByText("样本 ID：case-action-verify").length).toBeGreaterThan(0);
   });
 

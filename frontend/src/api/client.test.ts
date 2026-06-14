@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { fetchRecommendedActionStatuses, updateRecommendedActionStatus } from "./client";
+import {
+  createRecommendedActionVerificationJob,
+  fetchRecommendedActionStatuses,
+  updateRecommendedActionStatus
+} from "./client";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -67,6 +71,16 @@ describe("api client recommended action status", () => {
               note: "approved",
               created_at: "2026-06-14T00:00:01+00:00"
             }
+          ],
+          verifications: [
+            {
+              job_id: "job-1",
+              action_index: 0,
+              verification_job_id: "job-verify-1",
+              actor: "qa-reviewer",
+              note: "verify prompt fix",
+              created_at: "2026-06-14T00:00:02+00:00"
+            }
           ]
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
@@ -78,5 +92,42 @@ describe("api client recommended action status", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1/recommended-actions/statuses");
     expect(response.events).toHaveLength(1);
     expect(response.events[0].event_id).toBe(7);
+    expect(response.verifications[0].verification_job_id).toBe("job-verify-1");
+  });
+
+  it("creates recommended action verification jobs with reviewer context", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          job_id: "job-1",
+          action_index: 0,
+          verification_job_id: "job-verify-1",
+          actor: "qa-reviewer",
+          note: "verify prompt fix",
+          created_at: "2026-06-14T00:00:02+00:00",
+          verification_job: {
+            job_id: "job-verify-1",
+            case_id: "case-1",
+            status: "created"
+          }
+        }),
+        { status: 202, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    const response = await createRecommendedActionVerificationJob("job-1", 0, {
+      actor: "qa-reviewer",
+      note: "verify prompt fix"
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1/recommended-actions/0/verification-jobs", {
+      body: JSON.stringify({
+        actor: "qa-reviewer",
+        note: "verify prompt fix"
+      }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST"
+    });
+    expect(response.verification_job.job_id).toBe("job-verify-1");
   });
 });

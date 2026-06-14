@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import {
   type BatchDebugJobResponse,
+  createRecommendedActionVerificationJob,
   type CsvImportResponse,
   type DebugCaseDetail,
   type DebugCaseSummary,
@@ -27,6 +28,7 @@ import {
   type ObservabilitySummary,
   type RecommendedActionStatusValue,
   type RecommendedActionStatusEvent,
+  type RecommendedActionVerification,
   startWorker,
   submitBatchDebugJobs,
   submitDebugJob,
@@ -87,6 +89,7 @@ export function App() {
   const [spreadsheetWritebackResult, setSpreadsheetWritebackResult] = useState<SpreadsheetWritebackResult | null>(null);
   const [spreadsheetWritebackAudit, setSpreadsheetWritebackAudit] = useState<SpreadsheetWritebackAudit | null>(null);
   const [recommendedActionStatusEvents, setRecommendedActionStatusEvents] = useState<RecommendedActionStatusEvent[]>([]);
+  const [recommendedActionVerifications, setRecommendedActionVerifications] = useState<RecommendedActionVerification[]>([]);
   const [spreadsheetWritebackAuditSummary, setSpreadsheetWritebackAuditSummary] =
     useState<SpreadsheetWritebackAuditCounts | null>(null);
   const [spreadsheetWritebackAuditList, setSpreadsheetWritebackAuditList] =
@@ -501,8 +504,10 @@ export function App() {
       if (loadedReport.job_id && (loadedReport.recommended_actions ?? []).length > 0) {
         const actionStatuses = await fetchRecommendedActionStatuses(loadedReport.job_id);
         setRecommendedActionStatusEvents(actionStatuses.events);
+        setRecommendedActionVerifications(actionStatuses.verifications);
       } else {
         setRecommendedActionStatusEvents([]);
+        setRecommendedActionVerifications([]);
       }
       setSpreadsheetWritebackResult(null);
       setSpreadsheetWritebackAudit(null);
@@ -586,16 +591,21 @@ export function App() {
     }
   }
 
-  async function verifyCurrentRecommendedAction() {
-    if (!report) {
+  async function verifyCurrentRecommendedAction(actionIndex: number) {
+    if (!report?.job_id) {
       return;
     }
     setError("");
     try {
-      const verificationJob = await submitDebugJob(report.case_id);
-      setSubmittedJob(verificationJob);
+      const verification = await createRecommendedActionVerificationJob(report.job_id, actionIndex, {
+        actor: "frontend-operator",
+        note: ""
+      });
+      setSubmittedJob(verification.verification_job);
       setJobStatus(null);
       setSelectedEvidence(null);
+      const actionStatuses = await fetchRecommendedActionStatuses(report.job_id);
+      setRecommendedActionVerifications(actionStatuses.verifications);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
     }
@@ -703,6 +713,7 @@ export function App() {
           report={report}
           selectedEvidence={selectedEvidence}
           recommendedActionStatusEvents={recommendedActionStatusEvents}
+          recommendedActionVerifications={recommendedActionVerifications}
           writebackResult={spreadsheetWritebackResult}
           writebackAudit={spreadsheetWritebackAudit}
           onSelectEvidence={selectEvidence}
@@ -711,7 +722,7 @@ export function App() {
           onUpdateRecommendedActionStatus={(actionIndex, status) =>
             void updateCurrentRecommendedActionStatus(actionIndex, status)
           }
-          onVerifyRecommendedAction={() => void verifyCurrentRecommendedAction()}
+          onVerifyRecommendedAction={(actionIndex) => void verifyCurrentRecommendedAction(actionIndex)}
         />
       ) : submittedJob ? null : (
         <p>点击按钮运行第一条可验证 debug 闭环。</p>
