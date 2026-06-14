@@ -43,6 +43,16 @@ export type DebugReport = {
     reason: string;
     artifact_ids: string[];
   }>;
+  root_cause_trace?: Array<{
+    step_name: string;
+    variant: string;
+    modalities: string[];
+    evidence_id: string;
+    judge_score: number;
+    delta_reasons: string[];
+    target_ids: string[];
+    artifact_ids: string[];
+  }>;
   suggested_sheet_fields: Record<string, string>;
 };
 

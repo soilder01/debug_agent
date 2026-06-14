@@ -250,6 +250,18 @@ describe("ReportPanel", () => {
         confidence: "high",
         evidence_summary: "single-modality variants passed; cross-modal variant failed."
       },
+      root_cause_trace: [
+        {
+          step_name: "modality_ablation_check",
+          variant: "cross_modal_compare",
+          modalities: ["image", "text"],
+          evidence_id: "e-cross-modal",
+          judge_score: 0,
+          delta_reasons: ["conflict_actual_mismatch"],
+          target_ids: ["multimodal:conflict:1"],
+          artifact_ids: ["ablation:delta"]
+        }
+      ],
       suggested_sheet_fields: {
         错误原因: "跨模态对齐问题：单模态可通过，但跨模态比较失败。",
         Ablation结论: "单模态变体 image_only, text_only 可通过，但跨模态变体 cross_modal_compare 失败。"
@@ -263,5 +275,12 @@ describe("ReportPanel", () => {
     expect(
       diagnosis.getByText("单模态变体 image_only, text_only 可通过，但跨模态变体 cross_modal_compare 失败。")
     ).toBeInTheDocument();
+    expect(screen.getByText("Root Cause Trace")).toBeInTheDocument();
+    expect(screen.getByText("变体：cross_modal_compare")).toBeInTheDocument();
+    expect(screen.getByText("模态：image, text")).toBeInTheDocument();
+    expect(screen.getByText("证据：e-cross-modal")).toBeInTheDocument();
+    expect(screen.getByText("Delta：conflict_actual_mismatch")).toBeInTheDocument();
+    expect(screen.getByText("目标：multimodal:conflict:1")).toBeInTheDocument();
+    expect(screen.getByText("产物：ablation:delta")).toBeInTheDocument();
   });
 });

@@ -311,6 +311,20 @@
 - [x] Add modality-specific ablation conclusions for image/text/video/audio variants.
 - [x] Keep structured mismatch fallback for cases without ablation variants.
 
+### Task 21: Root Cause Trace Evidence Chain
+
+**Files:**
+- Modify: `backend/src/debug_agent/reports/generator.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `backend/tests/reports/test_generator.py`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Add `root_cause_trace` to reports with variant, modalities, evidence id, judge score, delta reasons, target ids, and artifact ids.
+- [x] Build trace entries from ablation evidence request summaries.
+- [x] Render `Root Cause Trace` in the report UI.
+- [x] Preserve existing ablation diagnosis and experiment trajectory rendering.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

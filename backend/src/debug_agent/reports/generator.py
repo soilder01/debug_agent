@@ -39,6 +39,7 @@ class DebugReport(BaseModel):
     experiment_summary: ExperimentSummary | None = None
     root_cause: RootCause
     evidence_citations: list[dict[str, object]] = Field(default_factory=list)
+    root_cause_trace: list[dict[str, object]] = Field(default_factory=list)
     suggested_sheet_fields: dict[str, str]
 
 
@@ -80,6 +81,7 @@ def generate_initial_report(
         experiment_summary=experiment_summary,
         root_cause=root_cause,
         evidence_citations=_build_evidence_citations(run_result),
+        root_cause_trace=_build_root_cause_trace(run_result),
         suggested_sheet_fields=suggested_sheet_fields,
     )
 
@@ -138,6 +140,57 @@ def _build_step_summary(step_name: str, evidence: list[ExperimentEvidence]) -> d
     if ablation_modalities:
         summary["ablation_modalities"] = ablation_modalities
     return summary
+
+
+def _build_root_cause_trace(run_result: ExperimentRunResult | None) -> list[dict[str, object]]:
+    if run_result is None:
+        return []
+    return [
+        {
+            "step_name": item.step_name,
+            "variant": variant,
+            "modalities": _string_list_from_request_summary(item.request_summary.get("ablation_modalities")),
+            "evidence_id": item.evidence_id,
+            "judge_score": item.judge.score,
+            "delta_reasons": _delta_reasons_from_evidence(item),
+            "target_ids": _target_ids_from_evidence(item),
+            "artifact_ids": [artifact.artifact_id for artifact in item.artifacts],
+        }
+        for item in run_result.evidence
+        if (variant := _string_from_request_summary(item.request_summary.get("ablation_variant")))
+    ]
+
+
+def _delta_reasons_from_evidence(evidence: ExperimentEvidence) -> list[str]:
+    return sorted(
+        {
+            str(delta["reason"])
+            for delta in evidence.judge.deltas
+            if isinstance(delta.get("reason"), str) and str(delta.get("reason")).strip()
+        }
+    )
+
+
+def _target_ids_from_evidence(evidence: ExperimentEvidence) -> list[str]:
+    return sorted(
+        {
+            str(delta["target_id"])
+            for delta in evidence.judge.deltas
+            if isinstance(delta.get("target_id"), str) and str(delta.get("target_id")).strip()
+        }
+    )
+
+
+def _string_from_request_summary(value: object) -> str:
+    return value if isinstance(value, str) and value.strip() else ""
+
+
+def _string_list_from_request_summary(value: object) -> list[str]:
+    if isinstance(value, str) and value.strip():
+        return [value]
+    if isinstance(value, list):
+        return [item for item in value if isinstance(item, str) and item.strip()]
+    return []
 
 
 def _step_delta_reasons(evidence: list[ExperimentEvidence]) -> list[str]:

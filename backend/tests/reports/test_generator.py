@@ -503,6 +503,85 @@ def test_generate_report_infers_single_modality_gap_from_ablation_results() -> N
     )
 
 
+def test_generate_report_builds_ablation_root_cause_trace() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "ablation-trace",
+            "task_type": "multimodal_detection",
+            "image_uri": "file:///tmp/multimodal.mp4",
+            "prompt": "Compare image and caption, then return cross-modal conflict JSON.",
+            "golden_answer": {"answers": []},
+            "expected_output": {
+                "conflicts": [
+                    {
+                        "target_id": "multimodal:conflict:1",
+                        "conflict_type": "visual_text_conflict",
+                        "modalities": ["image", "text"],
+                        "expected": "caption matches image",
+                        "actual": "caption says cat but image shows dog",
+                    }
+                ]
+            },
+            "scoring_standard": "cross-modal claims must agree.",
+            "predictions": [{"trial": 0, "raw_output": "{\"conflicts\":[]}", "score": 0}],
+            "avg_score": 0.0,
+        }
+    )
+    plan = plan_experiments(case)
+    run_result = ExperimentRunResult(
+        case_id=case.case_id,
+        total_trials=1,
+        success_count=0,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="e-cross-modal",
+                step_name="modality_ablation_check",
+                trial=2,
+                request_summary={
+                    "ablation_variant": "cross_modal_compare",
+                    "ablation_modalities": ["image", "text"],
+                },
+                raw_output=case.predictions[0].raw_output,
+                artifacts=[
+                    {
+                        "artifact_id": "ablation:conflict:delta",
+                        "kind": "multimodal_conflict_delta",
+                        "artifact_type": "multimodal_conflict",
+                    }
+                ],
+                judge=JudgeResult(
+                    score=0,
+                    reasons=["multimodal:conflict:1 conflict_actual_mismatch"],
+                    deltas=[
+                        {
+                            "target_id": "multimodal:conflict:1",
+                            "expected": "caption matches image",
+                            "actual": "caption says cat but image shows dog",
+                            "reason": "conflict_actual_mismatch",
+                            "metadata": {"field": "actual"},
+                        }
+                    ],
+                ),
+            )
+        ],
+    )
+
+    report = generate_initial_report(case, plan, run_result)
+
+    assert report.root_cause_trace == [
+        {
+            "step_name": "modality_ablation_check",
+            "variant": "cross_modal_compare",
+            "modalities": ["image", "text"],
+            "evidence_id": "e-cross-modal",
+            "judge_score": 0,
+            "delta_reasons": ["conflict_actual_mismatch"],
+            "target_ids": ["multimodal:conflict:1"],
+            "artifact_ids": ["ablation:conflict:delta"],
+        }
+    ]
+
+
 def test_generate_report_uses_generic_output_mismatch_for_non_ocr_structured_deltas() -> None:
     case = DebugCase.model_validate(
         {

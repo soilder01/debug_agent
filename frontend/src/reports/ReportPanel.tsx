@@ -14,6 +14,7 @@ export function ReportPanel({ report, onSelectEvidence }: ReportPanelProps) {
   const evidenceCitations = report.evidence_citations ?? [];
   const stepSummaries = experimentSummary?.step_summaries ?? [];
   const ablationConclusion = report.suggested_sheet_fields["Ablation结论"];
+  const rootCauseTrace = report.root_cause_trace ?? [];
 
   return (
     <section>
@@ -69,6 +70,25 @@ export function ReportPanel({ report, onSelectEvidence }: ReportPanelProps) {
           <h3>Ablation Diagnosis</h3>
           <p>{ablationConclusion}</p>
         </section>
+      ) : null}
+      {rootCauseTrace.length > 0 ? (
+        <>
+          <h3>Root Cause Trace</h3>
+          <ul aria-label="Root cause trace">
+            {rootCauseTrace.map((trace) => (
+              <li key={`${trace.evidence_id}:${trace.variant}`}>
+                <p>步骤：{trace.step_name}</p>
+                <p>变体：{trace.variant}</p>
+                <p>模态：{trace.modalities.length > 0 ? trace.modalities.join(", ") : "无"}</p>
+                <p>证据：{trace.evidence_id}</p>
+                <p>Judge Score：{trace.judge_score}</p>
+                <p>Delta：{trace.delta_reasons.length > 0 ? trace.delta_reasons.join(", ") : "无"}</p>
+                <p>目标：{trace.target_ids.length > 0 ? trace.target_ids.join(", ") : "无"}</p>
+                <p>产物：{trace.artifact_ids.length > 0 ? trace.artifact_ids.join(", ") : "无"}</p>
+              </li>
+            ))}
+          </ul>
+        </>
       ) : null}
       <h3>Evidence Artifacts</h3>
       <p>证据产物：{artifactIds.length}</p>
