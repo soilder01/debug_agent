@@ -146,7 +146,26 @@ def test_compare_image_detection_outputs_detects_region_label_delta() -> None:
             "expected": "cat",
             "actual": "dog",
             "reason": "region_label_mismatch",
-            "metadata": {"field": "label", "confidence": 0.57},
+            "metadata": {
+                "field": "label",
+                "confidence": 0.57,
+                "expected_region": {
+                    "x": 10,
+                    "y": 20,
+                    "width": 30,
+                    "height": 40,
+                    "unit": "pixel",
+                    "label": "cat",
+                },
+                "actual_region": {
+                    "x": 10,
+                    "y": 20,
+                    "width": 30,
+                    "height": 40,
+                    "unit": "pixel",
+                    "label": "dog",
+                },
+            },
         }
     ]
 
@@ -177,7 +196,17 @@ def test_compare_image_detection_outputs_detects_missing_region_without_ocr_fiel
             "expected": "traffic light",
             "actual": None,
             "reason": "missing_region",
-            "metadata": {"field": "regions"},
+            "metadata": {
+                "field": "regions",
+                "expected_region": {
+                    "x": 50,
+                    "y": 60,
+                    "width": 70,
+                    "height": 80,
+                    "unit": "pixel",
+                    "label": "traffic light",
+                },
+            },
         }
     ]
 
@@ -240,7 +269,12 @@ def test_compare_video_detection_outputs_detects_segment_label_delta() -> None:
             "expected": "person_enters",
             "actual": "person_leaves",
             "reason": "segment_label_mismatch",
-            "metadata": {"field": "label", "confidence": 0.62},
+            "metadata": {
+                "field": "label",
+                "confidence": 0.62,
+                "expected_segment": {"start_ms": 1000, "end_ms": 2500, "label": "person_enters"},
+                "actual_segment": {"start_ms": 1000, "end_ms": 2500, "label": "person_leaves"},
+            },
         }
     ]
 
@@ -269,7 +303,10 @@ def test_compare_video_detection_outputs_detects_missing_segment_without_ocr_fie
             "expected": "door_closes",
             "actual": None,
             "reason": "missing_segment",
-            "metadata": {"field": "temporal_segments"},
+            "metadata": {
+                "field": "temporal_segments",
+                "expected_segment": {"start_ms": 3000, "end_ms": 4500, "label": "door_closes"},
+            },
         }
     ]
 
@@ -340,6 +377,10 @@ def test_compare_multimodal_detection_outputs_detects_conflict_actual_delta() ->
                 "conflict_type": "visual_text_conflict",
                 "modalities": ["image", "text"],
                 "confidence": 0.76,
+                "expected_conflict_type": "visual_text_conflict",
+                "actual_conflict_type": "visual_text_conflict",
+                "expected_modalities": ["image", "text"],
+                "actual_modalities": ["image", "text"],
             },
         }
     ]
@@ -374,6 +415,8 @@ def test_compare_multimodal_detection_outputs_detects_missing_conflict_without_o
                 "field": "conflicts",
                 "conflict_type": "audio_visual_conflict",
                 "modalities": ["audio", "video"],
+                "expected_conflict_type": "audio_visual_conflict",
+                "expected_modalities": ["audio", "video"],
             },
         }
     ]

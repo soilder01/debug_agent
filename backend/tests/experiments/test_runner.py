@@ -506,7 +506,26 @@ async def test_run_experiments_judges_image_detection_output_natively() -> None:
             "expected": "cat",
             "actual": "dog",
             "reason": "region_label_mismatch",
-            "metadata": {"field": "label", "confidence": 0.57},
+            "metadata": {
+                "field": "label",
+                "confidence": 0.57,
+                "expected_region": {
+                    "x": 10,
+                    "y": 20,
+                    "width": 30,
+                    "height": 40,
+                    "unit": "pixel",
+                    "label": "cat",
+                },
+                "actual_region": {
+                    "x": 10,
+                    "y": 20,
+                    "width": 30,
+                    "height": 40,
+                    "unit": "pixel",
+                    "label": "dog",
+                },
+            },
         }
     ]
     native_artifact = next(
@@ -522,6 +541,22 @@ async def test_run_experiments_judges_image_detection_output_natively() -> None:
         "actual": "dog",
         "field": "label",
         "confidence": 0.57,
+        "expected_region": {
+            "x": 10,
+            "y": 20,
+            "width": 30,
+            "height": 40,
+            "unit": "pixel",
+            "label": "cat",
+        },
+        "actual_region": {
+            "x": 10,
+            "y": 20,
+            "width": 30,
+            "height": 40,
+            "unit": "pixel",
+            "label": "dog",
+        },
     }
 
 
@@ -619,7 +654,12 @@ async def test_run_experiments_judges_video_detection_output_natively() -> None:
             "expected": "person_enters",
             "actual": "person_leaves",
             "reason": "segment_label_mismatch",
-            "metadata": {"field": "label", "confidence": 0.62},
+            "metadata": {
+                "field": "label",
+                "confidence": 0.62,
+                "expected_segment": {"start_ms": 1000, "end_ms": 2500, "label": "person_enters"},
+                "actual_segment": {"start_ms": 1000, "end_ms": 2500, "label": "person_leaves"},
+            },
         }
     ]
     native_artifact = next(
@@ -635,6 +675,8 @@ async def test_run_experiments_judges_video_detection_output_natively() -> None:
         "actual": "person_leaves",
         "field": "label",
         "confidence": 0.62,
+        "expected_segment": {"start_ms": 1000, "end_ms": 2500, "label": "person_enters"},
+        "actual_segment": {"start_ms": 1000, "end_ms": 2500, "label": "person_leaves"},
     }
 
 
@@ -738,6 +780,10 @@ async def test_run_experiments_judges_multimodal_detection_output_natively() -> 
                 "conflict_type": "visual_text_conflict",
                 "modalities": ["image", "text"],
                 "confidence": 0.76,
+                "expected_conflict_type": "visual_text_conflict",
+                "expected_modalities": ["image", "text"],
+                "actual_conflict_type": "visual_text_conflict",
+                "actual_modalities": ["image", "text"],
             },
         }
     ]
@@ -756,6 +802,10 @@ async def test_run_experiments_judges_multimodal_detection_output_natively() -> 
         "conflict_type": "visual_text_conflict",
         "modalities": ["image", "text"],
         "confidence": 0.76,
+        "expected_conflict_type": "visual_text_conflict",
+        "actual_conflict_type": "visual_text_conflict",
+        "expected_modalities": ["image", "text"],
+        "actual_modalities": ["image", "text"],
     }
 
 

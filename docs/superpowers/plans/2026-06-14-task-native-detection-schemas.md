@@ -207,12 +207,15 @@
 ### Task 13: Task-Native Delta Evidence Artifacts
 
 **Files:**
+- Modify: `backend/src/debug_agent/cases/comparator.py`
 - Modify: `backend/src/debug_agent/experiments/runner.py`
+- Test: `backend/tests/cases/test_comparator.py`
 - Test: `backend/tests/experiments/test_runner.py`
 
 - [x] Generate `image_region_delta` evidence artifacts for image-native target deltas.
 - [x] Generate `video_segment_delta` evidence artifacts for video-native target deltas.
 - [x] Generate `multimodal_conflict_delta` evidence artifacts for multimodal conflict deltas.
+- [x] Include image region geometry, video temporal windows, and multimodal expected/actual modality context in delta metadata.
 - [x] Preserve existing input snapshot, structured output, and OCR localized crop artifacts.
 
 ## Multimodal Harness Schema Roadmap

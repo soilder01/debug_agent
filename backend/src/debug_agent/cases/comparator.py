@@ -218,7 +218,11 @@ def _image_region_delta(
             expected=None,
             actual=_region_label(predicted_region),
             reason="extra_region",
-            metadata={"field": "regions"},
+            metadata=_image_region_metadata(
+                field="regions",
+                expected_region=None,
+                predicted_region=predicted_region,
+            ),
         ).model_dump()
     if predicted_region is None:
         return DetectionDelta(
@@ -226,7 +230,11 @@ def _image_region_delta(
             expected=_region_label(expected_region),
             actual=None,
             reason="missing_region",
-            metadata={"field": "regions"},
+            metadata=_image_region_metadata(
+                field="regions",
+                expected_region=expected_region,
+                predicted_region=None,
+            ),
         ).model_dump()
     if expected_region.label != predicted_region.label:
         return DetectionDelta(
@@ -234,7 +242,11 @@ def _image_region_delta(
             expected=expected_region.label,
             actual=predicted_region.label,
             reason="region_label_mismatch",
-            metadata={"field": "label", "confidence": predicted_region.confidence},
+            metadata=_image_region_metadata(
+                field="label",
+                expected_region=expected_region,
+                predicted_region=predicted_region,
+            ),
         ).model_dump()
     return None
 
@@ -243,6 +255,33 @@ def _region_label(region: ImageRegionOutput | None) -> str | None:
     if region is None or not region.label:
         return None
     return region.label
+
+
+def _image_region_metadata(
+    *,
+    field: str,
+    expected_region: ImageRegionOutput | None,
+    predicted_region: ImageRegionOutput | None,
+) -> dict[str, object]:
+    metadata: dict[str, object] = {"field": field}
+    if predicted_region is not None and predicted_region.confidence is not None:
+        metadata["confidence"] = predicted_region.confidence
+    if expected_region is not None:
+        metadata["expected_region"] = _image_region_context(expected_region)
+    if predicted_region is not None:
+        metadata["actual_region"] = _image_region_context(predicted_region)
+    return metadata
+
+
+def _image_region_context(region: ImageRegionOutput) -> dict[str, object]:
+    return {
+        "x": region.x,
+        "y": region.y,
+        "width": region.width,
+        "height": region.height,
+        "unit": region.unit,
+        "label": region.label,
+    }
 
 
 def _video_segment_delta(
@@ -258,7 +297,11 @@ def _video_segment_delta(
             expected=None,
             actual=_segment_label(predicted_segment),
             reason="extra_segment",
-            metadata={"field": "temporal_segments"},
+            metadata=_video_segment_metadata(
+                field="temporal_segments",
+                expected_segment=None,
+                predicted_segment=predicted_segment,
+            ),
         ).model_dump()
     if predicted_segment is None:
         return DetectionDelta(
@@ -266,7 +309,11 @@ def _video_segment_delta(
             expected=_segment_label(expected_segment),
             actual=None,
             reason="missing_segment",
-            metadata={"field": "temporal_segments"},
+            metadata=_video_segment_metadata(
+                field="temporal_segments",
+                expected_segment=expected_segment,
+                predicted_segment=None,
+            ),
         ).model_dump()
     if expected_segment.label != predicted_segment.label:
         return DetectionDelta(
@@ -274,7 +321,11 @@ def _video_segment_delta(
             expected=expected_segment.label,
             actual=predicted_segment.label,
             reason="segment_label_mismatch",
-            metadata={"field": "label", "confidence": predicted_segment.confidence},
+            metadata=_video_segment_metadata(
+                field="label",
+                expected_segment=expected_segment,
+                predicted_segment=predicted_segment,
+            ),
         ).model_dump()
     return None
 
@@ -283,6 +334,30 @@ def _segment_label(segment: VideoSegmentOutput | None) -> str | None:
     if segment is None or not segment.label:
         return None
     return segment.label
+
+
+def _video_segment_metadata(
+    *,
+    field: str,
+    expected_segment: VideoSegmentOutput | None,
+    predicted_segment: VideoSegmentOutput | None,
+) -> dict[str, object]:
+    metadata: dict[str, object] = {"field": field}
+    if predicted_segment is not None and predicted_segment.confidence is not None:
+        metadata["confidence"] = predicted_segment.confidence
+    if expected_segment is not None:
+        metadata["expected_segment"] = _video_segment_context(expected_segment)
+    if predicted_segment is not None:
+        metadata["actual_segment"] = _video_segment_context(predicted_segment)
+    return metadata
+
+
+def _video_segment_context(segment: VideoSegmentOutput) -> dict[str, object]:
+    return {
+        "start_ms": segment.start_ms,
+        "end_ms": segment.end_ms,
+        "label": segment.label,
+    }
 
 
 def _multimodal_conflict_delta(
@@ -298,7 +373,11 @@ def _multimodal_conflict_delta(
             expected=None,
             actual=_conflict_actual(predicted_conflict),
             reason="extra_conflict",
-            metadata=_conflict_metadata(predicted_conflict, field="conflicts"),
+            metadata=_conflict_metadata(
+                field="conflicts",
+                expected_conflict=None,
+                predicted_conflict=predicted_conflict,
+            ),
         ).model_dump()
     if predicted_conflict is None:
         return DetectionDelta(
@@ -306,7 +385,11 @@ def _multimodal_conflict_delta(
             expected=_conflict_actual(expected_conflict),
             actual=None,
             reason="missing_conflict",
-            metadata=_conflict_metadata(expected_conflict, field="conflicts"),
+            metadata=_conflict_metadata(
+                field="conflicts",
+                expected_conflict=expected_conflict,
+                predicted_conflict=None,
+            ),
         ).model_dump()
     if expected_conflict.conflict_type != predicted_conflict.conflict_type:
         return DetectionDelta(
@@ -314,7 +397,11 @@ def _multimodal_conflict_delta(
             expected=expected_conflict.conflict_type,
             actual=predicted_conflict.conflict_type,
             reason="conflict_type_mismatch",
-            metadata=_conflict_metadata(predicted_conflict, field="conflict_type"),
+            metadata=_conflict_metadata(
+                field="conflict_type",
+                expected_conflict=expected_conflict,
+                predicted_conflict=predicted_conflict,
+            ),
         ).model_dump()
     if expected_conflict.actual != predicted_conflict.actual:
         return DetectionDelta(
@@ -322,7 +409,11 @@ def _multimodal_conflict_delta(
             expected=expected_conflict.actual,
             actual=predicted_conflict.actual,
             reason="conflict_actual_mismatch",
-            metadata=_conflict_metadata(predicted_conflict, field="actual"),
+            metadata=_conflict_metadata(
+                field="actual",
+                expected_conflict=expected_conflict,
+                predicted_conflict=predicted_conflict,
+            ),
         ).model_dump()
     return None
 
@@ -333,12 +424,23 @@ def _conflict_actual(conflict: MultimodalConflictOutput | None) -> str | None:
     return conflict.actual
 
 
-def _conflict_metadata(conflict: MultimodalConflictOutput | None, *, field: str) -> dict[str, object]:
+def _conflict_metadata(
+    *,
+    field: str,
+    expected_conflict: MultimodalConflictOutput | None,
+    predicted_conflict: MultimodalConflictOutput | None,
+) -> dict[str, object]:
     metadata: dict[str, object] = {"field": field}
-    if conflict is None:
-        return metadata
-    metadata["conflict_type"] = conflict.conflict_type
-    metadata["modalities"] = conflict.modalities
-    if conflict.confidence is not None:
-        metadata["confidence"] = conflict.confidence
+    conflict = predicted_conflict or expected_conflict
+    if conflict is not None:
+        metadata["conflict_type"] = conflict.conflict_type
+        metadata["modalities"] = conflict.modalities
+    if predicted_conflict is not None and predicted_conflict.confidence is not None:
+        metadata["confidence"] = predicted_conflict.confidence
+    if expected_conflict is not None:
+        metadata["expected_conflict_type"] = expected_conflict.conflict_type
+        metadata["expected_modalities"] = expected_conflict.modalities
+    if predicted_conflict is not None:
+        metadata["actual_conflict_type"] = predicted_conflict.conflict_type
+        metadata["actual_modalities"] = predicted_conflict.modalities
     return metadata

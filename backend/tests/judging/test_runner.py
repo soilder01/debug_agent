@@ -143,7 +143,12 @@ def test_judge_image_detection_output_returns_region_delta() -> None:
             "expected": "cat",
             "actual": "dog",
             "reason": "region_label_mismatch",
-            "metadata": {"field": "label", "confidence": 0.57},
+            "metadata": {
+                "field": "label",
+                "confidence": 0.57,
+                "expected_region": {"x": 1, "y": 2, "width": 3, "height": 4, "unit": "pixel", "label": "cat"},
+                "actual_region": {"x": 1, "y": 2, "width": 3, "height": 4, "unit": "pixel", "label": "dog"},
+            },
         }
     ]
 
@@ -182,7 +187,12 @@ def test_judge_video_detection_output_returns_segment_delta() -> None:
             "expected": "person_enters",
             "actual": "person_leaves",
             "reason": "segment_label_mismatch",
-            "metadata": {"field": "label", "confidence": 0.62},
+            "metadata": {
+                "field": "label",
+                "confidence": 0.62,
+                "expected_segment": {"start_ms": 1000, "end_ms": 2500, "label": "person_enters"},
+                "actual_segment": {"start_ms": 1000, "end_ms": 2500, "label": "person_leaves"},
+            },
         }
     ]
 
@@ -233,6 +243,10 @@ def test_judge_multimodal_detection_output_returns_conflict_delta() -> None:
                 "conflict_type": "visual_text_conflict",
                 "modalities": ["image", "text"],
                 "confidence": 0.76,
+                "expected_conflict_type": "visual_text_conflict",
+                "expected_modalities": ["image", "text"],
+                "actual_conflict_type": "visual_text_conflict",
+                "actual_modalities": ["image", "text"],
             },
         }
     ]
