@@ -348,3 +348,38 @@ async def test_run_experiments_builds_prompts_through_task_recipe(monkeypatch) -
     await run_experiments(case=case, plan=plan, adapter=adapter)
 
     assert adapter.prompts == ["recipe prompt for handwrite233:baseline_replay"]
+
+
+@pytest.mark.asyncio
+async def test_run_experiments_uses_classification_recipe_prompt() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "classification-runner",
+            "task_type": "classification",
+            "image_uri": "",
+            "prompt": "Classify sentiment and return JSON.",
+            "golden_answer": {"answers": [{"box_id": 1, "student_answer": "positive"}]},
+            "scoring_standard": "label must match exactly.",
+            "predictions": [
+                {
+                    "trial": 0,
+                    "raw_output": "{\"answers\":[{\"box_id\":1,\"student_answer\":\"negative\"}]}",
+                    "score": 0,
+                }
+            ],
+            "avg_score": 0.0,
+        }
+    )
+    plan = ExperimentPlan(
+        case_id=case.case_id,
+        max_model_calls=1,
+        steps=[ExperimentStep(name="label_schema_check", description="Check labels.", trials=1)],
+    )
+    adapter = PromptRecordingModelAdapter(raw_output=case.predictions[0].raw_output)
+
+    await run_experiments(case=case, plan=plan, adapter=adapter)
+
+    assert len(adapter.prompts) == 1
+    assert "label_schema_check" in adapter.prompts[0]
+    assert "expected label" in adapter.prompts[0]
+    assert "affected answer region" not in adapter.prompts[0]

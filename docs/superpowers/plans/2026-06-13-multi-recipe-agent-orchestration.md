@@ -51,13 +51,13 @@ These are not separate deployed services yet. The next goal is to make their con
 - Test: `backend/tests/recipes/test_classification.py`
 - Test: `backend/tests/experiments/test_runner.py`
 
-- [ ] Write a failing test that a `classification` case plans `baseline_replay`, `label_schema_check`, and `counterfactual_prompt_check`.
-- [ ] Write a failing test that classification prompts mention labels/expected output but do not mention OCR boxes or handwriting regions.
-- [ ] Implement `ClassificationRecipe.plan_steps()` with small, bounded trial counts.
-- [ ] Implement `ClassificationRecipe.build_step_prompt()` with schema-focused instructions.
-- [ ] Register `classification` in `RecipeRegistry`.
-- [ ] Run `python -m pytest backend/tests/recipes/test_classification.py backend/tests/experiments/test_runner.py -q`.
-- [ ] Commit as `feat(core): add classification debug recipe`.
+- [x] Write a failing test that a `classification` case plans `baseline_replay`, `label_schema_check`, and `counterfactual_prompt_check`.
+- [x] Write a failing test that classification prompts mention labels/expected output but do not mention OCR boxes or handwriting regions.
+- [x] Implement `ClassificationRecipe.plan_steps()` with small, bounded trial counts.
+- [x] Implement `ClassificationRecipe.build_step_prompt()` with schema-focused instructions.
+- [x] Register `classification` in `RecipeRegistry`.
+- [x] Run `python -m pytest backend/tests/recipes/test_classification.py backend/tests/experiments/test_runner.py -q`.
+- [x] Commit as `feat(core): add classification debug recipe`.
 
 ### Task 3: Agent Role Metadata
 

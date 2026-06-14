@@ -1,7 +1,9 @@
+from collections.abc import Callable
+
 from debug_agent.cases.models import DebugCase
 from debug_agent.experiments.planner import ExperimentStep
+from debug_agent.recipes.classification import ClassificationRecipe
 from debug_agent.recipes.handwriting_ocr import HandwritingOcrRecipe
-
 
 class GenericDebugRecipe:
     task_type = "generic"
@@ -34,11 +36,18 @@ class GenericDebugRecipe:
         )
 
 
+DebugRecipeInstance = ClassificationRecipe | HandwritingOcrRecipe | GenericDebugRecipe
+DebugRecipeFactory = Callable[[], DebugRecipeInstance]
+
+
 class RecipeRegistry:
     def __init__(self) -> None:
-        self._recipes = {"handwriting_ocr": HandwritingOcrRecipe}
+        self._recipes: dict[str, DebugRecipeFactory] = {
+            "classification": ClassificationRecipe,
+            "handwriting_ocr": HandwritingOcrRecipe,
+        }
 
-    def recipe_for_task_type(self, task_type: str) -> HandwritingOcrRecipe | GenericDebugRecipe:
+    def recipe_for_task_type(self, task_type: str) -> DebugRecipeInstance:
         recipe_factory = self._recipes.get(task_type)
         if recipe_factory is None:
             return GenericDebugRecipe()
@@ -48,5 +57,5 @@ class RecipeRegistry:
 _REGISTRY = RecipeRegistry()
 
 
-def recipe_for_task_type(task_type: str) -> HandwritingOcrRecipe | GenericDebugRecipe:
+def recipe_for_task_type(task_type: str) -> DebugRecipeInstance:
     return _REGISTRY.recipe_for_task_type(task_type)
