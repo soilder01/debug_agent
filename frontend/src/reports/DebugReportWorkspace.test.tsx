@@ -181,4 +181,36 @@ describe("DebugReportWorkspace", () => {
 
     expect(onSelectEvidence).toHaveBeenCalledWith("trajectory-evidence-1");
   });
+
+  it("delegates recommended action status updates from the report panel", async () => {
+    const onUpdateRecommendedActionStatus = vi.fn();
+    const report = makeReport({
+      recommended_actions: [
+        {
+          category: "prompt",
+          priority: "high",
+          status: "pending",
+          summary: "强化跨模态对比步骤。",
+          detail: "要求模型先分别列出 image/text 证据，再输出冲突结论。"
+        }
+      ]
+    });
+
+    render(
+      <DebugReportWorkspace
+        report={report}
+        selectedEvidence={null}
+        writebackResult={null}
+        writebackAudit={null}
+        onSelectEvidence={vi.fn()}
+        onWriteReport={vi.fn()}
+        onLoadWritebackAudit={vi.fn()}
+        onUpdateRecommendedActionStatus={onUpdateRecommendedActionStatus}
+      />
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Accept recommended action 1" }));
+
+    expect(onUpdateRecommendedActionStatus).toHaveBeenCalledWith(0, "accepted");
+  });
 });

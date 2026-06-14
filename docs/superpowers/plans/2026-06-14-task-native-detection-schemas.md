@@ -393,6 +393,23 @@
 - [x] Add API endpoints for updating and listing action statuses.
 - [x] Return 404 when updating action status for a missing job.
 
+### Task 27: Recommended Action Status Frontend Flow
+
+**Files:**
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Modify: `frontend/src/reports/DebugReportWorkspace.tsx`
+- Modify: `frontend/src/app/App.tsx`
+- Test: `frontend/src/api/client.test.ts`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+- Test: `frontend/src/reports/DebugReportWorkspace.test.tsx`
+- Test: `frontend/src/app/App.test.tsx`
+
+- [x] Add frontend API client support for `PATCH /jobs/{job_id}/recommended-actions/{action_index}/status`.
+- [x] Render recommended action accept, reject, and applied controls in the report UI.
+- [x] Delegate action status updates through the report workspace.
+- [x] Persist action status changes from the app and merge the returned status into the current report.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

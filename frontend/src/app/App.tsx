@@ -24,6 +24,7 @@ import {
   type JsonlImportResponse,
   type LarkSpreadsheetStatus,
   type ObservabilitySummary,
+  type RecommendedActionStatusValue,
   startWorker,
   submitBatchDebugJobs,
   submitDebugJob,
@@ -39,6 +40,7 @@ import {
   type DebugReport,
   type ExperimentEvidence,
   type SubmittedDebugJob,
+  updateRecommendedActionStatus,
   type WorkerStatus,
   writeJobReportToSpreadsheet
 } from "../api/client";
@@ -535,6 +537,43 @@ export function App() {
     }
   }
 
+  async function updateCurrentRecommendedActionStatus(
+    actionIndex: number,
+    status: RecommendedActionStatusValue
+  ) {
+    if (!report?.job_id) {
+      return;
+    }
+    setError("");
+    try {
+      const updatedStatus = await updateRecommendedActionStatus(report.job_id, actionIndex, {
+        status,
+        actor: "frontend-operator",
+        note: ""
+      });
+      setReport((current) => {
+        if (!current || current.job_id !== updatedStatus.job_id) {
+          return current;
+        }
+        const recommendedActions = [...(current.recommended_actions ?? [])];
+        const action = recommendedActions[actionIndex];
+        if (!action) {
+          return current;
+        }
+        recommendedActions[actionIndex] = {
+          ...action,
+          status: updatedStatus.status
+        };
+        return {
+          ...current,
+          recommended_actions: recommendedActions
+        };
+      });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
   return (
     <main>
       <h1>Debug Detection Agent</h1>
@@ -641,6 +680,9 @@ export function App() {
           onSelectEvidence={selectEvidence}
           onWriteReport={() => void writeCurrentReportToSpreadsheet()}
           onLoadWritebackAudit={() => void loadCurrentWritebackAudit()}
+          onUpdateRecommendedActionStatus={(actionIndex, status) =>
+            void updateCurrentRecommendedActionStatus(actionIndex, status)
+          }
         />
       ) : submittedJob ? null : (
         <p>点击按钮运行第一条可验证 debug 闭环。</p>

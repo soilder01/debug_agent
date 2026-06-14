@@ -1,11 +1,12 @@
-import type { DebugReport } from "../api/client";
+import type { DebugReport, RecommendedActionStatusValue } from "../api/client";
 
 type ReportPanelProps = {
   report: DebugReport;
   onSelectEvidence?: (evidenceId: string) => void;
+  onUpdateRecommendedActionStatus?: (actionIndex: number, status: RecommendedActionStatusValue) => void;
 };
 
-export function ReportPanel({ report, onSelectEvidence }: ReportPanelProps) {
+export function ReportPanel({ report, onSelectEvidence, onUpdateRecommendedActionStatus }: ReportPanelProps) {
   const experimentSummary = report.experiment_summary;
   const artifactIds = experimentSummary?.artifact_ids?.length
     ? experimentSummary.artifact_ids
@@ -95,13 +96,35 @@ export function ReportPanel({ report, onSelectEvidence }: ReportPanelProps) {
         <>
           <h3>Recommended Actions</h3>
           <ul aria-label="Recommended actions">
-            {recommendedActions.map((action) => (
+            {recommendedActions.map((action, actionIndex) => (
               <li key={`${action.category}:${action.summary}`}>
                 <p>
                   {action.category}/{action.priority}：{action.summary}
                 </p>
                 <p>状态：{action.status ?? "pending"}</p>
                 <p>{action.detail}</p>
+                {onUpdateRecommendedActionStatus ? (
+                  <p>
+                    <button
+                      type="button"
+                      onClick={() => onUpdateRecommendedActionStatus(actionIndex, "accepted")}
+                    >
+                      Accept recommended action {actionIndex + 1}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onUpdateRecommendedActionStatus(actionIndex, "rejected")}
+                    >
+                      Reject recommended action {actionIndex + 1}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onUpdateRecommendedActionStatus(actionIndex, "applied")}
+                    >
+                      Mark recommended action {actionIndex + 1} applied
+                    </button>
+                  </p>
+                ) : null}
               </li>
             ))}
           </ul>

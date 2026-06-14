@@ -63,6 +63,18 @@ export type DebugReport = {
   suggested_sheet_fields: Record<string, string>;
 };
 
+export type RecommendedActionStatusValue = "pending" | "accepted" | "rejected" | "applied";
+
+export type RecommendedActionStatus = {
+  job_id: string;
+  action_index: number;
+  status: RecommendedActionStatusValue;
+  actor: string;
+  note: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type RetryRecommendationDetail = {
   code: string;
   label: string;
@@ -529,6 +541,33 @@ export async function writeJobReportToSpreadsheet(
     throw new Error(`Failed to write job report ${jobId}: ${response.status}`);
   }
   return (await response.json()) as SpreadsheetWritebackResult;
+}
+
+export async function updateRecommendedActionStatus(
+  jobId: string,
+  actionIndex: number,
+  request: {
+    status: RecommendedActionStatusValue;
+    actor?: string;
+    note?: string;
+  }
+): Promise<RecommendedActionStatus> {
+  const response = await fetch(
+    `/api/jobs/${encodeURIComponent(jobId)}/recommended-actions/${actionIndex}/status`,
+    {
+      body: JSON.stringify({
+        status: request.status,
+        actor: request.actor ?? "",
+        note: request.note ?? ""
+      }),
+      headers: { "Content-Type": "application/json" },
+      method: "PATCH"
+    }
+  );
+  if (!response.ok) {
+    throw new Error(`Failed to update recommended action ${actionIndex} for job ${jobId}: ${response.status}`);
+  }
+  return (await response.json()) as RecommendedActionStatus;
 }
 
 export async function fetchSpreadsheetWritebackAudit(jobId: string): Promise<SpreadsheetWritebackAudit> {

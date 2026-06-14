@@ -304,4 +304,49 @@ describe("ReportPanel", () => {
     expect(screen.getByText("要求模型先分别列出 image/text 证据，再输出冲突结论。")).toBeInTheDocument();
     expect(screen.getByText("model_capability/high：将跨模态融合短板纳入模型能力归因。")).toBeInTheDocument();
   });
+
+  it("delegates recommended action status updates", async () => {
+    const onUpdateRecommendedActionStatus = vi.fn();
+    const report: DebugReport = {
+      job_id: "job-action-status",
+      case_id: "case-action-status",
+      status: "needs_human_review",
+      observed_failure: {
+        type: "cross_modal_alignment_failure",
+        summary: "cross-modal compare failed",
+        affected_box_ids: []
+      },
+      planned_experiments: ["modality_ablation_check"],
+      experiment_summary: null,
+      root_cause: {
+        label: "cross_modal_alignment_failure",
+        confidence: "high",
+        evidence_summary: "cross-modal variant failed."
+      },
+      recommended_actions: [
+        {
+          category: "prompt",
+          priority: "high",
+          status: "pending",
+          summary: "强化跨模态对比步骤。",
+          detail: "要求模型先分别列出 image/text 证据，再输出冲突结论。"
+        }
+      ],
+      suggested_sheet_fields: {
+        错误原因: "跨模态对齐问题"
+      }
+    };
+
+    render(
+      <ReportPanel report={report} onUpdateRecommendedActionStatus={onUpdateRecommendedActionStatus} />
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Accept recommended action 1" }));
+    await userEvent.click(screen.getByRole("button", { name: "Reject recommended action 1" }));
+    await userEvent.click(screen.getByRole("button", { name: "Mark recommended action 1 applied" }));
+
+    expect(onUpdateRecommendedActionStatus).toHaveBeenNthCalledWith(1, 0, "accepted");
+    expect(onUpdateRecommendedActionStatus).toHaveBeenNthCalledWith(2, 0, "rejected");
+    expect(onUpdateRecommendedActionStatus).toHaveBeenNthCalledWith(3, 0, "applied");
+  });
 });

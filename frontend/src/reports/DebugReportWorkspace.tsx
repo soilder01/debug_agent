@@ -1,4 +1,10 @@
-import type { DebugReport, ExperimentEvidence, SpreadsheetWritebackAudit, SpreadsheetWritebackResult } from "../api/client";
+import type {
+  DebugReport,
+  ExperimentEvidence,
+  RecommendedActionStatusValue,
+  SpreadsheetWritebackAudit,
+  SpreadsheetWritebackResult
+} from "../api/client";
 import { CaseDetail } from "../cases/CaseDetail";
 import { EvidenceDetail } from "../evidence/EvidenceDetail";
 import { ExperimentTimeline } from "../experiments/ExperimentTimeline";
@@ -13,6 +19,7 @@ type DebugReportWorkspaceProps = {
   onSelectEvidence: (evidenceId: string) => void;
   onWriteReport: () => void;
   onLoadWritebackAudit: () => void;
+  onUpdateRecommendedActionStatus?: (actionIndex: number, status: RecommendedActionStatusValue) => void;
 };
 
 export function DebugReportWorkspace({
@@ -22,7 +29,8 @@ export function DebugReportWorkspace({
   writebackAudit,
   onSelectEvidence,
   onWriteReport,
-  onLoadWritebackAudit
+  onLoadWritebackAudit,
+  onUpdateRecommendedActionStatus
 }: DebugReportWorkspaceProps) {
   return (
     <>
@@ -33,7 +41,11 @@ export function DebugReportWorkspace({
         onSelectEvidence={onSelectEvidence}
       />
       <EvidenceDetail evidence={selectedEvidence} />
-      <ReportPanel report={report} onSelectEvidence={onSelectEvidence} />
+      <ReportPanel
+        report={report}
+        onSelectEvidence={onSelectEvidence}
+        onUpdateRecommendedActionStatus={onUpdateRecommendedActionStatus}
+      />
       {report.job_id ? (
         <SpreadsheetWritebackPanel
           writebackResult={writebackResult}

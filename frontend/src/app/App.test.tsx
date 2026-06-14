@@ -611,6 +611,113 @@ describe("App", () => {
     expect(screen.getByText("Writeback audit updated：2026-06-12T06:00:01+00:00")).toBeInTheDocument();
   });
 
+  it("updates recommended action status from a persisted report", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jobs: [
+              {
+                job_id: "job-action-status-1",
+                case_id: "case-action-status-1",
+                status: "completed",
+                attempt_count: 1,
+                max_attempts: 2,
+                remaining_attempts: 1,
+                will_retry: false,
+                retry_recommendation: "none",
+                retry_recommendation_detail: {
+                  code: "none",
+                  label: "无需重试",
+                  action: "查看报告",
+                  severity: "info"
+                },
+                error_message: null,
+                evidence_ids: [],
+                evidence_error_counts: {
+                  total_evidence: 0,
+                  failed_judgements: 0,
+                  response_parse_errors: 0,
+                  model_call_errors: 0
+                },
+                spreadsheet_writeback_audit: null,
+                created_at: "2026-06-14T00:00:00+00:00",
+                updated_at: "2026-06-14T00:00:01+00:00"
+              }
+            ],
+            total_count: 1
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            job_id: "job-action-status-1",
+            case_id: "case-action-status-1",
+            status: "needs_human_review",
+            observed_failure: {
+              type: "cross_modal_alignment_failure",
+              summary: "cross-modal compare failed",
+              affected_box_ids: []
+            },
+            planned_experiments: ["modality_ablation_check"],
+            experiment_summary: null,
+            root_cause: {
+              label: "cross_modal_alignment_failure",
+              confidence: "high",
+              evidence_summary: "cross-modal variant failed."
+            },
+            recommended_actions: [
+              {
+                category: "prompt",
+                priority: "high",
+                status: "pending",
+                summary: "强化跨模态对比步骤。",
+                detail: "要求模型先分别列出 image/text 证据，再输出冲突结论。"
+              }
+            ],
+            suggested_sheet_fields: {
+              "错误原因": "跨模态对齐问题"
+            }
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            job_id: "job-action-status-1",
+            action_index: 0,
+            status: "accepted",
+            actor: "frontend-operator",
+            note: "",
+            created_at: "2026-06-14T00:00:00+00:00",
+            updated_at: "2026-06-14T00:00:02+00:00"
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load debug jobs" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Open job job-action-status-1" }));
+    await userEvent.click(screen.getByRole("button", { name: "Load persisted report" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Accept recommended action 1" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-action-status-1/recommended-actions/0/status", {
+      body: JSON.stringify({
+        status: "accepted",
+        actor: "frontend-operator",
+        note: ""
+      }),
+      headers: { "Content-Type": "application/json" },
+      method: "PATCH"
+    });
+    expect(await screen.findByText("状态：accepted")).toBeInTheDocument();
+  });
+
   it("loads failed debug jobs with a status filter", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(
