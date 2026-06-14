@@ -13,6 +13,7 @@ export function ReportPanel({ report, onSelectEvidence }: ReportPanelProps) {
   const failedTrialCount = experimentSummary?.failed_trial_count ?? 0;
   const evidenceCitations = report.evidence_citations ?? [];
   const stepSummaries = experimentSummary?.step_summaries ?? [];
+  const ablationConclusion = report.suggested_sheet_fields["Ablation结论"];
 
   return (
     <section>
@@ -62,6 +63,12 @@ export function ReportPanel({ report, onSelectEvidence }: ReportPanelProps) {
             ))}
           </ul>
         </>
+      ) : null}
+      {ablationConclusion ? (
+        <section aria-label="Ablation diagnosis">
+          <h3>Ablation Diagnosis</h3>
+          <p>{ablationConclusion}</p>
+        </section>
       ) : null}
       <h3>Evidence Artifacts</h3>
       <p>证据产物：{artifactIds.length}</p>

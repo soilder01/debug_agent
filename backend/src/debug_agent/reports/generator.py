@@ -151,6 +151,59 @@ def _step_delta_reasons(evidence: list[ExperimentEvidence]) -> list[str]:
     )
 
 
+def _ablation_alignment_issue(run_result: ExperimentRunResult) -> tuple[ObservedFailure, RootCause, dict[str, str]] | None:
+    passed_variants = _ablation_variants_by_score(run_result.evidence, score=1)
+    failed_variants = _ablation_variants_by_score(run_result.evidence, score=0)
+    single_modality_passes = [
+        variant
+        for variant in passed_variants
+        if variant in {"image_only", "text_only", "video_only", "audio_only"}
+    ]
+    cross_modal_failures = [
+        variant
+        for variant in failed_variants
+        if variant in {"cross_modal_compare", "conflict_grounding_check"}
+    ]
+    if len(single_modality_passes) < 2 or not cross_modal_failures:
+        return None
+
+    passed_summary = ", ".join(single_modality_passes)
+    failed_summary = ", ".join(cross_modal_failures)
+    conclusion = f"单模态变体 {passed_summary} 可通过，但跨模态变体 {failed_summary} 失败。"
+    return (
+        ObservedFailure(
+            type="cross_modal_alignment_failure",
+            summary=f"单模态变体可通过，但跨模态比较失败：{conclusion}",
+            affected_box_ids=[],
+        ),
+        RootCause(
+            label="cross_modal_alignment_failure",
+            confidence="high",
+            evidence_summary=(
+                f"Ablation evidence shows single-modality variants {passed_summary} passed, "
+                f"while cross-modal variants {failed_summary} failed; prioritize cross-modal alignment and fusion."
+            ),
+        ),
+        {
+            "debug1状态": "待人工确认",
+            "模型可做对次数": f"{run_result.success_count}次",
+            "错误原因": f"跨模态对齐问题：{conclusion}",
+            "Ablation结论": conclusion,
+        },
+    )
+
+
+def _ablation_variants_by_score(evidence: list[ExperimentEvidence], *, score: int) -> list[str]:
+    variants: list[str] = []
+    for item in evidence:
+        if item.judge.score != score:
+            continue
+        variant = item.request_summary.get("ablation_variant")
+        if isinstance(variant, str) and variant.strip() and variant not in variants:
+            variants.append(variant)
+    return variants
+
+
 def _step_target_ids(evidence: list[ExperimentEvidence]) -> list[str]:
     return sorted(
         {
@@ -236,6 +289,9 @@ def _infer_report_findings(
                     "错误原因": f"模型输出解析失败：{parse_error.response_parse_error}",
                 },
             )
+        ablation_issue = _ablation_alignment_issue(run_result)
+        if ablation_issue is not None:
+            return ablation_issue
         structured_deltas = _structured_answer_deltas(run_result.evidence)
         if structured_deltas:
             affected_box_ids = _affected_box_ids_from_deltas(structured_deltas)

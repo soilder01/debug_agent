@@ -287,6 +287,19 @@
 - [x] Display the selected evidence ablation variant and modalities in evidence detail.
 - [x] Preserve existing trajectory, artifact, and judge delta rendering.
 
+### Task 19: Ablation-Aware Root Cause Inference
+
+**Files:**
+- Modify: `backend/src/debug_agent/reports/generator.py`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `backend/tests/reports/test_generator.py`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Infer `cross_modal_alignment_failure` when single-modality ablations pass but cross-modal comparison fails.
+- [x] Add an `Ablation结论` suggested field for spreadsheet/writeback review.
+- [x] Highlight ablation diagnosis in the report UI instead of only showing it in raw suggested fields.
+- [x] Preserve generic `output_mismatch` behavior for non-ablation structured deltas.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

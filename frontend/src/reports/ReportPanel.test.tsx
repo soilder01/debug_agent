@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -223,5 +223,45 @@ describe("ReportPanel", () => {
     await userEvent.click(screen.getByRole("button", { name: "e-ablation-fail" }));
 
     expect(onSelectEvidence).toHaveBeenCalledWith("e-ablation-fail");
+  });
+
+  it("highlights ablation diagnosis fields", () => {
+    const report: DebugReport = {
+      job_id: "job-ablation-root-cause",
+      case_id: "case-ablation-root-cause",
+      status: "needs_human_review",
+      observed_failure: {
+        type: "cross_modal_alignment_failure",
+        summary: "single modality passed while cross-modal compare failed",
+        affected_box_ids: []
+      },
+      planned_experiments: ["modality_ablation_check"],
+      experiment_summary: {
+        total_trials: 3,
+        success_count: 2,
+        failed_trial_count: 1,
+        success_rate: 2 / 3,
+        stability_label: "unstable",
+        evidence_ids: ["e-image-only", "e-text-only", "e-cross-modal"],
+        image_artifact_ids: []
+      },
+      root_cause: {
+        label: "cross_modal_alignment_failure",
+        confidence: "high",
+        evidence_summary: "single-modality variants passed; cross-modal variant failed."
+      },
+      suggested_sheet_fields: {
+        错误原因: "跨模态对齐问题：单模态可通过，但跨模态比较失败。",
+        Ablation结论: "单模态变体 image_only, text_only 可通过，但跨模态变体 cross_modal_compare 失败。"
+      }
+    };
+
+    render(<ReportPanel report={report} />);
+
+    expect(screen.getByText("Ablation Diagnosis")).toBeInTheDocument();
+    const diagnosis = within(screen.getByLabelText("Ablation diagnosis"));
+    expect(
+      diagnosis.getByText("单模态变体 image_only, text_only 可通过，但跨模态变体 cross_modal_compare 失败。")
+    ).toBeInTheDocument();
   });
 });

@@ -328,6 +328,96 @@ def test_generate_report_infers_root_cause_from_structured_judge_deltas() -> Non
     ]
 
 
+def test_generate_report_infers_cross_modal_alignment_from_ablation_results() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "multimodal-ablation-root-cause",
+            "task_type": "multimodal_detection",
+            "image_uri": "file:///tmp/multimodal.mp4",
+            "prompt": "Compare image and caption, then return cross-modal conflict JSON.",
+            "golden_answer": {"answers": []},
+            "expected_output": {
+                "conflicts": [
+                    {
+                        "target_id": "multimodal:conflict:1",
+                        "conflict_type": "visual_text_conflict",
+                        "modalities": ["image", "text"],
+                        "expected": "caption matches image",
+                        "actual": "caption says cat but image shows dog",
+                    }
+                ]
+            },
+            "scoring_standard": "cross-modal claims must agree.",
+            "predictions": [{"trial": 0, "raw_output": "{\"conflicts\":[]}", "score": 0}],
+            "avg_score": 0.0,
+        }
+    )
+    plan = plan_experiments(case)
+    run_result = ExperimentRunResult(
+        case_id=case.case_id,
+        total_trials=3,
+        success_count=2,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="e-image-only",
+                step_name="modality_ablation_check",
+                trial=0,
+                request_summary={"ablation_variant": "image_only", "ablation_modalities": ["image"]},
+                raw_output="{\"conflicts\":[]}",
+                judge=JudgeResult(score=1, reasons=[]),
+            ),
+            ExperimentEvidence(
+                evidence_id="e-text-only",
+                step_name="modality_ablation_check",
+                trial=1,
+                request_summary={"ablation_variant": "text_only", "ablation_modalities": ["text"]},
+                raw_output="{\"conflicts\":[]}",
+                judge=JudgeResult(score=1, reasons=[]),
+            ),
+            ExperimentEvidence(
+                evidence_id="e-cross-modal",
+                step_name="modality_ablation_check",
+                trial=2,
+                request_summary={
+                    "ablation_variant": "cross_modal_compare",
+                    "ablation_modalities": ["image", "text"],
+                },
+                raw_output=case.predictions[0].raw_output,
+                judge=JudgeResult(
+                    score=0,
+                    reasons=["multimodal:conflict:1 conflict_actual_mismatch"],
+                    deltas=[
+                        {
+                            "target_id": "multimodal:conflict:1",
+                            "expected": "caption matches image",
+                            "actual": "caption says cat but image shows dog",
+                            "reason": "conflict_actual_mismatch",
+                            "metadata": {
+                                "field": "actual",
+                                "expected_modalities": ["image", "text"],
+                                "actual_modalities": ["image", "text"],
+                            },
+                        }
+                    ],
+                ),
+            ),
+        ],
+    )
+
+    report = generate_initial_report(case, plan, run_result)
+
+    assert report.observed_failure.type == "cross_modal_alignment_failure"
+    assert "单模态变体可通过" in report.observed_failure.summary
+    assert report.root_cause.label == "cross_modal_alignment_failure"
+    assert report.root_cause.confidence == "high"
+    assert "image_only, text_only" in report.root_cause.evidence_summary
+    assert "cross_modal_compare" in report.root_cause.evidence_summary
+    assert report.suggested_sheet_fields["错误原因"].startswith("跨模态对齐问题")
+    assert report.suggested_sheet_fields["Ablation结论"] == (
+        "单模态变体 image_only, text_only 可通过，但跨模态变体 cross_modal_compare 失败。"
+    )
+
+
 def test_generate_report_uses_generic_output_mismatch_for_non_ocr_structured_deltas() -> None:
     case = DebugCase.model_validate(
         {
