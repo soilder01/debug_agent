@@ -62,4 +62,23 @@ describe("WritebackAuditRow", () => {
       "https://debug-agent.local/jobs/job-succeeded-writeback-1/report"
     );
   });
+
+  it("renders native writeback fields for audit rows", () => {
+    const audit = makeAudit({
+      fields: {
+        错误原因: "结构化评分显示 video:segment:1 存在 segment_label_mismatch。",
+        影响目标: "video:segment:1",
+        结构化差异: "video:segment:1 segment_label_mismatch: expected=person_enters actual=person_leaves",
+        证据产物: "video-case:baseline:0:input-snapshot"
+      }
+    });
+
+    render(<WritebackAuditRow audit={audit} onOpenJob={vi.fn()} onRetry={vi.fn()} />);
+
+    expect(screen.getByText("Native Debug Writeback")).toBeInTheDocument();
+    expect(screen.getByText("影响目标：video:segment:1")).toBeInTheDocument();
+    expect(screen.getByText("结构化差异：video:segment:1 segment_label_mismatch: expected=person_enters actual=person_leaves")).toBeInTheDocument();
+    expect(screen.getByText("证据产物：video-case:baseline:0:input-snapshot")).toBeInTheDocument();
+    expect(screen.getByText("Writeback audit field：影响目标=video:segment:1")).toBeInTheDocument();
+  });
 });

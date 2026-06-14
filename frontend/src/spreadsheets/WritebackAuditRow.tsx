@@ -1,4 +1,5 @@
 import type { SpreadsheetWritebackAudit } from "../api/client";
+import { NativeWritebackFields } from "./NativeWritebackFields";
 import { canRetryWritebackAudit, writebackRetryReason } from "./writebackAuditPolicy";
 
 type WritebackAuditRowProps = {
@@ -17,6 +18,7 @@ export function WritebackAuditRow({ audit, onOpenJob, onRetry }: WritebackAuditR
       <span>Retry eligibility：{isRetryable ? "available" : "unavailable"}</span>
       <span>Retry reason：{writebackRetryReason(audit.status, audit.error_message)}</span>
       <span>Writeback audit fields：{Object.keys(audit.fields).length}</span>
+      <NativeWritebackFields fields={audit.fields} />
       {Object.entries(audit.fields).map(([key, value]) => (
         <span key={key}>
           Writeback audit field：{key}={value}

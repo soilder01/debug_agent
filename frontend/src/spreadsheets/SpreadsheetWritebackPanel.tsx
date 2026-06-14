@@ -1,4 +1,5 @@
 import type { SpreadsheetWritebackAudit, SpreadsheetWritebackResult } from "../api/client";
+import { NativeWritebackFields } from "./NativeWritebackFields";
 
 type SpreadsheetWritebackPanelProps = {
   writebackResult: SpreadsheetWritebackResult | null;
@@ -25,6 +26,7 @@ export function SpreadsheetWritebackPanel({
       {writebackResult ? (
         <>
           <p>Spreadsheet writeback row：{writebackResult.row_id}</p>
+          <NativeWritebackFields fields={writebackResult.fields} />
           <ul aria-label="Spreadsheet writeback fields">
             {Object.entries(writebackResult.fields).map(([key, value]) => (
               <li key={key}>

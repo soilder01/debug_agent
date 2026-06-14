@@ -190,6 +190,20 @@
 - [x] Keep OCR box summaries compatible while supporting image, video, classification, and multimodal `target_id` values.
 - [x] Treat missing `golden_answer` as an OCR-only asset issue when task-native `expected_output` is present.
 
+### Task 12: Frontend Native Writeback Display
+
+**Files:**
+- Create: `frontend/src/spreadsheets/NativeWritebackFields.tsx`
+- Modify: `frontend/src/spreadsheets/SpreadsheetWritebackPanel.tsx`
+- Modify: `frontend/src/spreadsheets/WritebackAuditRow.tsx`
+- Test: `frontend/src/spreadsheets/SpreadsheetWritebackPanel.test.tsx`
+- Test: `frontend/src/spreadsheets/WritebackAuditRow.test.tsx`
+
+- [x] Display native writeback fields as a dedicated `Native Debug Writeback` section.
+- [x] Highlight `影响目标`, `结构化差异`, and `证据产物` for writeback results and audit rows.
+- [x] Keep raw spreadsheet field lists visible for compatibility and troubleshooting.
+- [x] Hide the native summary when no native fields are present.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -74,5 +74,32 @@ describe("SpreadsheetWritebackPanel", () => {
     expect(screen.queryByText(/Spreadsheet writeback row/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Writeback audit status/)).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("renders native writeback fields as structured debug summary", () => {
+    render(
+      <SpreadsheetWritebackPanel
+        writebackResult={makeResult({
+          fields: {
+            错误原因: "结构化评分显示 multimodal:conflict:1 存在 conflict_actual_mismatch。",
+            影响目标: "multimodal:conflict:1",
+            结构化差异:
+              "multimodal:conflict:1 conflict_actual_mismatch: expected=image and caption both describe a cat actual=image shows dog while caption says cat",
+            证据产物: "multimodal-writeback:baseline:0:input-snapshot",
+            分析报告链接: "https://debug-agent.local/report"
+          }
+        })}
+        writebackAudit={null}
+        onWriteReport={vi.fn()}
+        onLoadAudit={vi.fn()}
+      />
+    );
+
+    const nativeSummary = screen.getByLabelText("Native debug writeback");
+    expect(within(nativeSummary).getByText("Native Debug Writeback")).toBeInTheDocument();
+    expect(within(nativeSummary).getByText("影响目标：multimodal:conflict:1")).toBeInTheDocument();
+    expect(within(nativeSummary).getByText(/结构化差异：multimodal:conflict:1 conflict_actual_mismatch/)).toBeInTheDocument();
+    expect(within(nativeSummary).getByText("证据产物：multimodal-writeback:baseline:0:input-snapshot")).toBeInTheDocument();
+    expect(screen.getByText("错误原因：结构化评分显示 multimodal:conflict:1 存在 conflict_actual_mismatch。")).toBeInTheDocument();
   });
 });
