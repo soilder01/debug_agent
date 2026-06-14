@@ -164,6 +164,13 @@ export function ReportPanel({ report, onSelectEvidence, onUpdateRecommendedActio
                 <p>引用目标/区域：{citation.box_id ?? "global"}</p>
                 <p>引用原因：{citation.reason}</p>
                 {citation.artifact_ids.length > 0 ? <p>引用证据产物：{citation.artifact_ids.join(", ")}</p> : null}
+                {onSelectEvidence && citation.artifact_ids.length > 0 ? (
+                  <ArtifactEvidenceButtons
+                    artifactIds={citation.artifact_ids}
+                    evidenceId={citation.evidence_id}
+                    onSelectEvidence={onSelectEvidence}
+                  />
+                ) : null}
               </li>
             ))}
           </ul>

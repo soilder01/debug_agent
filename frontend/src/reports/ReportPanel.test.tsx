@@ -62,6 +62,54 @@ describe("ReportPanel", () => {
     expect(screen.getByText("引用原因：student_answer_mismatch")).toBeInTheDocument();
   });
 
+  it("selects evidence from citation artifact links", async () => {
+    const onSelectEvidence = vi.fn();
+    const report: DebugReport = {
+      job_id: "job-citation-artifacts",
+      case_id: "case-citation-artifacts",
+      status: "needs_human_review",
+      observed_failure: {
+        type: "output_mismatch",
+        summary: "citation artifact mismatch",
+        affected_box_ids: []
+      },
+      planned_experiments: ["baseline_replay"],
+      experiment_summary: {
+        total_trials: 1,
+        success_count: 0,
+        failed_trial_count: 1,
+        success_rate: 0,
+        stability_label: "stable_failure",
+        evidence_ids: ["citation-evidence-1"],
+        artifact_ids: ["citation:video_segment_1:delta"],
+        image_artifact_ids: []
+      },
+      root_cause: {
+        label: "output_mismatch",
+        confidence: "high",
+        evidence_summary: "citation artifact should open evidence."
+      },
+      evidence_citations: [
+        {
+          evidence_id: "citation-evidence-1",
+          step_name: "baseline_replay",
+          box_id: null,
+          reason: "segment_label_mismatch",
+          artifact_ids: ["citation:video_segment_1:delta"]
+        }
+      ],
+      suggested_sheet_fields: {
+        错误原因: "视频片段差异"
+      }
+    };
+
+    render(<ReportPanel report={report} onSelectEvidence={onSelectEvidence} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Open artifact citation:video_segment_1:delta" }));
+
+    expect(onSelectEvidence).toHaveBeenCalledWith("citation-evidence-1");
+  });
+
   it("renders replay stability metrics from experiment summary", () => {
     const report: DebugReport = {
       job_id: "job-1",

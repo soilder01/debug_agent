@@ -532,6 +532,17 @@
 - [x] Delegate artifact clicks through the existing evidence detail loading callback.
 - [x] Keep global artifact summary as text when evidence ownership is ambiguous.
 
+### Task 38: Evidence Citation Artifact Links
+
+**Files:**
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Render citation artifact ids as selectable evidence-detail buttons when `citation.evidence_id` is known.
+- [x] Delegate citation artifact clicks through the existing evidence detail loading callback.
+- [x] Preserve the existing citation artifact text summary for scanability and copy/paste.
+- [x] Run `npx --yes pnpm@9.15.4 test -- --run src/reports/ReportPanel.test.tsx`.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs
