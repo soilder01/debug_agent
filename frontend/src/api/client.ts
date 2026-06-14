@@ -53,6 +53,12 @@ export type DebugReport = {
     target_ids: string[];
     artifact_ids: string[];
   }>;
+  recommended_actions?: Array<{
+    category: string;
+    priority: string;
+    summary: string;
+    detail: string;
+  }>;
   suggested_sheet_fields: Record<string, string>;
 };
 

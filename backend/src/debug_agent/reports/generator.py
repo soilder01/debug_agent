@@ -40,6 +40,7 @@ class DebugReport(BaseModel):
     root_cause: RootCause
     evidence_citations: list[dict[str, object]] = Field(default_factory=list)
     root_cause_trace: list[dict[str, object]] = Field(default_factory=list)
+    recommended_actions: list[dict[str, str]] = Field(default_factory=list)
     suggested_sheet_fields: dict[str, str]
 
 
@@ -82,6 +83,7 @@ def generate_initial_report(
         root_cause=root_cause,
         evidence_citations=_build_evidence_citations(run_result),
         root_cause_trace=_build_root_cause_trace(run_result),
+        recommended_actions=_build_recommended_actions(root_cause),
         suggested_sheet_fields=suggested_sheet_fields,
     )
 
@@ -159,6 +161,60 @@ def _build_root_cause_trace(run_result: ExperimentRunResult | None) -> list[dict
         for item in run_result.evidence
         if (variant := _string_from_request_summary(item.request_summary.get("ablation_variant")))
     ]
+
+
+def _build_recommended_actions(root_cause: RootCause) -> list[dict[str, str]]:
+    if root_cause.label == "single_modality_capability_gap":
+        modality = _modality_from_root_cause_summary(root_cause.evidence_summary)
+        return [
+            {
+                "category": "prompt",
+                "priority": "high",
+                "summary": f"强化 {modality} 模态定位与证据引用要求。",
+                "detail": f"在 prompt 中要求模型先列出 {modality} 证据、目标区域或关键帧，再输出最终结构化结论。",
+            },
+            {
+                "category": "evaluation_asset",
+                "priority": "medium",
+                "summary": f"补充 {modality} 单模态 golden evidence。",
+                "detail": f"为失败样本补充 {modality}-only 期望证据、区域/关键帧标注或可接受视觉解释，避免跨模态结论缺少单模态审计依据。",
+            },
+            {
+                "category": "model_capability",
+                "priority": "high",
+                "summary": f"将 {modality} 感知能力短板纳入模型能力归因。",
+                "detail": f"单模态 ablation 已失败，优先归因 {modality} 感知/定位/grounding 能力，而不是跨模态融合。",
+            },
+        ]
+    if root_cause.label == "cross_modal_alignment_failure":
+        return [
+            {
+                "category": "prompt",
+                "priority": "high",
+                "summary": "强化跨模态对比步骤。",
+                "detail": "要求模型先分别列出 image/text 证据，再输出冲突结论。",
+            },
+            {
+                "category": "evaluation_asset",
+                "priority": "medium",
+                "summary": "补充跨模态冲突 golden evidence。",
+                "detail": "为样本补充各模态独立证据和最终冲突标注，便于判断融合错误还是标注问题。",
+            },
+            {
+                "category": "model_capability",
+                "priority": "high",
+                "summary": "将跨模态融合短板纳入模型能力归因。",
+                "detail": "单模态通过但跨模态失败，优先检查 fusion/alignment 能力。",
+            },
+        ]
+    return []
+
+
+def _modality_from_root_cause_summary(summary: str) -> str:
+    for modality in ["image", "text", "video", "audio"]:
+        if modality in summary:
+            return modality
+    return "target"
 
 
 def _delta_reasons_from_evidence(evidence: ExperimentEvidence) -> list[str]:

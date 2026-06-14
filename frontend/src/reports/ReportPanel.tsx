@@ -15,6 +15,7 @@ export function ReportPanel({ report, onSelectEvidence }: ReportPanelProps) {
   const stepSummaries = experimentSummary?.step_summaries ?? [];
   const ablationConclusion = report.suggested_sheet_fields["Ablation结论"];
   const rootCauseTrace = report.root_cause_trace ?? [];
+  const recommendedActions = report.recommended_actions ?? [];
 
   return (
     <section>
@@ -85,6 +86,21 @@ export function ReportPanel({ report, onSelectEvidence }: ReportPanelProps) {
                 <p>Delta：{trace.delta_reasons.length > 0 ? trace.delta_reasons.join(", ") : "无"}</p>
                 <p>目标：{trace.target_ids.length > 0 ? trace.target_ids.join(", ") : "无"}</p>
                 <p>产物：{trace.artifact_ids.length > 0 ? trace.artifact_ids.join(", ") : "无"}</p>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {recommendedActions.length > 0 ? (
+        <>
+          <h3>Recommended Actions</h3>
+          <ul aria-label="Recommended actions">
+            {recommendedActions.map((action) => (
+              <li key={`${action.category}:${action.summary}`}>
+                <p>
+                  {action.category}/{action.priority}：{action.summary}
+                </p>
+                <p>{action.detail}</p>
               </li>
             ))}
           </ul>

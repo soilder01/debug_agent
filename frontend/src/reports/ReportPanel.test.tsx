@@ -262,6 +262,20 @@ describe("ReportPanel", () => {
           artifact_ids: ["ablation:delta"]
         }
       ],
+      recommended_actions: [
+        {
+          category: "prompt",
+          priority: "high",
+          summary: "强化跨模态对比步骤。",
+          detail: "要求模型先分别列出 image/text 证据，再输出冲突结论。"
+        },
+        {
+          category: "model_capability",
+          priority: "high",
+          summary: "将跨模态融合短板纳入模型能力归因。",
+          detail: "单模态通过但跨模态失败，优先检查 fusion/alignment 能力。"
+        }
+      ],
       suggested_sheet_fields: {
         错误原因: "跨模态对齐问题：单模态可通过，但跨模态比较失败。",
         Ablation结论: "单模态变体 image_only, text_only 可通过，但跨模态变体 cross_modal_compare 失败。"
@@ -282,5 +296,9 @@ describe("ReportPanel", () => {
     expect(screen.getByText("Delta：conflict_actual_mismatch")).toBeInTheDocument();
     expect(screen.getByText("目标：multimodal:conflict:1")).toBeInTheDocument();
     expect(screen.getByText("产物：ablation:delta")).toBeInTheDocument();
+    expect(screen.getByText("Recommended Actions")).toBeInTheDocument();
+    expect(screen.getByText("prompt/high：强化跨模态对比步骤。")).toBeInTheDocument();
+    expect(screen.getByText("要求模型先分别列出 image/text 证据，再输出冲突结论。")).toBeInTheDocument();
+    expect(screen.getByText("model_capability/high：将跨模态融合短板纳入模型能力归因。")).toBeInTheDocument();
   });
 });

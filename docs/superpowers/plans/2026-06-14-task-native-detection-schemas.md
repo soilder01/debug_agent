@@ -325,6 +325,20 @@
 - [x] Render `Root Cause Trace` in the report UI.
 - [x] Preserve existing ablation diagnosis and experiment trajectory rendering.
 
+### Task 22: Root Cause Driven Recommended Actions
+
+**Files:**
+- Modify: `backend/src/debug_agent/reports/generator.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `backend/tests/reports/test_generator.py`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Add `recommended_actions` to reports.
+- [x] Generate prompt, evaluation asset, and model capability recommendations for single-modality capability gaps.
+- [x] Generate prompt, evaluation asset, and model capability recommendations for cross-modal alignment failures.
+- [x] Render recommended actions in the report UI.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs
