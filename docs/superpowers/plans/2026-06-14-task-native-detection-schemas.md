@@ -69,17 +69,42 @@
 
 - [x] Display `expected_output` when present.
 - [x] Keep OCR answer and region display unchanged.
-- [ ] Commit as `feat(frontend): show task native expected output`.
+- [x] Commit as `feat(frontend): show task native expected output`.
 
 ### Task 5: Image And Video Harness Schema Roadmap
 
 **Files:**
 - Modify: `docs/superpowers/plans/2026-06-14-task-native-detection-schemas.md`
 
-- [ ] Define image-native output examples: `regions`, `objects`, `attributes`, `relations`, and crop/zoom artifact strategies.
-- [ ] Define video-native output examples: `temporal_segments`, `keyframes`, `events`, `transcript_alignment`, and frame-sampling artifact strategies.
-- [ ] Define multimodal output examples: cross-modal target ids, conflict deltas, and evidence citations.
+- [x] Define image-native output examples: `regions`, `objects`, `attributes`, `relations`, and crop/zoom artifact strategies.
+- [x] Define video-native output examples: `temporal_segments`, `keyframes`, `events`, `transcript_alignment`, and frame-sampling artifact strategies.
+- [x] Define multimodal output examples: cross-modal target ids, conflict deltas, and evidence citations.
 - [ ] Commit as `docs: add multimodal harness schema roadmap`.
+
+## Multimodal Harness Schema Roadmap
+
+### Image-Native Outputs
+
+- `regions`: spatial targets with `target_id`, `x`, `y`, `width`, `height`, `unit`, and optional `label`.
+- `objects`: detected entities with `target_id`, `name`, `attributes`, and optional region references.
+- `attributes`: visual properties such as color, count, state, text, pose, relation, and uncertainty.
+- `relations`: pairwise or group assertions such as `left_of`, `contains`, `overlaps`, `same_as`, or `missing`.
+- Evidence strategy: original input snapshot, crop pyramid, zoomed candidate regions, contrast/rotation variants, and model self-localization prompts.
+
+### Video-Native Outputs
+
+- `temporal_segments`: time-window targets with `start_ms`, `end_ms`, `label`, and confidence.
+- `keyframes`: selected frame targets with `timestamp_ms`, image artifact references, and frame-level observations.
+- `events`: action or state-change assertions linked to temporal segments and keyframes.
+- `transcript_alignment`: subtitle/audio/text spans aligned to frames or segments.
+- Evidence strategy: fixed and adaptive frame sampling, before/after frame windows, segment thumbnails, temporal counterfactual prompts, and transcript/visual alignment checks.
+
+### Multimodal Outputs
+
+- Cross-modal target ids should include modality prefixes, such as `image:region:7`, `video:segment:3`, `text:span:12`, and `audio:span:4`.
+- Conflict deltas should describe modality disagreement, for example `visual_text_conflict`, `audio_visual_conflict`, `temporal_grounding_mismatch`, or `schema_field_mismatch`.
+- Evidence citations should link each delta to the exact request, output, artifact ids, region/segment ids, and scoring-standard clause.
+- Harness strategy should isolate modality contribution through prompt ablations, frame/crop removal, transcript-only replay, image/video-only replay, and counterfactual expected-output checks.
 
 ## Verification Policy
 
