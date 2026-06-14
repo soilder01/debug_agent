@@ -86,6 +86,8 @@ describe("SpreadsheetWritebackPanel", () => {
             结构化差异:
               "multimodal:conflict:1 conflict_actual_mismatch: expected=image and caption both describe a cat actual=image shows dog while caption says cat",
             证据产物: "multimodal-writeback:baseline:0:input-snapshot",
+            推荐操作:
+              "prompt/high：强化跨模态对比步骤。 - 要求模型先分别列出 image/text 证据，再输出冲突结论。",
             分析报告链接: "https://debug-agent.local/report"
           }
         })}
@@ -100,6 +102,11 @@ describe("SpreadsheetWritebackPanel", () => {
     expect(within(nativeSummary).getByText("影响目标：multimodal:conflict:1")).toBeInTheDocument();
     expect(within(nativeSummary).getByText(/结构化差异：multimodal:conflict:1 conflict_actual_mismatch/)).toBeInTheDocument();
     expect(within(nativeSummary).getByText("证据产物：multimodal-writeback:baseline:0:input-snapshot")).toBeInTheDocument();
+    expect(
+      within(nativeSummary).getByText(
+        "推荐操作：prompt/high：强化跨模态对比步骤。 - 要求模型先分别列出 image/text 证据，再输出冲突结论。"
+      )
+    ).toBeInTheDocument();
     expect(screen.getByText("错误原因：结构化评分显示 multimodal:conflict:1 存在 conflict_actual_mismatch。")).toBeInTheDocument();
   });
 });

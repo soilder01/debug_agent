@@ -21,6 +21,9 @@ class SpreadsheetWritebackResult(BaseModel):
 
 def build_report_writeback_fields(report: DebugReport, report_url: str) -> dict[str, str]:
     fields = dict(report.suggested_sheet_fields)
+    recommended_actions = _recommended_actions(report)
+    if recommended_actions:
+        fields["推荐操作"] = recommended_actions
     fields["错误原因"] = fields.get("错误原因") or report.root_cause.label
     fields["评估问题反馈"] = _evaluation_feedback(report)
     fields["分析报告链接"] = report_url
@@ -129,6 +132,9 @@ def make_spreadsheet_writeback_completion_hook(
 
 def _evaluation_feedback(report: DebugReport) -> str:
     lines = [report.root_cause.evidence_summary]
+    recommended_actions = _recommended_actions(report)
+    if recommended_actions:
+        lines.append(f"推荐操作：{recommended_actions}")
     if report.experiment_summary is not None:
         summary = report.experiment_summary
         lines.extend(
@@ -139,3 +145,10 @@ def _evaluation_feedback(report: DebugReport) -> str:
             ]
         )
     return "\n".join(lines)
+
+
+def _recommended_actions(report: DebugReport) -> str:
+    return "\n".join(
+        f"{action['category']}/{action['priority']}：{action['summary']} - {action['detail']}"
+        for action in report.recommended_actions
+    )

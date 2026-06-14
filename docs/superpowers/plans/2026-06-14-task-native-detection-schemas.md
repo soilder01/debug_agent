@@ -339,6 +339,19 @@
 - [x] Generate prompt, evaluation asset, and model capability recommendations for cross-modal alignment failures.
 - [x] Render recommended actions in the report UI.
 
+### Task 23: Recommended Actions Writeback
+
+**Files:**
+- Modify: `backend/src/debug_agent/spreadsheets/writeback.py`
+- Modify: `frontend/src/spreadsheets/NativeWritebackFields.tsx`
+- Test: `backend/tests/spreadsheets/test_writeback.py`
+- Test: `frontend/src/spreadsheets/SpreadsheetWritebackPanel.test.tsx`
+
+- [x] Add `推荐操作` to spreadsheet writeback fields when recommended actions exist.
+- [x] Include recommended actions in `评估问题反馈` for review context.
+- [x] Highlight recommended actions in the native writeback UI.
+- [x] Preserve existing target, delta, artifact, report link, and evaluation feedback fields.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

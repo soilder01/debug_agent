@@ -76,6 +76,35 @@ def test_build_report_writeback_fields_preserves_native_target_delta_and_artifac
     assert fields["分析报告链接"] == "https://debug-agent.local/reports/job-1"
 
 
+def test_build_report_writeback_fields_includes_recommended_actions() -> None:
+    report = _make_report().model_copy(
+        update={
+            "recommended_actions": [
+                {
+                    "category": "prompt",
+                    "priority": "high",
+                    "summary": "强化跨模态对比步骤。",
+                    "detail": "要求模型先分别列出 image/text 证据，再输出冲突结论。",
+                },
+                {
+                    "category": "model_capability",
+                    "priority": "high",
+                    "summary": "将跨模态融合短板纳入模型能力归因。",
+                    "detail": "单模态通过但跨模态失败，优先检查 fusion/alignment 能力。",
+                },
+            ]
+        }
+    )
+
+    fields = build_report_writeback_fields(report, report_url="https://debug-agent.local/reports/job-1")
+
+    assert fields["推荐操作"] == (
+        "prompt/high：强化跨模态对比步骤。 - 要求模型先分别列出 image/text 证据，再输出冲突结论。\n"
+        "model_capability/high：将跨模态融合短板纳入模型能力归因。 - 单模态通过但跨模态失败，优先检查 fusion/alignment 能力。"
+    )
+    assert "prompt/high：强化跨模态对比步骤。" in fields["评估问题反馈"]
+
+
 def test_write_report_to_spreadsheet_row_updates_client_with_payload() -> None:
     client = RecordingWritebackClient()
     report = _make_report()
