@@ -45,11 +45,11 @@ The final target is not only handwriting OCR badcase debug. Handwriting OCR is t
 - Modify: `backend/src/debug_agent/cases/models.py`
 - Test: `backend/tests/cases/test_models.py`
 
-- [ ] Add `task_type: str = "handwriting_ocr"` to `DebugCase`.
-- [ ] Add generic aliases `DetectionCase`, `DetectionOutput`, `DetectionRegion`, and `DetectionPrediction`.
-- [ ] Verify existing handwriting fixtures still parse with default `task_type`.
-- [ ] Verify a generic `classification` case can be represented without changing current APIs.
-- [ ] Run focused tests and commit as `feat(core): introduce detection case aliases`.
+- [x] Add `task_type: str = "handwriting_ocr"` to `DebugCase`.
+- [x] Add generic aliases `DetectionCase`, `DetectionOutput`, `DetectionRegion`, and `DetectionPrediction`.
+- [x] Verify existing handwriting fixtures still parse with default `task_type`.
+- [x] Verify a generic `classification` case can be represented without changing current APIs.
+- [x] Run focused tests and commit as `feat(core): introduce detection case aliases`.
 
 ### Task 2: Generic Delta Adapter
 
@@ -59,10 +59,10 @@ The final target is not only handwriting OCR badcase debug. Handwriting OCR is t
 - Test: `backend/tests/cases/test_comparator.py`
 - Test: `backend/tests/judging/test_runner.py`
 
-- [ ] Add `DetectionDelta` with `target_id`, `expected`, `actual`, `reason`, and `metadata`.
-- [ ] Convert OCR `AnswerDelta` into generic `DetectionDelta` while preserving `box_id` in metadata.
-- [ ] Keep existing `JudgeResult.deltas` JSON-compatible.
-- [ ] Run focused tests and commit as `feat(core): generalize detection deltas`.
+- [x] Add `DetectionDelta` with `target_id`, `expected`, `actual`, `reason`, and `metadata`.
+- [x] Convert OCR `AnswerDelta` into generic `DetectionDelta` while preserving `box_id` in metadata.
+- [x] Keep existing `JudgeResult.deltas` JSON-compatible.
+- [x] Run focused tests and commit as `feat(core): generalize detection deltas`.
 
 ### Task 3: Task-Type Recipes
 
@@ -133,3 +133,15 @@ git ls-files -co --exclude-standard | Select-String -Pattern 'ark-[0-9a-f]{8}-[0
 ```
 
 Only commit after focused and full verification pass.
+
+## Completion Snapshot
+
+- Completed the generic case, delta, recipe, artifact, report taxonomy, and UI-copy migration path.
+- Handwriting OCR remains the first vertical recipe and keeps backward compatibility for existing fixtures and spreadsheet flows.
+- Classification now has a dedicated recipe in the follow-up multi-recipe orchestration plan.
+
+## Remaining Risks
+
+- `DetectionOutput` is still an alias over OCR `AnswerSet`; richer task-native schemas remain future work.
+- Spreadsheet import/writeback fields still preserve OCR-compatible columns such as `golden_answer_json` and `box_regions_json`.
+- Logical agent capabilities are explicit, but not yet deployed as independent services.

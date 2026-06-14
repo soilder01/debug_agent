@@ -94,10 +94,10 @@ These are not separate deployed services yet. The next goal is to make their con
 - Modify: `docs/superpowers/plans/2026-06-13-multi-recipe-agent-orchestration.md`
 - Modify: `docs/superpowers/plans/2026-06-13-general-debug-detection-core.md`
 
-- [ ] Run `.\scripts\verify.ps1`.
-- [ ] Run `git diff --check`.
-- [ ] Run `git ls-files -co --exclude-standard | Select-String -Pattern 'ark-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'`.
-- [ ] Update both plan files with completed checkpoints and remaining risks.
+- [x] Run `.\scripts\verify.ps1`.
+- [x] Run `git diff --check`.
+- [x] Run `git ls-files -co --exclude-standard | Select-String -Pattern 'ark-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'`.
+- [x] Update both plan files with completed checkpoints and remaining risks.
 - [ ] Commit as `docs: refresh multi agent roadmap`.
 
 ## Verification Policy
@@ -113,3 +113,26 @@ git ls-files -co --exclude-standard | Select-String -Pattern 'ark-[0-9a-f]{8}-[0
 ```
 
 Only commit after focused and full verification pass.
+
+## Completion Snapshot
+
+- Added explicit recipe registry with OCR, classification, and generic fallback routing.
+- Added `ClassificationRecipe` with label/schema-focused replay steps and prompt augmentation.
+- Added backend logical agent roles for seven internal sub-agent capabilities.
+- Added frontend Agent Topology panel so operators can see the current orchestration shape.
+
+## Current Agent Topology
+
+- `case_intake`: import and normalize cases.
+- `experiment_planner`: route task types and build experiment plans.
+- `model_runner`: execute model calls and capture durable evidence.
+- `judge_comparator`: score outputs and emit deltas.
+- `evidence_artifact`: create input/output/image artifacts.
+- `report_root_cause`: infer root cause and produce reports.
+- `writeback_operator`: write conclusions back with audit records.
+
+## Remaining Risks
+
+- Agent roles are still logical modules inside one durable worker, not separately deployed services.
+- Frontend topology is static; later work should fetch backend role metadata through an API to avoid drift.
+- Classification recipe still uses OCR-compatible `AnswerSet` input/output shape until task-native schemas are introduced.
