@@ -2,7 +2,7 @@ import json
 
 from pydantic import BaseModel
 
-from debug_agent.cases.models import AnswerSet
+from debug_agent.cases.models import AnswerSet, ClassificationOutput
 
 
 class AnswerDelta(BaseModel):
@@ -27,9 +27,39 @@ class AnswerDiff(BaseModel):
     detection_deltas: list[DetectionDelta]
 
 
+class ClassificationDiff(BaseModel):
+    has_differences: bool
+    detection_deltas: list[dict[str, object]]
+
+
 def parse_prediction_answer(raw_output: str) -> AnswerSet:
     payload = json.loads(raw_output)
     return AnswerSet.model_validate(payload)
+
+
+def parse_classification_output(raw_output: str) -> ClassificationOutput:
+    payload = json.loads(raw_output)
+    return ClassificationOutput.model_validate(payload)
+
+
+def compare_classification_outputs(
+    expected: ClassificationOutput,
+    predicted: ClassificationOutput,
+) -> ClassificationDiff:
+    if expected.label == predicted.label:
+        return ClassificationDiff(has_differences=False, detection_deltas=[])
+    return ClassificationDiff(
+        has_differences=True,
+        detection_deltas=[
+            DetectionDelta(
+                target_id="label:classification",
+                expected=expected.label,
+                actual=predicted.label,
+                reason="label_mismatch",
+                metadata={"field": "label", "confidence": predicted.confidence},
+            ).model_dump()
+        ],
+    )
 
 
 def compare_answer_sets(expected: AnswerSet, predicted: AnswerSet) -> AnswerDiff:

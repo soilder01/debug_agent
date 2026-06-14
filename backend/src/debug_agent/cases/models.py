@@ -10,6 +10,11 @@ class AnswerSet(BaseModel):
     answers: list[AnswerItem]
 
 
+class ClassificationOutput(BaseModel):
+    label: str
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+
+
 class Prediction(BaseModel):
     trial: int
     raw_output: str

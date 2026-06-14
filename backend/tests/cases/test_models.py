@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from debug_agent.cases.models import (
+    ClassificationOutput,
     DebugCase,
     DetectionCase,
     DetectionOutput,
@@ -94,3 +95,10 @@ def test_detection_case_accepts_non_ocr_task_type_for_future_recipes() -> None:
 
     assert case.task_type == "classification"
     assert case.case_id == "classification-case"
+
+
+def test_classification_output_parses_task_native_label() -> None:
+    output = ClassificationOutput.model_validate({"label": "positive", "confidence": 0.87})
+
+    assert output.label == "positive"
+    assert output.confidence == 0.87
