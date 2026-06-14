@@ -752,6 +752,75 @@ async def test_run_experiments_judges_video_detection_output_natively() -> None:
 
 
 @pytest.mark.asyncio
+async def test_run_experiments_materializes_video_segment_delta_manifest() -> None:
+    with TemporaryDirectory(dir=Path.cwd()) as temp_dir:
+        temp_path = Path(temp_dir)
+        video_path = temp_path / "video-detection.mp4"
+        video_path.write_bytes(b"fake-video")
+        artifact_dir = temp_path / "artifacts"
+        case = DebugCase.model_validate(
+            {
+                "case_id": "video-detection-manifest",
+                "task_type": "video_detection",
+                "image_uri": video_path.as_uri(),
+                "prompt": "Detect the event and return temporal segment JSON.",
+                "golden_answer": {"answers": []},
+                "expected_output": {
+                    "temporal_segments": [
+                        {
+                            "target_id": "video:segment:1",
+                            "start_ms": 1000,
+                            "end_ms": 2500,
+                            "label": "person_enters",
+                        }
+                    ]
+                },
+                "scoring_standard": "temporal segment target ids and labels must match.",
+                "predictions": [
+                    {
+                        "trial": 0,
+                        "raw_output": (
+                            "{\"temporal_segments\":[{\"target_id\":\"video:segment:1\",\"start_ms\":1000,"
+                            "\"end_ms\":2500,\"label\":\"person_leaves\"}]}"
+                        ),
+                        "score": 0,
+                    }
+                ],
+                "avg_score": 0.0,
+            }
+        )
+        plan = ExperimentPlan(
+            case_id=case.case_id,
+            max_model_calls=1,
+            steps=[ExperimentStep(name="baseline_replay", description="Replay baseline.", trials=1)],
+        )
+        adapter = FakeModelAdapter(outputs=[case.predictions[0].raw_output])
+
+        result = await run_experiments(
+            case=case,
+            plan=plan,
+            adapter=adapter,
+            image_artifact_dir=artifact_dir,
+        )
+
+        native_artifact = next(
+            artifact for artifact in result.evidence[0].artifacts if artifact.kind == "video_segment_delta"
+        )
+        assert native_artifact.derived_uri
+        manifest_path = _path_from_file_uri(native_artifact.derived_uri)
+        assert manifest_path.exists()
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert manifest["artifact_id"] == native_artifact.artifact_id
+        assert manifest["source_uri"] == video_path.as_uri()
+        assert manifest["target_id"] == "video:segment:1"
+        assert manifest["start_ms"] == 1000
+        assert manifest["end_ms"] == 2500
+        assert manifest["expected_label"] == "person_enters"
+        assert manifest["actual_label"] == "person_leaves"
+        assert native_artifact.metadata["manifest_type"] == "video_segment_delta"
+
+
+@pytest.mark.asyncio
 async def test_run_experiments_uses_video_detection_recipe_prompt() -> None:
     case = DebugCase.model_validate(
         {

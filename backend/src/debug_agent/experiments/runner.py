@@ -12,6 +12,7 @@ from debug_agent.artifacts.images import (
     image_artifact_preview_url,
     materialize_image_crop,
 )
+from debug_agent.artifacts.videos import materialize_video_segment_manifest
 from debug_agent.cases.comparator import (
     compare_answer_sets,
     parse_classification_output,
@@ -370,6 +371,7 @@ def _build_native_delta_artifacts(
         if not target_id or not artifact_type:
             continue
         artifact_id = f"{case.case_id}:{step_name}:{trial_index}:{_safe_target_fragment(target_id)}:delta"
+        metadata = _native_delta_metadata(delta)
         region = _image_region_from_delta(delta) if artifact_type == "image_region" else None
         derived_uri = ""
         preview_url = ""
@@ -385,6 +387,14 @@ def _build_native_delta_artifacts(
             except (OSError, ValueError):
                 derived_uri = ""
                 preview_url = ""
+        if image_artifact_dir is not None and artifact_type == "video_segment":
+            derived_uri = materialize_video_segment_manifest(
+                artifact_id=artifact_id,
+                source_uri=source_image_uri,
+                metadata=metadata,
+                output_dir=image_artifact_dir,
+            )
+            metadata["manifest_type"] = "video_segment_delta"
         artifacts.append(
             EvidenceArtifact(
                 artifact_id=artifact_id,
@@ -394,7 +404,7 @@ def _build_native_delta_artifacts(
                 derived_uri=derived_uri,
                 preview_url=preview_url,
                 region=region,
-                metadata=_native_delta_metadata(delta),
+                metadata=metadata,
             )
         )
     return artifacts

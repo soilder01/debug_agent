@@ -459,6 +459,18 @@
 - [x] Prefer actual region geometry for failed predictions, falling back to expected region geometry.
 - [x] Preserve non-image native delta artifacts and existing OCR localized crop behavior.
 
+### Task 32: Video Segment Delta Manifest Artifacts
+
+**Files:**
+- Create: `backend/src/debug_agent/artifacts/videos.py`
+- Modify: `backend/src/debug_agent/experiments/runner.py`
+- Test: `backend/tests/experiments/test_runner.py`
+
+- [x] Materialize `video_segment_delta` artifacts as JSON manifests when an artifact directory is configured.
+- [x] Include source URI, target id, reason, start/end timestamps, expected label, and actual label in the manifest.
+- [x] Attach `derived_uri` and `manifest_type` metadata to video segment delta artifacts.
+- [x] Keep this as a stable interface for later ffmpeg/keyframe thumbnail extraction.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs
