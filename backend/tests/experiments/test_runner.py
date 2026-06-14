@@ -648,3 +648,110 @@ async def test_run_experiments_uses_video_detection_recipe_prompt() -> None:
     assert "video:segment:1" in adapter.prompts[0]
     assert "temporal segment target ids and labels must match." in adapter.prompts[0]
     assert "affected answer region" not in adapter.prompts[0]
+
+
+@pytest.mark.asyncio
+async def test_run_experiments_judges_multimodal_detection_output_natively() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "multimodal-detection-native-runner",
+            "task_type": "multimodal_detection",
+            "image_uri": "file:///tmp/multimodal-input.mp4",
+            "prompt": "Compare image and caption, then return cross-modal conflict JSON.",
+            "golden_answer": {"answers": [{"box_id": 1, "student_answer": "legacy-conflict"}]},
+            "expected_output": {
+                "conflicts": [
+                    {
+                        "target_id": "multimodal:conflict:1",
+                        "conflict_type": "visual_text_conflict",
+                        "modalities": ["image", "text"],
+                        "expected": "caption matches the visual subject",
+                        "actual": "image and caption both describe a cat",
+                    }
+                ]
+            },
+            "scoring_standard": "cross-modal claims must agree.",
+            "predictions": [
+                {
+                    "trial": 0,
+                    "raw_output": (
+                        "{\"conflicts\":[{\"target_id\":\"multimodal:conflict:1\","
+                        "\"conflict_type\":\"visual_text_conflict\",\"modalities\":[\"image\",\"text\"],"
+                        "\"expected\":\"caption matches the visual subject\","
+                        "\"actual\":\"image shows dog while caption says cat\",\"confidence\":0.76}]}"
+                    ),
+                    "score": 0,
+                }
+            ],
+            "avg_score": 0.0,
+        }
+    )
+    plan = ExperimentPlan(
+        case_id=case.case_id,
+        max_model_calls=1,
+        steps=[ExperimentStep(name="baseline_replay", description="Replay baseline.", trials=1)],
+    )
+    adapter = FakeModelAdapter(outputs=[case.predictions[0].raw_output])
+
+    result = await run_experiments(case=case, plan=plan, adapter=adapter)
+
+    assert result.evidence[0].response_parse_error == ""
+    assert result.evidence[0].judge.score == 0
+    assert result.evidence[0].judge.reasons == ["multimodal:conflict:1 conflict_actual_mismatch"]
+    assert result.evidence[0].judge.affected_box_ids == []
+    assert result.evidence[0].judge.deltas == [
+        {
+            "target_id": "multimodal:conflict:1",
+            "expected": "image and caption both describe a cat",
+            "actual": "image shows dog while caption says cat",
+            "reason": "conflict_actual_mismatch",
+            "metadata": {
+                "field": "actual",
+                "conflict_type": "visual_text_conflict",
+                "modalities": ["image", "text"],
+                "confidence": 0.76,
+            },
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_run_experiments_uses_multimodal_detection_recipe_prompt() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "multimodal-detection-prompt",
+            "task_type": "multimodal_detection",
+            "image_uri": "file:///tmp/multimodal-input.mp4",
+            "prompt": "Compare image and caption, then return cross-modal conflict JSON.",
+            "golden_answer": {"answers": [{"box_id": 1, "student_answer": "legacy-conflict"}]},
+            "expected_output": {
+                "conflicts": [
+                    {
+                        "target_id": "multimodal:conflict:1",
+                        "conflict_type": "visual_text_conflict",
+                        "modalities": ["image", "text"],
+                        "expected": "caption matches the visual subject",
+                        "actual": "image and caption both describe a cat",
+                    }
+                ]
+            },
+            "scoring_standard": "cross-modal claims must agree.",
+            "predictions": [{"trial": 0, "raw_output": "{\"conflicts\":[]}", "score": 0}],
+            "avg_score": 0.0,
+        }
+    )
+    plan = ExperimentPlan(
+        case_id=case.case_id,
+        max_model_calls=1,
+        steps=[ExperimentStep(name="modality_ablation_check", description="Check modality ablation.", trials=1)],
+    )
+    adapter = PromptRecordingModelAdapter(raw_output=case.predictions[0].raw_output)
+
+    await run_experiments(case=case, plan=plan, adapter=adapter)
+
+    assert len(adapter.prompts) == 1
+    assert "modality_ablation_check" in adapter.prompts[0]
+    assert "multimodal:conflict:1" in adapter.prompts[0]
+    assert "visual_text_conflict" in adapter.prompts[0]
+    assert "cross-modal claims must agree." in adapter.prompts[0]
+    assert "answer-box assumptions" not in adapter.prompts[0]

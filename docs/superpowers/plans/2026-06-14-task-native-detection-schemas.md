@@ -129,6 +129,30 @@
 - [x] Add `VideoDetectionRecipe` with baseline replay, temporal schema check, and temporal grounding check steps.
 - [x] Keep video harness prompts free of OCR answer-box assumptions.
 
+### Task 8: Multimodal-Native Conflict Comparator And Recipe
+
+**Files:**
+- Modify: `backend/src/debug_agent/cases/models.py`
+- Modify: `backend/src/debug_agent/cases/comparator.py`
+- Modify: `backend/src/debug_agent/judging/runner.py`
+- Modify: `backend/src/debug_agent/experiments/runner.py`
+- Create: `backend/src/debug_agent/recipes/multimodal_detection.py`
+- Modify: `backend/src/debug_agent/recipes/registry.py`
+- Modify: `backend/src/debug_agent/recipes/__init__.py`
+- Test: `backend/tests/cases/test_models.py`
+- Test: `backend/tests/cases/test_comparator.py`
+- Test: `backend/tests/judging/test_runner.py`
+- Test: `backend/tests/experiments/test_runner.py`
+- Test: `backend/tests/experiments/test_planner.py`
+- Test: `backend/tests/recipes/test_registry.py`
+
+- [x] Add `MultimodalConflictOutput` and `MultimodalDetectionOutput` for cross-modal conflicts.
+- [x] Add `parse_multimodal_detection_output(raw_output: str)`.
+- [x] Add `compare_multimodal_detection_outputs(expected, predicted)` returning generic deltas such as `multimodal:conflict:1 conflict_actual_mismatch` and `missing_conflict`.
+- [x] Add `judge_multimodal_detection_output()` and route `task_type="multimodal_detection"` runner parsing through `expected_output.conflicts`.
+- [x] Add `MultimodalDetectionRecipe` with cross-modal schema check, modality ablation check, and conflict grounding check steps.
+- [x] Keep multimodal harness prompts centered on modality isolation and evidence grounding instead of OCR assumptions.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

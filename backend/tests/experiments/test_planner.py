@@ -6,6 +6,7 @@ from debug_agent.experiments.planner import plan_experiments
 from debug_agent.recipes.classification import ClassificationRecipe
 from debug_agent.recipes.handwriting_ocr import HandwritingOcrRecipe
 from debug_agent.recipes.image_detection import ImageDetectionRecipe
+from debug_agent.recipes.multimodal_detection import MultimodalDetectionRecipe
 from debug_agent.recipes.registry import GenericDebugRecipe
 from debug_agent.recipes.video_detection import VideoDetectionRecipe
 
@@ -199,4 +200,49 @@ def test_plan_experiments_routes_video_detection_case_to_video_recipe(monkeypatc
         "baseline_replay",
         "temporal_schema_check",
         "temporal_grounding_check",
+    ]
+
+
+def test_plan_experiments_routes_multimodal_detection_case_to_multimodal_recipe(monkeypatch) -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "multimodal-detection-specific",
+            "task_type": "multimodal_detection",
+            "image_uri": "file:///tmp/multimodal-input.mp4",
+            "prompt": "Compare the image and caption, then return cross-modal conflict JSON.",
+            "golden_answer": {"answers": [{"box_id": 1, "student_answer": "legacy-conflict"}]},
+            "expected_output": {
+                "conflicts": [
+                    {
+                        "target_id": "multimodal:conflict:1",
+                        "conflict_type": "visual_text_conflict",
+                        "modalities": ["image", "text"],
+                        "expected": "caption matches the visual subject",
+                        "actual": "image and caption both describe a cat",
+                    }
+                ]
+            },
+            "scoring_standard": "cross-modal claims must agree.",
+            "predictions": [{"trial": 0, "raw_output": "{\"conflicts\":[]}", "score": 0}],
+            "avg_score": 0.0,
+        }
+    )
+    called = False
+    original_plan_steps = MultimodalDetectionRecipe.plan_steps
+
+    def recording_steps(self, *, case: DebugCase, baseline_trials: int):
+        nonlocal called
+        called = True
+        return original_plan_steps(self, case=case, baseline_trials=baseline_trials)
+
+    monkeypatch.setattr(MultimodalDetectionRecipe, "plan_steps", recording_steps)
+
+    plan = plan_experiments(case, baseline_trials=2)
+
+    assert called is True
+    assert [step.name for step in plan.steps] == [
+        "baseline_replay",
+        "cross_modal_schema_check",
+        "modality_ablation_check",
+        "conflict_grounding_check",
     ]

@@ -42,6 +42,19 @@ class VideoDetectionOutput(BaseModel):
     temporal_segments: list[VideoSegmentOutput] = Field(default_factory=list)
 
 
+class MultimodalConflictOutput(BaseModel):
+    target_id: str
+    conflict_type: str
+    modalities: list[str] = Field(default_factory=list)
+    expected: str = ""
+    actual: str = ""
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+
+
+class MultimodalDetectionOutput(BaseModel):
+    conflicts: list[MultimodalConflictOutput] = Field(default_factory=list)
+
+
 class Prediction(BaseModel):
     trial: int
     raw_output: str

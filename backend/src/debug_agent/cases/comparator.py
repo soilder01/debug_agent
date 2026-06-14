@@ -7,6 +7,8 @@ from debug_agent.cases.models import (
     ClassificationOutput,
     ImageDetectionOutput,
     ImageRegionOutput,
+    MultimodalConflictOutput,
+    MultimodalDetectionOutput,
     VideoDetectionOutput,
     VideoSegmentOutput,
 )
@@ -49,6 +51,11 @@ class VideoDetectionDiff(BaseModel):
     detection_deltas: list[dict[str, object]]
 
 
+class MultimodalDetectionDiff(BaseModel):
+    has_differences: bool
+    detection_deltas: list[dict[str, object]]
+
+
 def parse_prediction_answer(raw_output: str) -> AnswerSet:
     payload = json.loads(raw_output)
     return AnswerSet.model_validate(payload)
@@ -67,6 +74,11 @@ def parse_image_detection_output(raw_output: str) -> ImageDetectionOutput:
 def parse_video_detection_output(raw_output: str) -> VideoDetectionOutput:
     payload = json.loads(raw_output)
     return VideoDetectionOutput.model_validate(payload)
+
+
+def parse_multimodal_detection_output(raw_output: str) -> MultimodalDetectionOutput:
+    payload = json.loads(raw_output)
+    return MultimodalDetectionOutput.model_validate(payload)
 
 
 def compare_classification_outputs(
@@ -125,6 +137,25 @@ def compare_video_detection_outputs(
             deltas.append(delta)
 
     return VideoDetectionDiff(has_differences=bool(deltas), detection_deltas=deltas)
+
+
+def compare_multimodal_detection_outputs(
+    expected: MultimodalDetectionOutput,
+    predicted: MultimodalDetectionOutput,
+) -> MultimodalDetectionDiff:
+    expected_by_target = {conflict.target_id: conflict for conflict in expected.conflicts}
+    predicted_by_target = {conflict.target_id: conflict for conflict in predicted.conflicts}
+    all_target_ids = sorted(set(expected_by_target) | set(predicted_by_target))
+    deltas: list[dict[str, object]] = []
+
+    for target_id in all_target_ids:
+        expected_conflict = expected_by_target.get(target_id)
+        predicted_conflict = predicted_by_target.get(target_id)
+        delta = _multimodal_conflict_delta(target_id, expected_conflict, predicted_conflict)
+        if delta is not None:
+            deltas.append(delta)
+
+    return MultimodalDetectionDiff(has_differences=bool(deltas), detection_deltas=deltas)
 
 
 def compare_answer_sets(expected: AnswerSet, predicted: AnswerSet) -> AnswerDiff:
@@ -252,3 +283,62 @@ def _segment_label(segment: VideoSegmentOutput | None) -> str | None:
     if segment is None or not segment.label:
         return None
     return segment.label
+
+
+def _multimodal_conflict_delta(
+    target_id: str,
+    expected_conflict: MultimodalConflictOutput | None,
+    predicted_conflict: MultimodalConflictOutput | None,
+) -> dict[str, object] | None:
+    if expected_conflict is None and predicted_conflict is None:
+        return None
+    if expected_conflict is None:
+        return DetectionDelta(
+            target_id=target_id,
+            expected=None,
+            actual=_conflict_actual(predicted_conflict),
+            reason="extra_conflict",
+            metadata=_conflict_metadata(predicted_conflict, field="conflicts"),
+        ).model_dump()
+    if predicted_conflict is None:
+        return DetectionDelta(
+            target_id=target_id,
+            expected=_conflict_actual(expected_conflict),
+            actual=None,
+            reason="missing_conflict",
+            metadata=_conflict_metadata(expected_conflict, field="conflicts"),
+        ).model_dump()
+    if expected_conflict.conflict_type != predicted_conflict.conflict_type:
+        return DetectionDelta(
+            target_id=target_id,
+            expected=expected_conflict.conflict_type,
+            actual=predicted_conflict.conflict_type,
+            reason="conflict_type_mismatch",
+            metadata=_conflict_metadata(predicted_conflict, field="conflict_type"),
+        ).model_dump()
+    if expected_conflict.actual != predicted_conflict.actual:
+        return DetectionDelta(
+            target_id=target_id,
+            expected=expected_conflict.actual,
+            actual=predicted_conflict.actual,
+            reason="conflict_actual_mismatch",
+            metadata=_conflict_metadata(predicted_conflict, field="actual"),
+        ).model_dump()
+    return None
+
+
+def _conflict_actual(conflict: MultimodalConflictOutput | None) -> str | None:
+    if conflict is None or not conflict.actual:
+        return None
+    return conflict.actual
+
+
+def _conflict_metadata(conflict: MultimodalConflictOutput | None, *, field: str) -> dict[str, object]:
+    metadata: dict[str, object] = {"field": field}
+    if conflict is None:
+        return metadata
+    metadata["conflict_type"] = conflict.conflict_type
+    metadata["modalities"] = conflict.modalities
+    if conflict.confidence is not None:
+        metadata["confidence"] = conflict.confidence
+    return metadata

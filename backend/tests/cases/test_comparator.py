@@ -4,13 +4,21 @@ from debug_agent.cases.comparator import (
     compare_answer_sets,
     compare_classification_outputs,
     compare_image_detection_outputs,
+    compare_multimodal_detection_outputs,
     compare_video_detection_outputs,
     parse_classification_output,
     parse_image_detection_output,
+    parse_multimodal_detection_output,
     parse_prediction_answer,
     parse_video_detection_output,
 )
-from debug_agent.cases.models import AnswerSet, ClassificationOutput, ImageDetectionOutput, VideoDetectionOutput
+from debug_agent.cases.models import (
+    AnswerSet,
+    ClassificationOutput,
+    ImageDetectionOutput,
+    MultimodalDetectionOutput,
+    VideoDetectionOutput,
+)
 
 
 def test_parse_prediction_answer_reads_valid_json() -> None:
@@ -262,5 +270,110 @@ def test_compare_video_detection_outputs_detects_missing_segment_without_ocr_fie
             "actual": None,
             "reason": "missing_segment",
             "metadata": {"field": "temporal_segments"},
+        }
+    ]
+
+
+def test_parse_multimodal_detection_output_reads_cross_modal_conflicts() -> None:
+    parsed = parse_multimodal_detection_output(
+        """
+        {
+          "conflicts": [
+            {
+              "target_id": "multimodal:conflict:1",
+              "conflict_type": "visual_text_conflict",
+              "modalities": ["image", "text"],
+              "expected": "caption matches the visual subject",
+              "actual": "image shows dog while caption says cat",
+              "confidence": 0.76
+            }
+          ]
+        }
+        """
+    )
+
+    assert parsed.conflicts[0].target_id == "multimodal:conflict:1"
+    assert parsed.conflicts[0].conflict_type == "visual_text_conflict"
+    assert parsed.conflicts[0].modalities == ["image", "text"]
+
+
+def test_compare_multimodal_detection_outputs_detects_conflict_actual_delta() -> None:
+    expected = MultimodalDetectionOutput.model_validate(
+        {
+            "conflicts": [
+                {
+                    "target_id": "multimodal:conflict:1",
+                    "conflict_type": "visual_text_conflict",
+                    "modalities": ["image", "text"],
+                    "expected": "caption matches the visual subject",
+                    "actual": "image and caption both describe a cat",
+                }
+            ]
+        }
+    )
+    predicted = MultimodalDetectionOutput.model_validate(
+        {
+            "conflicts": [
+                {
+                    "target_id": "multimodal:conflict:1",
+                    "conflict_type": "visual_text_conflict",
+                    "modalities": ["image", "text"],
+                    "expected": "caption matches the visual subject",
+                    "actual": "image shows dog while caption says cat",
+                    "confidence": 0.76,
+                }
+            ]
+        }
+    )
+
+    diff = compare_multimodal_detection_outputs(expected, predicted)
+
+    assert diff.has_differences is True
+    assert diff.detection_deltas == [
+        {
+            "target_id": "multimodal:conflict:1",
+            "expected": "image and caption both describe a cat",
+            "actual": "image shows dog while caption says cat",
+            "reason": "conflict_actual_mismatch",
+            "metadata": {
+                "field": "actual",
+                "conflict_type": "visual_text_conflict",
+                "modalities": ["image", "text"],
+                "confidence": 0.76,
+            },
+        }
+    ]
+
+
+def test_compare_multimodal_detection_outputs_detects_missing_conflict_without_ocr_fields() -> None:
+    expected = MultimodalDetectionOutput.model_validate(
+        {
+            "conflicts": [
+                {
+                    "target_id": "multimodal:conflict:2",
+                    "conflict_type": "audio_visual_conflict",
+                    "modalities": ["audio", "video"],
+                    "expected": "spoken action matches visible action",
+                    "actual": "audio says door opens while video shows door closed",
+                }
+            ]
+        }
+    )
+    predicted = MultimodalDetectionOutput(conflicts=[])
+
+    diff = compare_multimodal_detection_outputs(expected, predicted)
+
+    assert diff.has_differences is True
+    assert diff.detection_deltas == [
+        {
+            "target_id": "multimodal:conflict:2",
+            "expected": "audio says door opens while video shows door closed",
+            "actual": None,
+            "reason": "missing_conflict",
+            "metadata": {
+                "field": "conflicts",
+                "conflict_type": "audio_visual_conflict",
+                "modalities": ["audio", "video"],
+            },
         }
     ]

@@ -9,6 +9,7 @@ from debug_agent.cases.models import (
     DetectionPrediction,
     DetectionRegion,
     ImageDetectionOutput,
+    MultimodalDetectionOutput,
     VideoDetectionOutput,
 )
 
@@ -170,3 +171,27 @@ def test_video_detection_output_parses_task_native_temporal_segments() -> None:
     assert output.temporal_segments[0].end_ms == 2500
     assert output.temporal_segments[0].label == "person_enters"
     assert output.temporal_segments[0].confidence == 0.84
+
+
+def test_multimodal_detection_output_parses_cross_modal_conflicts() -> None:
+    output = MultimodalDetectionOutput.model_validate(
+        {
+            "conflicts": [
+                {
+                    "target_id": "multimodal:conflict:1",
+                    "conflict_type": "visual_text_conflict",
+                    "modalities": ["image", "text"],
+                    "expected": "caption matches the visual subject",
+                    "actual": "image shows dog while caption says cat",
+                    "confidence": 0.76,
+                }
+            ]
+        }
+    )
+
+    conflict = output.conflicts[0]
+    assert conflict.target_id == "multimodal:conflict:1"
+    assert conflict.conflict_type == "visual_text_conflict"
+    assert conflict.modalities == ["image", "text"]
+    assert conflict.actual == "image shows dog while caption says cat"
+    assert conflict.confidence == 0.76

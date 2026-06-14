@@ -5,6 +5,7 @@ from debug_agent.experiments.planner import ExperimentStep
 from debug_agent.recipes.classification import ClassificationRecipe
 from debug_agent.recipes.handwriting_ocr import HandwritingOcrRecipe
 from debug_agent.recipes.image_detection import ImageDetectionRecipe
+from debug_agent.recipes.multimodal_detection import MultimodalDetectionRecipe
 from debug_agent.recipes.video_detection import VideoDetectionRecipe
 
 class GenericDebugRecipe:
@@ -39,7 +40,12 @@ class GenericDebugRecipe:
 
 
 DebugRecipeInstance = (
-    ClassificationRecipe | HandwritingOcrRecipe | ImageDetectionRecipe | VideoDetectionRecipe | GenericDebugRecipe
+    ClassificationRecipe
+    | HandwritingOcrRecipe
+    | ImageDetectionRecipe
+    | MultimodalDetectionRecipe
+    | VideoDetectionRecipe
+    | GenericDebugRecipe
 )
 DebugRecipeFactory = Callable[[], DebugRecipeInstance]
 
@@ -50,6 +56,7 @@ class RecipeRegistry:
             "classification": ClassificationRecipe,
             "handwriting_ocr": HandwritingOcrRecipe,
             "image_detection": ImageDetectionRecipe,
+            "multimodal_detection": MultimodalDetectionRecipe,
             "video_detection": VideoDetectionRecipe,
         }
 
