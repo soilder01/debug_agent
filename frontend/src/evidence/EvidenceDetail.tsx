@@ -45,6 +45,7 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
                 <p>派生 URI：{artifact.derived_uri || "无"}</p>
                 <p>元数据：{JSON.stringify(artifact.metadata)}</p>
                 <ArtifactNativeContext metadata={artifact.metadata} />
+                <VideoSegmentAudit artifact={artifact} />
                 {artifact.preview_url ? (
                   <>
                     <p>
@@ -136,6 +137,39 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
 type ArtifactNativeContextProps = {
   metadata: Record<string, unknown>;
 };
+
+type VideoSegmentAuditProps = {
+  artifact: {
+    artifact_id: string;
+    kind: string;
+    derived_uri: string;
+    metadata: Record<string, unknown>;
+  };
+};
+
+function VideoSegmentAudit({ artifact }: VideoSegmentAuditProps) {
+  if (artifact.kind !== "video_segment_delta" || !artifact.derived_uri) {
+    return null;
+  }
+  const expectedSegment = segmentValue(artifact.metadata.expected_segment);
+  const actualSegment = segmentValue(artifact.metadata.actual_segment);
+  const auditSegment = actualSegment ?? expectedSegment;
+  const manifestType = stringValue(artifact.metadata.manifest_type) || "video_segment_delta";
+
+  return (
+    <section aria-label="Video segment audit">
+      <h5>Video Segment Audit</h5>
+      <p>Manifest 类型：{manifestType}</p>
+      {auditSegment ? <p>审计片段：{auditSegment.start_ms}ms → {auditSegment.end_ms}ms</p> : null}
+      <p>审计标签：{expectedSegment?.label ?? "无"} → {actualSegment?.label ?? "无"}</p>
+      <p>
+        <a href={artifact.derived_uri} target="_blank" rel="noreferrer">
+          打开视频片段 manifest {artifact.artifact_id}
+        </a>
+      </p>
+    </section>
+  );
+}
 
 function ArtifactNativeContext({ metadata }: ArtifactNativeContextProps) {
   const targetId = stringValue(metadata.target_id);

@@ -471,6 +471,17 @@
 - [x] Attach `derived_uri` and `manifest_type` metadata to video segment delta artifacts.
 - [x] Keep this as a stable interface for later ffmpeg/keyframe thumbnail extraction.
 
+### Task 33: Frontend Video Segment Manifest Audit
+
+**Files:**
+- Modify: `frontend/src/evidence/EvidenceDetail.tsx`
+- Test: `frontend/src/evidence/EvidenceDetail.test.tsx`
+
+- [x] Render video segment delta manifest artifacts as a dedicated audit section.
+- [x] Show manifest type, time window, expected label, and actual label.
+- [x] Link directly to the generated manifest artifact URI.
+- [x] Preserve existing native artifact metadata and no-preview fallback rendering.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

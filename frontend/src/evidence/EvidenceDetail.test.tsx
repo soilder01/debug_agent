@@ -358,6 +358,60 @@ describe("EvidenceDetail", () => {
     expect(within(artifacts[2]).getByText("冲突类型：visual_text_conflict → visual_text_conflict")).toBeInTheDocument();
   });
 
+  it("renders video segment manifest artifacts as audit links", () => {
+    const evidence = {
+      evidence_id: "video-case:baseline_replay:0",
+      step_name: "baseline_replay",
+      trial: 0,
+      model_name: "ark-seed2-lite",
+      model_provider: "ark",
+      model_id: "ep-seed2-lite",
+      request_summary: {
+        prompt_length: 128,
+        has_image: true,
+        image_uri_scheme: "file"
+      },
+      latency_ms: 45,
+      response_parse_error: "",
+      model_call_error_type: "",
+      model_call_error_message: "",
+      artifacts: [
+        {
+          artifact_id: "video-case:baseline:0:video_segment_1:delta",
+          kind: "video_segment_delta",
+          artifact_type: "video_segment",
+          source_uri: "file:///tmp/video.mp4",
+          derived_uri: "file:///tmp/artifacts/video-case_baseline_0_video_segment_1_delta.json",
+          preview_url: "",
+          region: null,
+          metadata: {
+            target_id: "video:segment:1",
+            reason: "segment_label_mismatch",
+            manifest_type: "video_segment_delta",
+            expected_segment: { start_ms: 1000, end_ms: 2500, label: "person_enters" },
+            actual_segment: { start_ms: 1000, end_ms: 2500, label: "person_leaves" }
+          }
+        }
+      ],
+      image_artifacts: [],
+      raw_output: "{\"temporal_segments\":[]}",
+      judge: {
+        score: 0,
+        reasons: ["video segment mismatch"]
+      }
+    } satisfies ExperimentEvidence;
+
+    render(<EvidenceDetail evidence={evidence} />);
+
+    expect(screen.getByText("Video Segment Audit")).toBeInTheDocument();
+    expect(screen.getByText("Manifest 类型：video_segment_delta")).toBeInTheDocument();
+    expect(screen.getByText("审计片段：1000ms → 2500ms")).toBeInTheDocument();
+    expect(screen.getByText("审计标签：person_enters → person_leaves")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "打开视频片段 manifest video-case:baseline:0:video_segment_1:delta" })
+    ).toHaveAttribute("href", "file:///tmp/artifacts/video-case_baseline_0_video_segment_1_delta.json");
+  });
+
   it("hides judge deltas section when no structured deltas are present", () => {
     const evidence = {
       evidence_id: "classification-case:baseline_replay:0",
