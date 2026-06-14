@@ -225,6 +225,79 @@ describe("ReportPanel", () => {
     expect(onSelectEvidence).toHaveBeenCalledWith("e-ablation-fail");
   });
 
+  it("selects evidence from report artifact links", async () => {
+    const onSelectEvidence = vi.fn();
+    const report: DebugReport = {
+      job_id: "job-artifact-links",
+      case_id: "case-artifact-links",
+      status: "needs_human_review",
+      observed_failure: {
+        type: "output_mismatch",
+        summary: "native artifact mismatch",
+        affected_box_ids: []
+      },
+      planned_experiments: ["baseline_replay"],
+      experiment_summary: {
+        total_trials: 1,
+        success_count: 0,
+        failed_trial_count: 1,
+        success_rate: 0,
+        stability_label: "stable_failure",
+        evidence_ids: ["evidence-with-artifacts"],
+        artifact_ids: [
+          "case-artifact-links:baseline_replay:0:video_segment_1:delta",
+          "case-artifact-links:baseline_replay:0:multimodal_conflict_1:delta"
+        ],
+        image_artifact_ids: [],
+        step_summaries: [
+          {
+            step_name: "baseline_replay",
+            total_trials: 1,
+            success_count: 0,
+            failed_trial_count: 1,
+            success_rate: 0,
+            delta_reasons: ["segment_label_mismatch"],
+            target_ids: ["video:segment:1"],
+            evidence_ids: ["evidence-with-artifacts"],
+            artifact_ids: ["case-artifact-links:baseline_replay:0:video_segment_1:delta"]
+          }
+        ]
+      },
+      root_cause: {
+        label: "output_mismatch",
+        confidence: "high",
+        evidence_summary: "artifact links should open evidence detail."
+      },
+      root_cause_trace: [
+        {
+          step_name: "baseline_replay",
+          variant: "video_only",
+          modalities: ["video"],
+          evidence_id: "trace-evidence",
+          judge_score: 0,
+          delta_reasons: ["segment_label_mismatch"],
+          target_ids: ["video:segment:1"],
+          artifact_ids: ["trace:video_segment_1:delta"]
+        }
+      ],
+      suggested_sheet_fields: {
+        错误原因: "视频片段差异"
+      }
+    };
+
+    render(<ReportPanel report={report} onSelectEvidence={onSelectEvidence} />);
+
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "Open artifact case-artifact-links:baseline_replay:0:video_segment_1:delta"
+      })
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Open artifact trace:video_segment_1:delta" }));
+
+    expect(onSelectEvidence).toHaveBeenNthCalledWith(1, "evidence-with-artifacts");
+    expect(onSelectEvidence).toHaveBeenNthCalledWith(2, "trace-evidence");
+  });
+
   it("highlights ablation diagnosis fields", () => {
     const report: DebugReport = {
       job_id: "job-ablation-root-cause",

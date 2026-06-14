@@ -182,6 +182,51 @@ describe("DebugReportWorkspace", () => {
     expect(onSelectEvidence).toHaveBeenCalledWith("trajectory-evidence-1");
   });
 
+  it("delegates evidence selection from report artifact links", async () => {
+    const onSelectEvidence = vi.fn();
+    const report = makeReport({
+      experiment_summary: {
+        total_trials: 1,
+        success_count: 0,
+        failed_trial_count: 1,
+        success_rate: 0,
+        stability_label: "stable_failure",
+        evidence_ids: ["artifact-evidence-1"],
+        artifact_ids: ["artifact:video_segment_1:delta"],
+        image_artifact_ids: [],
+        step_summaries: [
+          {
+            step_name: "video_grounding",
+            total_trials: 1,
+            success_count: 0,
+            failed_trial_count: 1,
+            success_rate: 0,
+            delta_reasons: ["segment_label_mismatch"],
+            target_ids: ["video:segment:1"],
+            evidence_ids: ["artifact-evidence-1"],
+            artifact_ids: ["artifact:video_segment_1:delta"]
+          }
+        ]
+      }
+    });
+
+    render(
+      <DebugReportWorkspace
+        report={report}
+        selectedEvidence={null}
+        writebackResult={null}
+        writebackAudit={null}
+        onSelectEvidence={onSelectEvidence}
+        onWriteReport={vi.fn()}
+        onLoadWritebackAudit={vi.fn()}
+      />
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Open artifact artifact:video_segment_1:delta" }));
+
+    expect(onSelectEvidence).toHaveBeenCalledWith("artifact-evidence-1");
+  });
+
   it("delegates recommended action status updates from the report panel", async () => {
     const onUpdateRecommendedActionStatus = vi.fn();
     const report = makeReport({

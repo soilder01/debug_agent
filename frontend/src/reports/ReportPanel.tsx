@@ -62,6 +62,13 @@ export function ReportPanel({ report, onSelectEvidence, onUpdateRecommendedActio
                   </ul>
                 ) : null}
                 <p>产物：{step.artifact_ids.length > 0 ? step.artifact_ids.join(", ") : "无"}</p>
+                {onSelectEvidence && step.artifact_ids.length > 0 && step.evidence_ids.length > 0 ? (
+                  <ArtifactEvidenceButtons
+                    artifactIds={step.artifact_ids}
+                    evidenceId={step.evidence_ids[0]}
+                    onSelectEvidence={onSelectEvidence}
+                  />
+                ) : null}
               </li>
             ))}
           </ul>
@@ -87,6 +94,13 @@ export function ReportPanel({ report, onSelectEvidence, onUpdateRecommendedActio
                 <p>Delta：{trace.delta_reasons.length > 0 ? trace.delta_reasons.join(", ") : "无"}</p>
                 <p>目标：{trace.target_ids.length > 0 ? trace.target_ids.join(", ") : "无"}</p>
                 <p>产物：{trace.artifact_ids.length > 0 ? trace.artifact_ids.join(", ") : "无"}</p>
+                {onSelectEvidence && trace.artifact_ids.length > 0 ? (
+                  <ArtifactEvidenceButtons
+                    artifactIds={trace.artifact_ids}
+                    evidenceId={trace.evidence_id}
+                    onSelectEvidence={onSelectEvidence}
+                  />
+                ) : null}
               </li>
             ))}
           </ul>
@@ -170,4 +184,28 @@ export function ReportPanel({ report, onSelectEvidence, onUpdateRecommendedActio
 
 function formatPercent(value: number): string {
   return `${Math.round(value * 100)}%`;
+}
+
+type ArtifactEvidenceButtonsProps = {
+  artifactIds: string[];
+  evidenceId: string;
+  onSelectEvidence: (evidenceId: string) => void;
+};
+
+function ArtifactEvidenceButtons({
+  artifactIds,
+  evidenceId,
+  onSelectEvidence
+}: ArtifactEvidenceButtonsProps) {
+  return (
+    <ul aria-label={`${evidenceId} artifact evidence links`}>
+      {artifactIds.map((artifactId) => (
+        <li key={artifactId}>
+          <button type="button" onClick={() => onSelectEvidence(evidenceId)}>
+            Open artifact {artifactId}
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
 }

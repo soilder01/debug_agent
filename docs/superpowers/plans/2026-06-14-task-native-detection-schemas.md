@@ -520,6 +520,18 @@
 - [x] Apply normalization to video segment and multimodal conflict manifest audit links.
 - [x] Keep non-manifest artifact links and preview behavior unchanged.
 
+### Task 37: Report Artifact Evidence Links
+
+**Files:**
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+- Test: `frontend/src/reports/DebugReportWorkspace.test.tsx`
+
+- [x] Render artifact ids in experiment step trajectory as selectable buttons when their evidence id is known.
+- [x] Render artifact ids in root cause trace as selectable buttons tied to trace evidence.
+- [x] Delegate artifact clicks through the existing evidence detail loading callback.
+- [x] Keep global artifact summary as text when evidence ownership is ambiguous.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

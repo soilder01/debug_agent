@@ -191,6 +191,29 @@ def test_repository_lists_spreadsheet_writeback_audits_with_status_filter_and_pa
     assert audits[0].fields == {"index": "1"}
 
 
+def test_repository_lists_spreadsheet_writeback_audits_uses_deterministic_tie_breaker(monkeypatch) -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    monkeypatch.setattr(
+        "debug_agent.storage.repository._utc_now_iso",
+        lambda: "2026-06-12T00:00:00.000001+00:00",
+    )
+    for index in [1, 3]:
+        repository.save_spreadsheet_writeback_audit(
+            job_id=f"job-{index}",
+            status="failed",
+            row_id=str(index),
+            report_url=f"https://debug-agent.local/jobs/job-{index}/report",
+            fields={"index": str(index)},
+            error_message="permission denied",
+        )
+
+    audits = repository.list_spreadsheet_writeback_audits(status="failed", limit=1, offset=1)
+
+    assert [audit.job_id for audit in audits] == ["job-1"]
+
+
 def test_repository_lists_spreadsheet_writeback_audits_newest_updates_first(monkeypatch) -> None:
     session_factory, engine = create_sqlite_memory_session_factory()
     Base.metadata.create_all(engine)
