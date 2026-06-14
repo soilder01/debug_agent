@@ -154,6 +154,36 @@ def _step_delta_reasons(evidence: list[ExperimentEvidence]) -> list[str]:
 def _ablation_alignment_issue(run_result: ExperimentRunResult) -> tuple[ObservedFailure, RootCause, dict[str, str]] | None:
     passed_variants = _ablation_variants_by_score(run_result.evidence, score=1)
     failed_variants = _ablation_variants_by_score(run_result.evidence, score=0)
+    failed_single_variants = [
+        variant
+        for variant in failed_variants
+        if variant in {"image_only", "text_only", "video_only", "audio_only"}
+    ]
+    if failed_single_variants:
+        variant_summary = ", ".join(failed_single_variants)
+        modality_summary = ", ".join(_modalities_from_ablation_variants(failed_single_variants))
+        conclusion = f"单模态变体 {variant_summary} 失败，优先检查 {modality_summary} 模态感知能力。"
+        return (
+            ObservedFailure(
+                type="single_modality_capability_gap",
+                summary=f"单模态 ablation 失败：{conclusion}",
+                affected_box_ids=[],
+            ),
+            RootCause(
+                label="single_modality_capability_gap",
+                confidence="high",
+                evidence_summary=(
+                    f"Ablation evidence shows single-modality variant {variant_summary} failed; "
+                    f"prioritize {modality_summary} perception and grounding before cross-modal fusion."
+                ),
+            ),
+            {
+                "debug1状态": "待人工确认",
+                "模型可做对次数": f"{run_result.success_count}次",
+                "错误原因": f"单模态能力短板：{conclusion}",
+                "Ablation结论": conclusion,
+            },
+        )
     single_modality_passes = [
         variant
         for variant in passed_variants
@@ -191,6 +221,20 @@ def _ablation_alignment_issue(run_result: ExperimentRunResult) -> tuple[Observed
             "Ablation结论": conclusion,
         },
     )
+
+
+def _modalities_from_ablation_variants(variants: list[str]) -> list[str]:
+    modality_by_variant = {
+        "image_only": "image",
+        "text_only": "text",
+        "video_only": "video",
+        "audio_only": "audio",
+    }
+    return [
+        modality
+        for variant in variants
+        if (modality := modality_by_variant.get(variant))
+    ]
 
 
 def _ablation_variants_by_score(evidence: list[ExperimentEvidence], *, score: int) -> list[str]:

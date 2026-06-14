@@ -300,6 +300,17 @@
 - [x] Highlight ablation diagnosis in the report UI instead of only showing it in raw suggested fields.
 - [x] Preserve generic `output_mismatch` behavior for non-ablation structured deltas.
 
+### Task 20: Ablation Pattern Classification
+
+**Files:**
+- Modify: `backend/src/debug_agent/reports/generator.py`
+- Test: `backend/tests/reports/test_generator.py`
+
+- [x] Infer `single_modality_capability_gap` when an isolated single-modality ablation fails.
+- [x] Preserve `cross_modal_alignment_failure` when isolated modalities pass but cross-modal comparison fails.
+- [x] Add modality-specific ablation conclusions for image/text/video/audio variants.
+- [x] Keep structured mismatch fallback for cases without ablation variants.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs
