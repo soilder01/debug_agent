@@ -14,6 +14,7 @@ from debug_agent.storage.models import (
     DebugCaseRow,
     DebugJobRow,
     EvidenceRow,
+    RecommendedActionStatusRow,
     SpreadsheetRowMappingRow,
     SpreadsheetWritebackAuditRow,
 )
@@ -36,6 +37,16 @@ class SpreadsheetWritebackAudit(BaseModel):
     report_url: str
     fields: dict[str, str]
     error_message: str
+    created_at: str
+    updated_at: str
+
+
+class RecommendedActionStatus(BaseModel):
+    job_id: str
+    action_index: int
+    status: str
+    actor: str
+    note: str
     created_at: str
     updated_at: str
 
@@ -239,6 +250,51 @@ class DebugJobRepository:
                 if status is not None:
                     query = query.where(SpreadsheetWritebackAuditRow.status == status)
                 return session.scalar(query) or 0
+
+    def save_recommended_action_status(
+        self,
+        *,
+        job_id: str,
+        action_index: int,
+        status: str,
+        actor: str = "",
+        note: str = "",
+    ) -> RecommendedActionStatus:
+        with self._lock:
+            with self._session_factory() as session:
+                now = _utc_now_iso()
+                existing = session.get(RecommendedActionStatusRow, (job_id, action_index))
+                created_at = existing.created_at if existing is not None else now
+                row = RecommendedActionStatusRow(
+                    job_id=job_id,
+                    action_index=action_index,
+                    status=status,
+                    actor=actor,
+                    note=note,
+                    created_at=created_at,
+                    updated_at=now,
+                )
+                session.merge(row)
+                session.commit()
+                return RecommendedActionStatus(
+                    job_id=job_id,
+                    action_index=action_index,
+                    status=status,
+                    actor=actor,
+                    note=note,
+                    created_at=created_at,
+                    updated_at=now,
+                )
+
+    def list_recommended_action_statuses(self, job_id: str) -> list[RecommendedActionStatus]:
+        with self._lock:
+            with self._session_factory() as session:
+                rows = session.scalars(
+                    select(RecommendedActionStatusRow)
+                    .where(RecommendedActionStatusRow.job_id == job_id)
+                    .order_by(RecommendedActionStatusRow.action_index)
+                )
+                return [_recommended_action_status_from_row(row) for row in rows]
 
     def list_cases(self, has_regions: bool = False, limit: int | None = None, offset: int = 0) -> list[DebugCase]:
         with self._lock:
@@ -532,6 +588,18 @@ def _spreadsheet_writeback_audit_from_row(row: SpreadsheetWritebackAuditRow) -> 
         report_url=row.report_url,
         fields={str(key): str(value) for key, value in fields.items()},
         error_message=row.error_message,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+    )
+
+
+def _recommended_action_status_from_row(row: RecommendedActionStatusRow) -> RecommendedActionStatus:
+    return RecommendedActionStatus(
+        job_id=row.job_id,
+        action_index=row.action_index,
+        status=row.status,
+        actor=row.actor,
+        note=row.note,
         created_at=row.created_at,
         updated_at=row.updated_at,
     )

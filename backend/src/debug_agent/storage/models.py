@@ -52,6 +52,18 @@ class SpreadsheetWritebackAuditRow(Base):
     updated_at: Mapped[str] = mapped_column(String(40), default="", server_default="")
 
 
+class RecommendedActionStatusRow(Base):
+    __tablename__ = "recommended_action_statuses"
+
+    job_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    action_index: Mapped[int] = mapped_column(Integer, primary_key=True)
+    status: Mapped[str] = mapped_column(String(40), default="pending", server_default="pending", index=True)
+    actor: Mapped[str] = mapped_column(String(120), default="", server_default="")
+    note: Mapped[str] = mapped_column(Text, default="", server_default="")
+    created_at: Mapped[str] = mapped_column(String(40), default="", server_default="", index=True)
+    updated_at: Mapped[str] = mapped_column(String(40), default="", server_default="")
+
+
 class EvidenceRow(Base):
     __tablename__ = "evidence"
 

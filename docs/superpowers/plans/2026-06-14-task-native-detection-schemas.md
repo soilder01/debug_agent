@@ -378,6 +378,21 @@
 - [x] Display recommended action status in the report UI.
 - [x] Keep existing recommended action summary and detail rendering compatible.
 
+### Task 26: Recommended Action Status API
+
+**Files:**
+- Modify: `backend/src/debug_agent/storage/models.py`
+- Modify: `backend/src/debug_agent/storage/repository.py`
+- Modify: `backend/src/debug_agent/api/routes.py`
+- Test: `backend/tests/storage/test_repository.py`
+- Test: `backend/tests/api/test_recommended_action_status.py`
+
+- [x] Persist recommended action status by `job_id` and `action_index`.
+- [x] Support status values `pending`, `accepted`, `rejected`, and `applied`.
+- [x] Record reviewer actor, note, created timestamp, and updated timestamp.
+- [x] Add API endpoints for updating and listing action statuses.
+- [x] Return 404 when updating action status for a missing job.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

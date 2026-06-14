@@ -29,7 +29,7 @@ from debug_agent.spreadsheets.writeback import (
 from debug_agent.spreadsheets.sync import SpreadsheetClient, SpreadsheetSyncResult, sync_spreadsheet_rows
 from debug_agent.storage.database import create_sqlite_session_factory, ensure_database_schema
 from debug_agent.storage.models import DebugJobRow
-from debug_agent.storage.repository import DebugJobRepository, SpreadsheetWritebackAudit
+from debug_agent.storage.repository import DebugJobRepository, RecommendedActionStatus, SpreadsheetWritebackAudit
 
 settings = DebugAgentSettings.from_env()
 session_factory, engine = create_sqlite_session_factory(settings.database_url)
@@ -180,6 +180,16 @@ class SpreadsheetRowImportResponse(BaseModel):
 
 class JobReportWritebackRequest(BaseModel):
     report_url: str
+
+
+class RecommendedActionStatusRequest(BaseModel):
+    status: Literal["pending", "accepted", "rejected", "applied"]
+    actor: str = ""
+    note: str = ""
+
+
+class RecommendedActionStatusListResponse(BaseModel):
+    statuses: list[RecommendedActionStatus]
 
 
 class SpreadsheetSyncRequest(BaseModel):
@@ -625,6 +635,32 @@ def get_job_report(job_id: str) -> DebugReport:
     if report is None:
         raise HTTPException(status_code=404, detail=f"Debug report not found for job: {job_id}")
     return report
+
+
+@router.patch("/jobs/{job_id}/recommended-actions/{action_index}/status")
+def update_recommended_action_status(
+    job_id: str,
+    action_index: int,
+    request: RecommendedActionStatusRequest,
+) -> RecommendedActionStatus:
+    if job_repository.get_job(job_id) is None:
+        raise HTTPException(status_code=404, detail=f"Debug job not found: {job_id}")
+    return job_repository.save_recommended_action_status(
+        job_id=job_id,
+        action_index=action_index,
+        status=request.status,
+        actor=request.actor,
+        note=request.note,
+    )
+
+
+@router.get("/jobs/{job_id}/recommended-actions/statuses")
+def list_recommended_action_statuses(job_id: str) -> RecommendedActionStatusListResponse:
+    if job_repository.get_job(job_id) is None:
+        raise HTTPException(status_code=404, detail=f"Debug job not found: {job_id}")
+    return RecommendedActionStatusListResponse(
+        statuses=job_repository.list_recommended_action_statuses(job_id)
+    )
 
 
 @router.post("/jobs/{job_id}/spreadsheet-writeback")

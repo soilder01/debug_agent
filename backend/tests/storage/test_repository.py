@@ -8,7 +8,7 @@ from debug_agent.storage.database import (
     create_sqlite_session_factory,
     ensure_database_schema,
 )
-from debug_agent.storage.models import Base, DebugCaseRow, DebugJobRow, EvidenceRow
+from debug_agent.storage.models import Base, DebugCaseRow, DebugJobRow, EvidenceRow, RecommendedActionStatusRow
 from debug_agent.storage.repository import DebugJobRepository
 
 
@@ -542,6 +542,33 @@ def test_repository_counts_evidence_error_categories() -> None:
         "response_parse_errors": 1,
         "model_call_errors": 1,
     }
+
+
+def test_repository_persists_recommended_action_status_updates() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    repository.create_job(job_id="job-action-status", case_id="case-1")
+
+    status = repository.save_recommended_action_status(
+        job_id="job-action-status",
+        action_index=1,
+        status="accepted",
+        actor="qa-reviewer",
+        note="prompt change approved",
+    )
+
+    assert status.job_id == "job-action-status"
+    assert status.action_index == 1
+    assert status.status == "accepted"
+    assert status.actor == "qa-reviewer"
+    assert status.note == "prompt change approved"
+    assert status.updated_at
+    assert repository.list_recommended_action_statuses("job-action-status") == [status]
+    with session_factory() as session:
+        row = session.get(RecommendedActionStatusRow, ("job-action-status", 1))
+        assert row is not None
+        assert row.status == "accepted"
 
 
 def test_database_schema_migrates_legacy_global_evidence_primary_key() -> None:
