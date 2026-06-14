@@ -59,6 +59,50 @@ def test_parse_csv_cases_maps_rows_to_debug_cases() -> None:
     assert case.human_notes.debug_status == "pending"
 
 
+def test_parse_csv_cases_imports_task_native_expected_output() -> None:
+    golden_answer = {"answers": [{"box_id": 1, "student_answer": "positive"}]}
+    predictions = [{"trial": 1, "raw_output": "{\"label\":\"negative\"}", "score": 0}]
+    output = io.StringIO()
+    writer = csv.DictWriter(
+        output,
+        fieldnames=[
+            "case_id",
+            "task_type",
+            "image_uri",
+            "prompt",
+            "golden_answer_json",
+            "expected_output_json",
+            "output_schema_json",
+            "scoring_standard",
+            "predictions_json",
+            "avg_score",
+        ],
+    )
+    writer.writeheader()
+    writer.writerow(
+        {
+            "case_id": "csv-classification-native",
+            "task_type": "classification",
+            "image_uri": "",
+            "prompt": "Classify sentiment and return JSON.",
+            "golden_answer_json": json.dumps(golden_answer),
+            "expected_output_json": json.dumps({"label": "positive"}),
+            "output_schema_json": json.dumps({"type": "object", "required": ["label"]}),
+            "scoring_standard": "label must match exactly.",
+            "predictions_json": json.dumps(predictions),
+            "avg_score": "0.0",
+        }
+    )
+
+    result = parse_csv_cases(output.getvalue())
+
+    assert result.rejected_rows == []
+    case = result.cases[0]
+    assert case.task_type == "classification"
+    assert case.expected_output == {"label": "positive"}
+    assert case.output_schema == {"type": "object", "required": ["label"]}
+
+
 def test_parse_csv_cases_imports_box_regions_json() -> None:
     golden_answer = {"answers": [{"box_id": 7, "student_answer": "低昷烘干"}]}
     raw_output = json.dumps({"answers": [{"box_id": 7, "student_answer": "低温烘干"}]})

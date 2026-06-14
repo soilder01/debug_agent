@@ -102,3 +102,23 @@ def test_classification_output_parses_task_native_label() -> None:
 
     assert output.label == "positive"
     assert output.confidence == 0.87
+
+
+def test_detection_case_accepts_task_native_expected_output() -> None:
+    case = DetectionCase.model_validate(
+        {
+            "case_id": "classification-native",
+            "task_type": "classification",
+            "image_uri": "",
+            "prompt": "Classify sentiment and return JSON.",
+            "golden_answer": {"answers": [{"box_id": 1, "student_answer": "positive"}]},
+            "expected_output": {"label": "positive"},
+            "output_schema": {"type": "object", "required": ["label"]},
+            "scoring_standard": "label must match exactly.",
+            "predictions": [{"trial": 0, "raw_output": "{\"label\":\"negative\"}", "score": 0}],
+            "avg_score": 0.0,
+        }
+    )
+
+    assert case.expected_output == {"label": "positive"}
+    assert case.output_schema == {"type": "object", "required": ["label"]}

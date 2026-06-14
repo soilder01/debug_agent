@@ -42,6 +42,8 @@ class DebugCase(BaseModel):
     image_uri: str
     prompt: str
     golden_answer: AnswerSet
+    expected_output: dict[str, object] = Field(default_factory=dict)
+    output_schema: dict[str, object] = Field(default_factory=dict)
     scoring_standard: str
     predictions: list[Prediction]
     avg_score: float = Field(ge=0.0, le=1.0)

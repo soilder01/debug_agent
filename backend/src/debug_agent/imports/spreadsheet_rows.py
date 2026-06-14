@@ -49,9 +49,12 @@ def parse_spreadsheet_rows(rows: list[dict[str, object]]) -> SpreadsheetRowImpor
 def _row_to_case(row: dict[str, object]) -> DebugCase:
     return DebugCase(
         case_id=_required_string(row, "case_id"),
-        image_uri=_required_string(row, "image_uri"),
+        task_type=_optional_string(row.get("task_type")) or "handwriting_ocr",
+        image_uri=_optional_string(row.get("image_uri")),
         prompt=_required_string(row, "prompt"),
         golden_answer=AnswerSet.model_validate(_loads_json_value(_required(row, "golden_answer_json"), "golden_answer_json")),
+        expected_output=_loads_optional_json_object(row.get("expected_output_json"), "expected_output_json"),
+        output_schema=_loads_optional_json_object(row.get("output_schema_json"), "output_schema_json"),
         scoring_standard=_required_string(row, "scoring_standard"),
         predictions=[
             Prediction.model_validate(item)
@@ -115,6 +118,15 @@ def _loads_optional_json_list(value: object, key: str) -> list[object]:
     if value is None or value == "":
         return []
     return _loads_json_list(value, key)
+
+
+def _loads_optional_json_object(value: object, key: str) -> dict[str, object]:
+    if value is None or value == "":
+        return {}
+    loaded = _loads_json_value(value, key)
+    if not isinstance(loaded, dict):
+        raise ValueError(f"Expected JSON object in {key}: {value}")
+    return loaded
 
 
 def _normalize_row_columns(row: dict[str, object]) -> dict[str, object]:

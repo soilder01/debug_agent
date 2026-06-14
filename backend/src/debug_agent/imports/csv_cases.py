@@ -13,6 +13,9 @@ COLUMN_ALIASES: dict[str, str] = {
     "样本ID": "case_id",
     "样本 ID": "case_id",
     "样本编号": "case_id",
+    "task_type": "task_type",
+    "task type": "task_type",
+    "任务类型": "task_type",
     "image_uri": "image_uri",
     "image_url": "image_uri",
     "image url": "image_uri",
@@ -27,6 +30,12 @@ COLUMN_ALIASES: dict[str, str] = {
     "golden answer json": "golden_answer_json",
     "标答JSON": "golden_answer_json",
     "标准答案JSON": "golden_answer_json",
+    "expected_output_json": "expected_output_json",
+    "expected output json": "expected_output_json",
+    "期望输出JSON": "expected_output_json",
+    "output_schema_json": "output_schema_json",
+    "output schema json": "output_schema_json",
+    "输出SchemaJSON": "output_schema_json",
     "scoring_standard": "scoring_standard",
     "scoring standard": "scoring_standard",
     "评分标准": "scoring_standard",
@@ -101,9 +110,12 @@ def _row_to_case(row: dict[str, str | None]) -> DebugCase:
     predictions_text = _required(row, "predictions_json")
     return DebugCase(
         case_id=_required(row, "case_id"),
-        image_uri=_required(row, "image_uri"),
+        task_type=row.get("task_type") or "handwriting_ocr",
+        image_uri=row.get("image_uri") or "",
         prompt=_required(row, "prompt"),
         golden_answer=AnswerSet.model_validate(_loads_json(golden_answer_text, "golden_answer_json")),
+        expected_output=_loads_optional_json_object(row.get("expected_output_json"), "expected_output_json"),
+        output_schema=_loads_optional_json_object(row.get("output_schema_json"), "output_schema_json"),
         scoring_standard=_required(row, "scoring_standard"),
         predictions=[
             Prediction.model_validate(item) for item in _loads_json_list(predictions_text, "predictions_json")
@@ -195,3 +207,12 @@ def _loads_optional_json_list(value: str | None, key: str) -> list[object]:
     if value is None or value == "":
         return []
     return _loads_json_list(value, key)
+
+
+def _loads_optional_json_object(value: str | None, key: str) -> dict[str, object]:
+    if value is None or value == "":
+        return {}
+    loaded = _loads_json(value, key)
+    if not isinstance(loaded, dict):
+        raise ValueError(f"Expected JSON object in {key}: {value}")
+    return loaded

@@ -55,9 +55,9 @@
 - Test: `backend/tests/cases/test_models.py`
 - Test: `backend/tests/imports/*`
 
-- [ ] Add optional generic `expected_output` and `output_schema` fields while keeping `golden_answer`.
-- [ ] Allow classification fixtures to carry `expected_output={"label":"positive"}`.
-- [ ] Keep existing spreadsheet and JSONL OCR imports compatible.
+- [x] Add optional generic `expected_output` and `output_schema` fields while keeping `golden_answer`.
+- [x] Allow classification fixtures to carry `expected_output={"label":"positive"}`.
+- [x] Keep existing spreadsheet and JSONL OCR imports compatible.
 - [ ] Commit as `feat(core): add task native expected output fields`.
 
 ### Task 4: Frontend Task-Native Case Display

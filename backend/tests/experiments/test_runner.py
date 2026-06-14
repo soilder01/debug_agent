@@ -421,3 +421,32 @@ async def test_run_experiments_judges_classification_output_natively() -> None:
             "metadata": {"field": "label", "confidence": 0.61},
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_run_experiments_prefers_classification_expected_output_over_legacy_answer() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "classification-expected-output",
+            "task_type": "classification",
+            "image_uri": "",
+            "prompt": "Classify sentiment and return JSON.",
+            "golden_answer": {"answers": [{"box_id": 1, "student_answer": "legacy-negative"}]},
+            "expected_output": {"label": "positive"},
+            "scoring_standard": "label must match exactly.",
+            "predictions": [{"trial": 0, "raw_output": "{\"label\":\"positive\",\"confidence\":0.9}", "score": 1}],
+            "avg_score": 1.0,
+        }
+    )
+    plan = ExperimentPlan(
+        case_id=case.case_id,
+        max_model_calls=1,
+        steps=[ExperimentStep(name="baseline_replay", description="Replay baseline.", trials=1)],
+    )
+    adapter = FakeModelAdapter(outputs=[case.predictions[0].raw_output])
+
+    result = await run_experiments(case=case, plan=plan, adapter=adapter)
+
+    assert result.evidence[0].response_parse_error == ""
+    assert result.evidence[0].judge.score == 1
+    assert result.evidence[0].judge.reasons == []

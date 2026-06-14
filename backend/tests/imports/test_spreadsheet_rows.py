@@ -36,6 +36,32 @@ def test_parse_spreadsheet_rows_maps_rows_to_debug_cases_and_preserves_row_id() 
     assert imported.case.human_notes.root_cause == "needs_debug"
 
 
+def test_parse_spreadsheet_rows_imports_task_native_expected_output() -> None:
+    result = parse_spreadsheet_rows(
+        [
+            {
+                "sheet_row_id": "row-classification-native",
+                "case_id": "sheet-classification-native",
+                "task_type": "classification",
+                "image_uri": "",
+                "prompt": "Classify sentiment and return JSON.",
+                "golden_answer_json": {"answers": [{"box_id": 1, "student_answer": "positive"}]},
+                "expected_output_json": {"label": "positive"},
+                "output_schema_json": {"type": "object", "required": ["label"]},
+                "scoring_standard": "label must match exactly.",
+                "predictions_json": [{"trial": 1, "raw_output": "{\"label\":\"negative\"}", "score": 0}],
+                "avg_score": 0.0,
+            }
+        ]
+    )
+
+    assert result.rejected_rows == []
+    case = result.imported_rows[0].case
+    assert case.task_type == "classification"
+    assert case.expected_output == {"label": "positive"}
+    assert case.output_schema == {"type": "object", "required": ["label"]}
+
+
 def test_parse_spreadsheet_rows_accepts_box_regions_json() -> None:
     result = parse_spreadsheet_rows(
         [

@@ -173,6 +173,13 @@ def _judge_classification_response(case: DebugCase, raw_output: str) -> JudgeRes
 
 
 def _classification_expected_output(case: DebugCase) -> ClassificationOutput:
+    label = case.expected_output.get("label")
+    if isinstance(label, str) and label:
+        confidence = case.expected_output.get("confidence")
+        return ClassificationOutput(
+            label=label,
+            confidence=confidence if isinstance(confidence, int | float) else None,
+        )
     if not case.golden_answer.answers:
         raise ValueError("classification case requires at least one golden answer label")
     return ClassificationOutput(label=case.golden_answer.answers[0].student_answer)
