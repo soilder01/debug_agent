@@ -11,6 +11,8 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
   const imageArtifacts = evidence.image_artifacts ?? [];
   const genericArtifacts = evidence.artifacts ?? [];
   const judgeDeltas = evidence.judge.deltas ?? [];
+  const ablationVariant = stringValue(evidence.request_summary.ablation_variant);
+  const ablationModalities = stringArrayValue(evidence.request_summary.ablation_modalities);
 
   return (
     <section>
@@ -25,6 +27,8 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
       <p>Prompt 长度：{evidence.request_summary.prompt_length ?? 0}</p>
       <p>包含图片：{String(evidence.request_summary.has_image ?? false)}</p>
       <p>图片 URI Scheme：{evidence.request_summary.image_uri_scheme || "无"}</p>
+      {ablationVariant ? <p>Ablation Variant：{ablationVariant}</p> : null}
+      {ablationModalities.length > 0 ? <p>Ablation 模态：{ablationModalities.join(", ")}</p> : null}
       {evidence.response_parse_error ? <p>解析错误：{evidence.response_parse_error}</p> : null}
       {evidence.model_call_error_type ? <p>模型调用错误类型：{evidence.model_call_error_type}</p> : null}
       {evidence.model_call_error_message ? <p>模型调用错误信息：{evidence.model_call_error_message}</p> : null}

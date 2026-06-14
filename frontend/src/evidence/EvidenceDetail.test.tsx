@@ -72,6 +72,40 @@ describe("EvidenceDetail", () => {
     expect(screen.queryByText("Image Artifacts")).not.toBeInTheDocument();
   });
 
+  it("renders ablation variant context from request summary", () => {
+    const evidence = {
+      evidence_id: "case-1:modality_ablation_check:1",
+      step_name: "modality_ablation_check",
+      trial: 1,
+      model_name: "ark-seed2-lite",
+      model_provider: "ark",
+      model_id: "ep-seed2-lite",
+      request_summary: {
+        prompt_length: 128,
+        has_image: false,
+        image_uri_scheme: "",
+        ablation_variant: "text_only",
+        ablation_modalities: ["text"]
+      },
+      latency_ms: 25,
+      response_parse_error: "",
+      model_call_error_type: "",
+      model_call_error_message: "",
+      artifacts: [],
+      image_artifacts: [],
+      raw_output: "{\"conflicts\":[]}",
+      judge: {
+        score: 0,
+        reasons: ["conflict mismatch"]
+      }
+    } satisfies ExperimentEvidence;
+
+    render(<EvidenceDetail evidence={evidence} />);
+
+    expect(screen.getByText("Ablation Variant：text_only")).toBeInTheDocument();
+    expect(screen.getByText("Ablation 模态：text")).toBeInTheDocument();
+  });
+
   it("renders image artifact metadata for localized OCR debugging", () => {
     const evidence = {
       evidence_id: "case-1:localized_observation_request:0",

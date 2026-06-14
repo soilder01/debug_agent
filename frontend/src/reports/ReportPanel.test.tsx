@@ -129,7 +129,9 @@ describe("ReportPanel", () => {
             delta_reasons: ["region_label_mismatch"],
             target_ids: ["image:region:1"],
             evidence_ids: ["e-baseline-pass", "e-baseline-fail"],
-            artifact_ids: ["baseline:input", "baseline:delta"]
+            artifact_ids: ["baseline:input", "baseline:delta"],
+            ablation_variants: ["image_only"],
+            ablation_modalities: ["image"]
           },
           {
             step_name: "modality_ablation_check",
@@ -162,6 +164,8 @@ describe("ReportPanel", () => {
     expect(screen.getByText("步骤失败次数：1/2")).toBeInTheDocument();
     expect(screen.getByText("Delta 类型：region_label_mismatch")).toBeInTheDocument();
     expect(screen.getByText("目标：image:region:1")).toBeInTheDocument();
+    expect(screen.getByText("Ablation：image_only")).toBeInTheDocument();
+    expect(screen.getByText("Ablation 模态：image")).toBeInTheDocument();
     expect(screen.getByText("证据：e-baseline-pass, e-baseline-fail")).toBeInTheDocument();
     expect(screen.getByText("产物：baseline:input, baseline:delta")).toBeInTheDocument();
     expect(screen.getByText("步骤：modality_ablation_check")).toBeInTheDocument();

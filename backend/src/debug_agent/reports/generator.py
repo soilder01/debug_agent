@@ -116,7 +116,7 @@ def _build_step_summary(step_name: str, evidence: list[ExperimentEvidence]) -> d
     total_trials = len(evidence)
     success_count = sum(item.judge.score for item in evidence)
     failed_trial_count = total_trials - success_count
-    return {
+    summary: dict[str, object] = {
         "step_name": step_name,
         "total_trials": total_trials,
         "success_count": success_count,
@@ -131,6 +131,13 @@ def _build_step_summary(step_name: str, evidence: list[ExperimentEvidence]) -> d
             for artifact in item.artifacts
         ],
     }
+    ablation_variants = _step_request_summary_strings(evidence, "ablation_variant")
+    ablation_modalities = _step_request_summary_string_items(evidence, "ablation_modalities")
+    if ablation_variants:
+        summary["ablation_variants"] = ablation_variants
+    if ablation_modalities:
+        summary["ablation_modalities"] = ablation_modalities
+    return summary
 
 
 def _step_delta_reasons(evidence: list[ExperimentEvidence]) -> list[str]:
@@ -153,6 +160,31 @@ def _step_target_ids(evidence: list[ExperimentEvidence]) -> list[str]:
             if isinstance(delta.get("target_id"), str) and str(delta.get("target_id")).strip()
         }
     )
+
+
+def _step_request_summary_strings(evidence: list[ExperimentEvidence], key: str) -> list[str]:
+    values: list[str] = []
+    for item in evidence:
+        value = item.request_summary.get(key)
+        if isinstance(value, str) and value.strip() and value not in values:
+            values.append(value)
+    return values
+
+
+def _step_request_summary_string_items(evidence: list[ExperimentEvidence], key: str) -> list[str]:
+    values: list[str] = []
+    for item in evidence:
+        value = item.request_summary.get(key)
+        if isinstance(value, str):
+            candidates = [value]
+        elif isinstance(value, list):
+            candidates = [candidate for candidate in value if isinstance(candidate, str)]
+        else:
+            candidates = []
+        for candidate in candidates:
+            if candidate.strip() and candidate not in values:
+                values.append(candidate)
+    return values
 
 
 def _infer_report_findings(

@@ -27,6 +27,8 @@ export type DebugReport = {
       target_ids: string[];
       evidence_ids: string[];
       artifact_ids: string[];
+      ablation_variants?: string[];
+      ablation_modalities?: string[];
     }>;
   } | null;
   root_cause: {
@@ -331,6 +333,8 @@ export type ExperimentEvidence = {
     prompt_length?: number;
     has_image?: boolean;
     image_uri_scheme?: string;
+    ablation_variant?: string;
+    ablation_modalities?: string[];
   };
   latency_ms: number;
   response_parse_error: string;

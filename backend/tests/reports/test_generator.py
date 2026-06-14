@@ -192,6 +192,10 @@ def test_generate_report_groups_experiment_results_by_step() -> None:
                 evidence_id="e-ablation-fail",
                 step_name="modality_ablation_check",
                 trial=0,
+                request_summary={
+                    "ablation_variant": "text_only",
+                    "ablation_modalities": ["text"],
+                },
                 raw_output=case.predictions[0].raw_output,
                 artifacts=[
                     {
@@ -242,6 +246,8 @@ def test_generate_report_groups_experiment_results_by_step() -> None:
             "target_ids": ["multimodal:conflict:1"],
             "evidence_ids": ["e-ablation-fail"],
             "artifact_ids": ["ablation:delta"],
+            "ablation_variants": ["text_only"],
+            "ablation_modalities": ["text"],
         },
     ]
 

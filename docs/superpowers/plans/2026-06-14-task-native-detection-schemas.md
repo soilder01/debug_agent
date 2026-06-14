@@ -271,6 +271,22 @@
 - [x] Reuse the existing workspace evidence detail loading callback from trajectory summaries.
 - [x] Preserve existing `ExperimentTimeline` evidence selection behavior.
 
+### Task 18: Ablation Variant Report Context
+
+**Files:**
+- Modify: `backend/src/debug_agent/reports/generator.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Modify: `frontend/src/evidence/EvidenceDetail.tsx`
+- Test: `backend/tests/reports/test_generator.py`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+- Test: `frontend/src/evidence/EvidenceDetail.test.tsx`
+
+- [x] Aggregate ablation variants and modalities from evidence request summaries into step summaries.
+- [x] Display ablation variant and modality context in experiment trajectory UI.
+- [x] Display the selected evidence ablation variant and modalities in evidence detail.
+- [x] Preserve existing trajectory, artifact, and judge delta rendering.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs
