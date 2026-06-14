@@ -258,6 +258,19 @@
 - [x] Persist variant name and modalities into evidence request summaries and input snapshot artifact metadata.
 - [x] Preserve non-ablation recipe behavior for existing OCR, classification, image, and video tasks.
 
+### Task 17: Experiment Trajectory Evidence Selection
+
+**Files:**
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Modify: `frontend/src/reports/DebugReportWorkspace.tsx`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+- Test: `frontend/src/reports/DebugReportWorkspace.test.tsx`
+
+- [x] Keep readable per-step evidence summaries in the report.
+- [x] Render trajectory evidence ids as selectable buttons when an evidence selection handler is available.
+- [x] Reuse the existing workspace evidence detail loading callback from trajectory summaries.
+- [x] Preserve existing `ExperimentTimeline` evidence selection behavior.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

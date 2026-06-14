@@ -136,4 +136,49 @@ describe("DebugReportWorkspace", () => {
     expect(screen.getByText("样本 ID：case-1")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Spreadsheet Writeback" })).not.toBeInTheDocument();
   });
+
+  it("delegates evidence selection from report experiment trajectory", async () => {
+    const onSelectEvidence = vi.fn();
+    const report = makeReport({
+      experiment_summary: {
+        total_trials: 1,
+        success_count: 0,
+        failed_trial_count: 1,
+        success_rate: 0,
+        stability_label: "stable_failure",
+        evidence_ids: [],
+        artifact_ids: ["ablation:delta"],
+        image_artifact_ids: [],
+        step_summaries: [
+          {
+            step_name: "modality_ablation_check",
+            total_trials: 1,
+            success_count: 0,
+            failed_trial_count: 1,
+            success_rate: 0,
+            delta_reasons: ["conflict_actual_mismatch"],
+            target_ids: ["multimodal:conflict:1"],
+            evidence_ids: ["trajectory-evidence-1"],
+            artifact_ids: ["ablation:delta"]
+          }
+        ]
+      }
+    });
+
+    render(
+      <DebugReportWorkspace
+        report={report}
+        selectedEvidence={null}
+        writebackResult={null}
+        writebackAudit={null}
+        onSelectEvidence={onSelectEvidence}
+        onWriteReport={vi.fn()}
+        onLoadWritebackAudit={vi.fn()}
+      />
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "trajectory-evidence-1" }));
+
+    expect(onSelectEvidence).toHaveBeenCalledWith("trajectory-evidence-1");
+  });
 });

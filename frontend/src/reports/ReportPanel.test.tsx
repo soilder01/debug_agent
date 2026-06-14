@@ -1,5 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { DebugReport } from "../api/client";
 import { ReportPanel } from "./ReportPanel";
@@ -166,5 +167,57 @@ describe("ReportPanel", () => {
     expect(screen.getByText("步骤：modality_ablation_check")).toBeInTheDocument();
     expect(screen.getByText("Delta 类型：conflict_actual_mismatch")).toBeInTheDocument();
     expect(screen.getByText("目标：multimodal:conflict:1")).toBeInTheDocument();
+  });
+
+  it("selects evidence from experiment trajectory summaries", async () => {
+    const onSelectEvidence = vi.fn();
+    const report: DebugReport = {
+      job_id: "job-trajectory",
+      case_id: "case-trajectory",
+      status: "needs_human_review",
+      observed_failure: {
+        type: "output_mismatch",
+        summary: "native mismatch",
+        affected_box_ids: []
+      },
+      planned_experiments: ["modality_ablation_check"],
+      experiment_summary: {
+        total_trials: 1,
+        success_count: 0,
+        failed_trial_count: 1,
+        success_rate: 0,
+        stability_label: "stable_failure",
+        evidence_ids: ["e-ablation-fail"],
+        artifact_ids: ["ablation:delta"],
+        image_artifact_ids: [],
+        step_summaries: [
+          {
+            step_name: "modality_ablation_check",
+            total_trials: 1,
+            success_count: 0,
+            failed_trial_count: 1,
+            success_rate: 0,
+            delta_reasons: ["conflict_actual_mismatch"],
+            target_ids: ["multimodal:conflict:1"],
+            evidence_ids: ["e-ablation-fail"],
+            artifact_ids: ["ablation:delta"]
+          }
+        ]
+      },
+      root_cause: {
+        label: "output_mismatch",
+        confidence: "high",
+        evidence_summary: "trajectory links evidence."
+      },
+      suggested_sheet_fields: {
+        错误原因: "结构化差异"
+      }
+    };
+
+    render(<ReportPanel report={report} onSelectEvidence={onSelectEvidence} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "e-ablation-fail" }));
+
+    expect(onSelectEvidence).toHaveBeenCalledWith("e-ablation-fail");
   });
 });

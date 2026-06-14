@@ -33,7 +33,7 @@ export function DebugReportWorkspace({
         onSelectEvidence={onSelectEvidence}
       />
       <EvidenceDetail evidence={selectedEvidence} />
-      <ReportPanel report={report} />
+      <ReportPanel report={report} onSelectEvidence={onSelectEvidence} />
       {report.job_id ? (
         <SpreadsheetWritebackPanel
           writebackResult={writebackResult}

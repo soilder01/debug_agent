@@ -2,9 +2,10 @@ import type { DebugReport } from "../api/client";
 
 type ReportPanelProps = {
   report: DebugReport;
+  onSelectEvidence?: (evidenceId: string) => void;
 };
 
-export function ReportPanel({ report }: ReportPanelProps) {
+export function ReportPanel({ report, onSelectEvidence }: ReportPanelProps) {
   const experimentSummary = report.experiment_summary;
   const artifactIds = experimentSummary?.artifact_ids?.length
     ? experimentSummary.artifact_ids
@@ -43,6 +44,17 @@ export function ReportPanel({ report }: ReportPanelProps) {
                 <p>Delta 类型：{step.delta_reasons.length > 0 ? step.delta_reasons.join(", ") : "无"}</p>
                 <p>目标：{step.target_ids.length > 0 ? step.target_ids.join(", ") : "无"}</p>
                 <p>证据：{step.evidence_ids.join(", ")}</p>
+                {onSelectEvidence && step.evidence_ids.length > 0 ? (
+                  <ul aria-label={`${step.step_name} trajectory evidence`}>
+                    {step.evidence_ids.map((evidenceId) => (
+                      <li key={evidenceId}>
+                        <button type="button" onClick={() => onSelectEvidence(evidenceId)}>
+                          {evidenceId}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
                 <p>产物：{step.artifact_ids.length > 0 ? step.artifact_ids.join(", ") : "无"}</p>
               </li>
             ))}
