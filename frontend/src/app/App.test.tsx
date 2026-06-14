@@ -17,6 +17,14 @@ describe("App", () => {
     expect(screen.queryByText("Handwriting OCR Debug Agent")).not.toBeInTheDocument();
   });
 
+  it("renders the logical agent topology", () => {
+    render(<App />);
+
+    expect(screen.getByRole("heading", { name: "Agent Topology" })).toBeInTheDocument();
+    expect(screen.getByText("Model Runner Agent")).toBeInTheDocument();
+    expect(screen.getByText("Writeback Operator Agent")).toBeInTheDocument();
+  });
+
   it("loads observability summary for operational monitoring", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")

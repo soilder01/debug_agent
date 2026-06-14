@@ -82,11 +82,11 @@ These are not separate deployed services yet. The next goal is to make their con
 - Create: `frontend/src/orchestration/AgentTopologyPanel.test.tsx`
 - Modify: `frontend/src/app/App.tsx`
 
-- [ ] Write a failing UI test that renders seven logical agent capabilities under `Agent Topology`.
-- [ ] Implement a static topology panel matching backend role ids and responsibilities.
-- [ ] Mount the panel near operational monitoring.
-- [ ] Run `npx --yes pnpm@9.15.4 --dir frontend test -- --run src/orchestration/AgentTopologyPanel.test.tsx src/app/App.test.tsx`.
-- [ ] Commit as `feat(frontend): show agent topology`.
+- [x] Write a failing UI test that renders seven logical agent capabilities under `Agent Topology`.
+- [x] Implement a static topology panel matching backend role ids and responsibilities.
+- [x] Mount the panel near operational monitoring.
+- [x] Run `npx --yes pnpm@9.15.4 --dir frontend test -- --run src/orchestration/AgentTopologyPanel.test.tsx src/app/App.test.tsx`.
+- [x] Commit as `feat(frontend): show agent topology`.
 
 ### Task 5: Full Verification And Roadmap Refresh
 

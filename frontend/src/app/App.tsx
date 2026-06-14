@@ -48,6 +48,7 @@ import { BatchJobsPanel } from "../jobs/BatchJobsPanel";
 import { CurrentJobPanel } from "../jobs/CurrentJobPanel";
 import { WorkerControlsPanel } from "../jobs/WorkerControlsPanel";
 import { ObservabilitySummaryPanel } from "../observability/ObservabilitySummaryPanel";
+import { AgentTopologyPanel } from "../orchestration/AgentTopologyPanel";
 import { DebugReportWorkspace } from "../reports/DebugReportWorkspace";
 import { SpreadsheetSyncPanel } from "../spreadsheets/SpreadsheetSyncPanel";
 import { parseLarkSpreadsheetUrl } from "../spreadsheets/larkUrl";
@@ -547,6 +548,7 @@ export function App() {
           Load observability summary
         </button>
       </section>
+      <AgentTopologyPanel />
       {observabilitySummary ? (
         <ObservabilitySummaryPanel
           summary={observabilitySummary}
