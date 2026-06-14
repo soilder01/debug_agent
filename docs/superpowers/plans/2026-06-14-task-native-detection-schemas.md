@@ -364,6 +364,20 @@
 - [x] Render structured recommended action items in writeback audit rows.
 - [x] Preserve raw `推荐操作` text for compatibility and troubleshooting.
 
+### Task 25: Recommended Action Status Seed
+
+**Files:**
+- Modify: `backend/src/debug_agent/reports/generator.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `backend/tests/reports/test_generator.py`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Add default `status="pending"` to generated recommended actions.
+- [x] Type recommended action status in the frontend API client.
+- [x] Display recommended action status in the report UI.
+- [x] Keep existing recommended action summary and detail rendering compatible.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

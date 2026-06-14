@@ -56,6 +56,7 @@ export type DebugReport = {
   recommended_actions?: Array<{
     category: string;
     priority: string;
+    status?: string;
     summary: string;
     detail: string;
   }>;

@@ -266,12 +266,14 @@ describe("ReportPanel", () => {
         {
           category: "prompt",
           priority: "high",
+          status: "pending",
           summary: "强化跨模态对比步骤。",
           detail: "要求模型先分别列出 image/text 证据，再输出冲突结论。"
         },
         {
           category: "model_capability",
           priority: "high",
+          status: "pending",
           summary: "将跨模态融合短板纳入模型能力归因。",
           detail: "单模态通过但跨模态失败，优先检查 fusion/alignment 能力。"
         }
@@ -298,6 +300,7 @@ describe("ReportPanel", () => {
     expect(screen.getByText("产物：ablation:delta")).toBeInTheDocument();
     expect(screen.getByText("Recommended Actions")).toBeInTheDocument();
     expect(screen.getByText("prompt/high：强化跨模态对比步骤。")).toBeInTheDocument();
+    expect(screen.getAllByText("状态：pending")[0]).toBeInTheDocument();
     expect(screen.getByText("要求模型先分别列出 image/text 证据，再输出冲突结论。")).toBeInTheDocument();
     expect(screen.getByText("model_capability/high：将跨模态融合短板纳入模型能力归因。")).toBeInTheDocument();
   });

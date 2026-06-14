@@ -100,6 +100,7 @@ export function ReportPanel({ report, onSelectEvidence }: ReportPanelProps) {
                 <p>
                   {action.category}/{action.priority}：{action.summary}
                 </p>
+                <p>状态：{action.status ?? "pending"}</p>
                 <p>{action.detail}</p>
               </li>
             ))}

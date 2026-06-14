@@ -505,18 +505,21 @@ def test_generate_report_infers_single_modality_gap_from_ablation_results() -> N
         {
             "category": "prompt",
             "priority": "high",
+            "status": "pending",
             "summary": "强化 image 模态定位与证据引用要求。",
             "detail": "在 prompt 中要求模型先列出 image 证据、目标区域或关键帧，再输出最终结构化结论。",
         },
         {
             "category": "evaluation_asset",
             "priority": "medium",
+            "status": "pending",
             "summary": "补充 image 单模态 golden evidence。",
             "detail": "为失败样本补充 image-only 期望证据、区域/关键帧标注或可接受视觉解释，避免跨模态结论缺少单模态审计依据。",
         },
         {
             "category": "model_capability",
             "priority": "high",
+            "status": "pending",
             "summary": "将 image 感知能力短板纳入模型能力归因。",
             "detail": "单模态 ablation 已失败，优先归因 image 感知/定位/grounding 能力，而不是跨模态融合。",
         },
