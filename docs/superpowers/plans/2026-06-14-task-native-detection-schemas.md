@@ -58,7 +58,7 @@
 - [x] Add optional generic `expected_output` and `output_schema` fields while keeping `golden_answer`.
 - [x] Allow classification fixtures to carry `expected_output={"label":"positive"}`.
 - [x] Keep existing spreadsheet and JSONL OCR imports compatible.
-- [ ] Commit as `feat(core): add task native expected output fields`.
+- [x] Commit as `feat(core): add task native expected output fields`.
 
 ### Task 4: Frontend Task-Native Case Display
 
@@ -67,8 +67,8 @@
 - Modify: `frontend/src/cases/ImportedCaseDetailPanel.tsx`
 - Test: `frontend/src/cases/ImportedCaseDetailPanel.test.tsx`
 
-- [ ] Display `expected_output` when present.
-- [ ] Keep OCR answer and region display unchanged.
+- [x] Display `expected_output` when present.
+- [x] Keep OCR answer and region display unchanged.
 - [ ] Commit as `feat(frontend): show task native expected output`.
 
 ### Task 5: Image And Video Harness Schema Roadmap

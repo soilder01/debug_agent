@@ -156,6 +156,8 @@ export type DebugCaseDetail = {
       student_answer: string;
     }>;
   };
+  expected_output?: Record<string, unknown>;
+  output_schema?: Record<string, unknown>;
   scoring_standard: string;
   predictions: Array<{
     trial: number;

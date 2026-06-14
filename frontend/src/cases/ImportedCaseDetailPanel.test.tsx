@@ -61,4 +61,19 @@ describe("ImportedCaseDetailPanel", () => {
 
     expect(screen.queryByLabelText("Box regions")).not.toBeInTheDocument();
   });
+
+  it("renders task-native expected output when present", () => {
+    render(
+      <ImportedCaseDetailPanel
+        caseDetail={makeCaseDetail({
+          expected_output: { label: "positive" },
+          output_schema: { type: "object", required: ["label"] }
+        })}
+        onCreateDebugJob={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('期望输出：{"label":"positive"}')).toBeInTheDocument();
+    expect(screen.getByText('输出 Schema：{"type":"object","required":["label"]}')).toBeInTheDocument();
+  });
 });

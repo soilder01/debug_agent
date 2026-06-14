@@ -6,6 +6,9 @@ type ImportedCaseDetailPanelProps = {
 };
 
 export function ImportedCaseDetailPanel({ caseDetail, onCreateDebugJob }: ImportedCaseDetailPanelProps) {
+  const hasExpectedOutput = caseDetail.expected_output && Object.keys(caseDetail.expected_output).length > 0;
+  const hasOutputSchema = caseDetail.output_schema && Object.keys(caseDetail.output_schema).length > 0;
+
   return (
     <section aria-label="Selected case detail">
       <h3>样本详情：{caseDetail.case_id}</h3>
@@ -22,6 +25,8 @@ export function ImportedCaseDetailPanel({ caseDetail, onCreateDebugJob }: Import
           </li>
         ))}
       </ul>
+      {hasExpectedOutput ? <p>期望输出：{JSON.stringify(caseDetail.expected_output)}</p> : null}
+      {hasOutputSchema ? <p>输出 Schema：{JSON.stringify(caseDetail.output_schema)}</p> : null}
       {(caseDetail.box_regions ?? []).length > 0 ? (
         <ul aria-label="Box regions">
           {caseDetail.box_regions?.map((region) => (
