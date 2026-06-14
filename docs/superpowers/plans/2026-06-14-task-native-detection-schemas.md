@@ -218,6 +218,17 @@
 - [x] Include image region geometry, video temporal windows, and multimodal expected/actual modality context in delta metadata.
 - [x] Preserve existing input snapshot, structured output, and OCR localized crop artifacts.
 
+### Task 14: Frontend Native Artifact Metadata Display
+
+**Files:**
+- Modify: `frontend/src/evidence/EvidenceDetail.tsx`
+- Test: `frontend/src/evidence/EvidenceDetail.test.tsx`
+
+- [x] Render image region metadata as expected/actual geometry instead of raw JSON only.
+- [x] Render video segment metadata as expected/actual temporal windows.
+- [x] Render multimodal metadata as expected/actual modalities and conflict type transitions.
+- [x] Keep raw metadata JSON visible for troubleshooting and compatibility.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

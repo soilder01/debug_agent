@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { ExperimentEvidence } from "../api/client";
@@ -233,6 +233,95 @@ describe("EvidenceDetail", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("目标：video:segment:1")).toBeInTheDocument();
     expect(screen.getByText("原因：segment_label_mismatch")).toBeInTheDocument();
+  });
+
+  it("renders structured native artifact metadata for regions, segments, and multimodal conflicts", () => {
+    const evidence = {
+      evidence_id: "native-artifacts:baseline_replay:0",
+      step_name: "baseline_replay",
+      trial: 0,
+      model_name: "ark-seed2-lite",
+      model_provider: "ark",
+      model_id: "ep-seed2-lite",
+      request_summary: {
+        prompt_length: 128,
+        has_image: true,
+        image_uri_scheme: "file"
+      },
+      latency_ms: 45,
+      response_parse_error: "",
+      model_call_error_type: "",
+      model_call_error_message: "",
+      artifacts: [
+        {
+          artifact_id: "native-artifacts:baseline:0:image_region_1:delta",
+          kind: "image_region_delta",
+          artifact_type: "image_region",
+          source_uri: "file:///tmp/image.png",
+          derived_uri: "",
+          preview_url: "",
+          region: null,
+          metadata: {
+            target_id: "image:region:1",
+            reason: "region_label_mismatch",
+            expected_region: { x: 10, y: 20, width: 30, height: 40, unit: "pixel", label: "cat" },
+            actual_region: { x: 10, y: 20, width: 30, height: 40, unit: "pixel", label: "dog" }
+          }
+        },
+        {
+          artifact_id: "native-artifacts:baseline:0:video_segment_1:delta",
+          kind: "video_segment_delta",
+          artifact_type: "video_segment",
+          source_uri: "file:///tmp/video.mp4",
+          derived_uri: "",
+          preview_url: "",
+          region: null,
+          metadata: {
+            target_id: "video:segment:1",
+            reason: "segment_label_mismatch",
+            expected_segment: { start_ms: 1000, end_ms: 2500, label: "person_enters" },
+            actual_segment: { start_ms: 1000, end_ms: 2500, label: "person_leaves" }
+          }
+        },
+        {
+          artifact_id: "native-artifacts:baseline:0:multimodal_conflict_1:delta",
+          kind: "multimodal_conflict_delta",
+          artifact_type: "multimodal_conflict",
+          source_uri: "file:///tmp/multimodal.mp4",
+          derived_uri: "",
+          preview_url: "",
+          region: null,
+          metadata: {
+            target_id: "multimodal:conflict:1",
+            reason: "conflict_actual_mismatch",
+            expected_conflict_type: "visual_text_conflict",
+            actual_conflict_type: "visual_text_conflict",
+            expected_modalities: ["image", "text"],
+            actual_modalities: ["image", "text"]
+          }
+        }
+      ],
+      image_artifacts: [],
+      raw_output: "{\"regions\":[]}",
+      judge: {
+        score: 0,
+        reasons: ["native mismatch"]
+      }
+    } satisfies ExperimentEvidence;
+
+    render(<EvidenceDetail evidence={evidence} />);
+
+    const artifacts = screen.getAllByLabelText("Artifact native context");
+    expect(within(artifacts[0]).getByText("目标：image:region:1")).toBeInTheDocument();
+    expect(within(artifacts[0]).getByText("期望区域：x=10, y=20, width=30, height=40, unit=pixel, label=cat")).toBeInTheDocument();
+    expect(within(artifacts[0]).getByText("实际区域：x=10, y=20, width=30, height=40, unit=pixel, label=dog")).toBeInTheDocument();
+    expect(within(artifacts[1]).getByText("目标：video:segment:1")).toBeInTheDocument();
+    expect(within(artifacts[1]).getByText("期望片段：start=1000ms, end=2500ms, label=person_enters")).toBeInTheDocument();
+    expect(within(artifacts[1]).getByText("实际片段：start=1000ms, end=2500ms, label=person_leaves")).toBeInTheDocument();
+    expect(within(artifacts[2]).getByText("目标：multimodal:conflict:1")).toBeInTheDocument();
+    expect(within(artifacts[2]).getByText("期望模态：image, text")).toBeInTheDocument();
+    expect(within(artifacts[2]).getByText("实际模态：image, text")).toBeInTheDocument();
+    expect(within(artifacts[2]).getByText("冲突类型：visual_text_conflict → visual_text_conflict")).toBeInTheDocument();
   });
 
   it("hides judge deltas section when no structured deltas are present", () => {

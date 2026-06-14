@@ -40,6 +40,7 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
                 <p>源 URI：{artifact.source_uri || "无"}</p>
                 <p>派生 URI：{artifact.derived_uri || "无"}</p>
                 <p>元数据：{JSON.stringify(artifact.metadata)}</p>
+                <ArtifactNativeContext metadata={artifact.metadata} />
                 {artifact.preview_url ? (
                   <>
                     <p>
@@ -126,4 +127,125 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
       <pre>{evidence.raw_output}</pre>
     </section>
   );
+}
+
+type ArtifactNativeContextProps = {
+  metadata: Record<string, unknown>;
+};
+
+function ArtifactNativeContext({ metadata }: ArtifactNativeContextProps) {
+  const targetId = stringValue(metadata.target_id);
+  const expectedRegion = regionValue(metadata.expected_region);
+  const actualRegion = regionValue(metadata.actual_region);
+  const expectedSegment = segmentValue(metadata.expected_segment);
+  const actualSegment = segmentValue(metadata.actual_segment);
+  const expectedModalities = stringArrayValue(metadata.expected_modalities);
+  const actualModalities = stringArrayValue(metadata.actual_modalities);
+  const expectedConflictType = stringValue(metadata.expected_conflict_type);
+  const actualConflictType = stringValue(metadata.actual_conflict_type);
+  const hasContext =
+    targetId ||
+    expectedRegion ||
+    actualRegion ||
+    expectedSegment ||
+    actualSegment ||
+    expectedModalities.length > 0 ||
+    actualModalities.length > 0 ||
+    expectedConflictType ||
+    actualConflictType;
+
+  if (!hasContext) {
+    return null;
+  }
+
+  return (
+    <section aria-label="Artifact native context">
+      {targetId ? <p>目标：{targetId}</p> : null}
+      {expectedRegion ? <p>期望区域：{formatRegion(expectedRegion)}</p> : null}
+      {actualRegion ? <p>实际区域：{formatRegion(actualRegion)}</p> : null}
+      {expectedSegment ? <p>期望片段：{formatSegment(expectedSegment)}</p> : null}
+      {actualSegment ? <p>实际片段：{formatSegment(actualSegment)}</p> : null}
+      {expectedModalities.length > 0 ? <p>期望模态：{expectedModalities.join(", ")}</p> : null}
+      {actualModalities.length > 0 ? <p>实际模态：{actualModalities.join(", ")}</p> : null}
+      {expectedConflictType || actualConflictType ? (
+        <p>冲突类型：{expectedConflictType || "无"} → {actualConflictType || "无"}</p>
+      ) : null}
+    </section>
+  );
+}
+
+type RegionMetadata = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  unit: string;
+  label: string;
+};
+
+type SegmentMetadata = {
+  start_ms: number;
+  end_ms: number;
+  label: string;
+};
+
+function regionValue(value: unknown): RegionMetadata | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const x = numberValue(value.x);
+  const y = numberValue(value.y);
+  const width = numberValue(value.width);
+  const height = numberValue(value.height);
+  if (x === null || y === null || width === null || height === null) {
+    return null;
+  }
+  return {
+    x,
+    y,
+    width,
+    height,
+    unit: stringValue(value.unit) || "pixel",
+    label: stringValue(value.label) || "无"
+  };
+}
+
+function segmentValue(value: unknown): SegmentMetadata | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const startMs = numberValue(value.start_ms);
+  const endMs = numberValue(value.end_ms);
+  if (startMs === null || endMs === null) {
+    return null;
+  }
+  return {
+    start_ms: startMs,
+    end_ms: endMs,
+    label: stringValue(value.label) || "无"
+  };
+}
+
+function formatRegion(region: RegionMetadata): string {
+  return `x=${region.x}, y=${region.y}, width=${region.width}, height=${region.height}, unit=${region.unit}, label=${region.label}`;
+}
+
+function formatSegment(segment: SegmentMetadata): string {
+  return `start=${segment.start_ms}ms, end=${segment.end_ms}ms, label=${segment.label}`;
+}
+
+function stringArrayValue(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function stringValue(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function numberValue(value: unknown): number | null {
+  return typeof value === "number" ? value : null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
