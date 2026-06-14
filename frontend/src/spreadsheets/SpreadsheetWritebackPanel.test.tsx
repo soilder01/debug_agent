@@ -107,6 +107,11 @@ describe("SpreadsheetWritebackPanel", () => {
         "推荐操作：prompt/high：强化跨模态对比步骤。 - 要求模型先分别列出 image/text 证据，再输出冲突结论。"
       )
     ).toBeInTheDocument();
+    expect(within(nativeSummary).getByText("Recommended Action Items")).toBeInTheDocument();
+    expect(within(nativeSummary).getByText("类别：prompt")).toBeInTheDocument();
+    expect(within(nativeSummary).getByText("优先级：high")).toBeInTheDocument();
+    expect(within(nativeSummary).getByText("摘要：强化跨模态对比步骤。")).toBeInTheDocument();
+    expect(within(nativeSummary).getByText("详情：要求模型先分别列出 image/text 证据，再输出冲突结论。")).toBeInTheDocument();
     expect(screen.getByText("错误原因：结构化评分显示 multimodal:conflict:1 存在 conflict_actual_mismatch。")).toBeInTheDocument();
   });
 });

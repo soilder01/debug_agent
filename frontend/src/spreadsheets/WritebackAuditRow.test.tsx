@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -69,16 +69,23 @@ describe("WritebackAuditRow", () => {
         错误原因: "结构化评分显示 video:segment:1 存在 segment_label_mismatch。",
         影响目标: "video:segment:1",
         结构化差异: "video:segment:1 segment_label_mismatch: expected=person_enters actual=person_leaves",
-        证据产物: "video-case:baseline:0:input-snapshot"
+        证据产物: "video-case:baseline:0:input-snapshot",
+        推荐操作:
+          "model_capability/high：将 video 感知能力短板纳入模型能力归因。 - 单模态 ablation 已失败，优先归因 video 感知/定位/grounding 能力。"
       }
     });
 
     render(<WritebackAuditRow audit={audit} onOpenJob={vi.fn()} onRetry={vi.fn()} />);
 
     expect(screen.getByText("Native Debug Writeback")).toBeInTheDocument();
+    const nativeSummary = screen.getByLabelText("Native debug writeback");
     expect(screen.getByText("影响目标：video:segment:1")).toBeInTheDocument();
     expect(screen.getByText("结构化差异：video:segment:1 segment_label_mismatch: expected=person_enters actual=person_leaves")).toBeInTheDocument();
     expect(screen.getByText("证据产物：video-case:baseline:0:input-snapshot")).toBeInTheDocument();
+    expect(within(nativeSummary).getByText("Recommended Action Items")).toBeInTheDocument();
+    expect(within(nativeSummary).getByText("类别：model_capability")).toBeInTheDocument();
+    expect(within(nativeSummary).getByText("优先级：high")).toBeInTheDocument();
+    expect(within(nativeSummary).getByText("摘要：将 video 感知能力短板纳入模型能力归因。")).toBeInTheDocument();
     expect(screen.getByText("Writeback audit field：影响目标=video:segment:1")).toBeInTheDocument();
   });
 });

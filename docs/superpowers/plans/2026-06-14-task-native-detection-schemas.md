@@ -352,6 +352,18 @@
 - [x] Highlight recommended actions in the native writeback UI.
 - [x] Preserve existing target, delta, artifact, report link, and evaluation feedback fields.
 
+### Task 24: Structured Recommended Action UI
+
+**Files:**
+- Modify: `frontend/src/spreadsheets/NativeWritebackFields.tsx`
+- Test: `frontend/src/spreadsheets/SpreadsheetWritebackPanel.test.tsx`
+- Test: `frontend/src/spreadsheets/WritebackAuditRow.test.tsx`
+
+- [x] Parse `推荐操作` lines into category, priority, summary, and detail.
+- [x] Render structured recommended action items in writeback result UI.
+- [x] Render structured recommended action items in writeback audit rows.
+- [x] Preserve raw `推荐操作` text for compatibility and troubleshooting.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs
