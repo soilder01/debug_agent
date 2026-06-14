@@ -146,6 +146,14 @@ export type EvidenceArtifact = {
   metadata: Record<string, unknown>;
 };
 
+export type JudgeDelta = {
+  target_id: string;
+  expected: string | null;
+  actual: string | null;
+  reason: string;
+  metadata: Record<string, unknown>;
+};
+
 export type DebugCaseDetail = {
   case_id: string;
   image_uri: string;
@@ -323,6 +331,7 @@ export type ExperimentEvidence = {
   judge: {
     score: number;
     reasons: string[];
+    deltas?: JudgeDelta[];
   };
 };
 

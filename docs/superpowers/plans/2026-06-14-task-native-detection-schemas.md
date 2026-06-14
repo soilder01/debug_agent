@@ -153,6 +153,18 @@
 - [x] Add `MultimodalDetectionRecipe` with cross-modal schema check, modality ablation check, and conflict grounding check steps.
 - [x] Keep multimodal harness prompts centered on modality isolation and evidence grounding instead of OCR assumptions.
 
+### Task 9: Frontend Native Delta Evidence Display
+
+**Files:**
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/evidence/EvidenceDetail.tsx`
+- Test: `frontend/src/evidence/EvidenceDetail.test.tsx`
+
+- [x] Add `JudgeDelta` frontend type for generic `target_id`, `expected`, `actual`, `reason`, and `metadata`.
+- [x] Display task-native judge deltas in evidence detail for image, video, classification, and multimodal tasks.
+- [x] Keep the delta section hidden for successful or legacy evidence without structured deltas.
+- [x] Preserve existing generic artifact and legacy image artifact rendering.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

@@ -10,6 +10,7 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
   }
   const imageArtifacts = evidence.image_artifacts ?? [];
   const genericArtifacts = evidence.artifacts ?? [];
+  const judgeDeltas = evidence.judge.deltas ?? [];
 
   return (
     <section>
@@ -105,6 +106,22 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
           <li key={reason}>{reason}</li>
         ))}
       </ul>
+      {judgeDeltas.length > 0 ? (
+        <>
+          <h3>Judge Deltas</h3>
+          <ul aria-label="Judge deltas">
+            {judgeDeltas.map((delta) => (
+              <li key={`${delta.target_id}:${delta.reason}`}>
+                <p>目标：{delta.target_id}</p>
+                <p>原因：{delta.reason}</p>
+                <p>期望：{delta.expected ?? "无"}</p>
+                <p>实际：{delta.actual ?? "无"}</p>
+                <p>元数据：{JSON.stringify(delta.metadata)}</p>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
       <h3>Raw Output</h3>
       <pre>{evidence.raw_output}</pre>
     </section>

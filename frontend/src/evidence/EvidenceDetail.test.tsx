@@ -168,4 +168,102 @@ describe("EvidenceDetail", () => {
 
     expect(screen.getByText("预览图：无")).toBeInTheDocument();
   });
+
+  it("renders task-native judge deltas with target ids and metadata", () => {
+    const evidence = {
+      evidence_id: "multimodal-case:baseline_replay:0",
+      step_name: "baseline_replay",
+      trial: 0,
+      model_name: "ark-seed2-lite",
+      model_provider: "ark",
+      model_id: "ep-seed2-lite",
+      request_summary: {
+        prompt_length: 128,
+        has_image: true,
+        image_uri_scheme: "file"
+      },
+      latency_ms: 45,
+      response_parse_error: "",
+      model_call_error_type: "",
+      model_call_error_message: "",
+      artifacts: [],
+      image_artifacts: [],
+      raw_output: "{\"conflicts\":[]}",
+      judge: {
+        score: 0,
+        reasons: ["multimodal:conflict:1 conflict_actual_mismatch"],
+        deltas: [
+          {
+            target_id: "multimodal:conflict:1",
+            expected: "image and caption both describe a cat",
+            actual: "image shows dog while caption says cat",
+            reason: "conflict_actual_mismatch",
+            metadata: {
+              field: "actual",
+              conflict_type: "visual_text_conflict",
+              modalities: ["image", "text"],
+              confidence: 0.76
+            }
+          },
+          {
+            target_id: "video:segment:1",
+            expected: "person_enters",
+            actual: "person_leaves",
+            reason: "segment_label_mismatch",
+            metadata: {
+              field: "label",
+              confidence: 0.62
+            }
+          }
+        ]
+      }
+    } satisfies ExperimentEvidence;
+
+    render(<EvidenceDetail evidence={evidence} />);
+
+    expect(screen.getByText("Judge Deltas")).toBeInTheDocument();
+    expect(screen.getByText("目标：multimodal:conflict:1")).toBeInTheDocument();
+    expect(screen.getByText("原因：conflict_actual_mismatch")).toBeInTheDocument();
+    expect(screen.getByText("期望：image and caption both describe a cat")).toBeInTheDocument();
+    expect(screen.getByText("实际：image shows dog while caption says cat")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        '元数据：{"field":"actual","conflict_type":"visual_text_conflict","modalities":["image","text"],"confidence":0.76}'
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByText("目标：video:segment:1")).toBeInTheDocument();
+    expect(screen.getByText("原因：segment_label_mismatch")).toBeInTheDocument();
+  });
+
+  it("hides judge deltas section when no structured deltas are present", () => {
+    const evidence = {
+      evidence_id: "classification-case:baseline_replay:0",
+      step_name: "baseline_replay",
+      trial: 0,
+      model_name: "ark-seed2-lite",
+      model_provider: "ark",
+      model_id: "ep-seed2-lite",
+      request_summary: {
+        prompt_length: 64,
+        has_image: false,
+        image_uri_scheme: ""
+      },
+      latency_ms: 30,
+      response_parse_error: "",
+      model_call_error_type: "",
+      model_call_error_message: "",
+      artifacts: [],
+      image_artifacts: [],
+      raw_output: "{\"label\":\"positive\"}",
+      judge: {
+        score: 1,
+        reasons: [],
+        deltas: []
+      }
+    } satisfies ExperimentEvidence;
+
+    render(<EvidenceDetail evidence={evidence} />);
+
+    expect(screen.queryByText("Judge Deltas")).not.toBeInTheDocument();
+  });
 });
