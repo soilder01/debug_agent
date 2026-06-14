@@ -106,15 +106,16 @@ def parse_csv_cases(csv_text: str) -> CsvCaseParseResult:
 
 
 def _row_to_case(row: dict[str, str | None]) -> DebugCase:
-    golden_answer_text = _required(row, "golden_answer_json")
+    task_type = row.get("task_type") or "handwriting_ocr"
     predictions_text = _required(row, "predictions_json")
+    expected_output = _loads_optional_json_object(row.get("expected_output_json"), "expected_output_json")
     return DebugCase(
         case_id=_required(row, "case_id"),
-        task_type=row.get("task_type") or "handwriting_ocr",
+        task_type=task_type,
         image_uri=row.get("image_uri") or "",
         prompt=_required(row, "prompt"),
-        golden_answer=AnswerSet.model_validate(_loads_json(golden_answer_text, "golden_answer_json")),
-        expected_output=_loads_optional_json_object(row.get("expected_output_json"), "expected_output_json"),
+        golden_answer=_load_golden_answer(row, task_type=task_type, expected_output=expected_output),
+        expected_output=expected_output,
         output_schema=_loads_optional_json_object(row.get("output_schema_json"), "output_schema_json"),
         scoring_standard=_required(row, "scoring_standard"),
         predictions=[
@@ -127,6 +128,20 @@ def _row_to_case(row: dict[str, str | None]) -> DebugCase:
             root_cause=row.get("root_cause") or "",
         ),
     )
+
+
+def _load_golden_answer(
+    row: dict[str, str | None],
+    *,
+    task_type: str,
+    expected_output: dict[str, object],
+) -> AnswerSet:
+    golden_answer_text = row.get("golden_answer_json")
+    if golden_answer_text:
+        return AnswerSet.model_validate(_loads_json(golden_answer_text, "golden_answer_json"))
+    if task_type == "handwriting_ocr" or not expected_output:
+        raise ValueError("Missing required CSV column value: golden_answer_json")
+    return AnswerSet(answers=[])
 
 
 def _parse_box_regions(row: dict[str, str | None]) -> list[BoxRegion]:

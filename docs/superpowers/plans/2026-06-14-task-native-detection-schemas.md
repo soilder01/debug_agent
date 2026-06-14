@@ -165,6 +165,19 @@
 - [x] Keep the delta section hidden for successful or legacy evidence without structured deltas.
 - [x] Preserve existing generic artifact and legacy image artifact rendering.
 
+### Task 10: Generic Expected Output Import Entry Point
+
+**Files:**
+- Modify: `backend/src/debug_agent/imports/csv_cases.py`
+- Modify: `backend/src/debug_agent/imports/spreadsheet_rows.py`
+- Test: `backend/tests/imports/test_csv_cases.py`
+- Test: `backend/tests/imports/test_spreadsheet_rows.py`
+
+- [x] Allow non-OCR task rows to omit `golden_answer_json` when `expected_output_json` is present.
+- [x] Preserve `golden_answer_json` as required for `handwriting_ocr` rows.
+- [x] Use empty `AnswerSet(answers=[])` only as a compatibility placeholder for task-native rows.
+- [x] Keep existing CSV and spreadsheet OCR imports compatible.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

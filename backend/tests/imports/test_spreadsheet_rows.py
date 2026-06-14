@@ -62,6 +62,49 @@ def test_parse_spreadsheet_rows_imports_task_native_expected_output() -> None:
     assert case.output_schema == {"type": "object", "required": ["label"]}
 
 
+def test_parse_spreadsheet_rows_imports_non_ocr_expected_output_without_golden_answer_json() -> None:
+    result = parse_spreadsheet_rows(
+        [
+            {
+                "sheet_row_id": "row-video-native-no-golden",
+                "case_id": "sheet-video-native-no-golden",
+                "task_type": "video_detection",
+                "image_uri": "file:///tmp/video-native.mp4",
+                "prompt": "Detect events and return temporal segment JSON.",
+                "expected_output_json": {
+                    "temporal_segments": [
+                        {
+                            "target_id": "video:segment:1",
+                            "start_ms": 1000,
+                            "end_ms": 2500,
+                            "label": "person_enters",
+                        }
+                    ]
+                },
+                "output_schema_json": {"type": "object", "required": ["temporal_segments"]},
+                "scoring_standard": "temporal segment target ids and labels must match.",
+                "predictions_json": [
+                    {
+                        "trial": 1,
+                        "raw_output": (
+                            "{\"temporal_segments\":[{\"target_id\":\"video:segment:1\","
+                            "\"start_ms\":1000,\"end_ms\":2500,\"label\":\"person_leaves\"}]}"
+                        ),
+                        "score": 0,
+                    }
+                ],
+                "avg_score": 0.0,
+            }
+        ]
+    )
+
+    assert result.rejected_rows == []
+    case = result.imported_rows[0].case
+    assert case.task_type == "video_detection"
+    assert case.expected_output["temporal_segments"][0]["target_id"] == "video:segment:1"
+    assert case.golden_answer.answers == []
+
+
 def test_parse_spreadsheet_rows_accepts_box_regions_json() -> None:
     result = parse_spreadsheet_rows(
         [

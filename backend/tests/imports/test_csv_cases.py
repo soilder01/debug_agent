@@ -103,6 +103,62 @@ def test_parse_csv_cases_imports_task_native_expected_output() -> None:
     assert case.output_schema == {"type": "object", "required": ["label"]}
 
 
+def test_parse_csv_cases_imports_non_ocr_expected_output_without_golden_answer_json() -> None:
+    predictions = [
+        {
+            "trial": 1,
+            "raw_output": (
+                "{\"regions\":[{\"target_id\":\"image:region:1\",\"x\":10,\"y\":20,"
+                "\"width\":30,\"height\":40,\"label\":\"dog\"}]}"
+            ),
+            "score": 0,
+        }
+    ]
+    output = io.StringIO()
+    writer = csv.DictWriter(
+        output,
+        fieldnames=[
+            "case_id",
+            "task_type",
+            "image_uri",
+            "prompt",
+            "expected_output_json",
+            "output_schema_json",
+            "scoring_standard",
+            "predictions_json",
+            "avg_score",
+        ],
+    )
+    writer.writeheader()
+    writer.writerow(
+        {
+            "case_id": "csv-image-native-no-golden",
+            "task_type": "image_detection",
+            "image_uri": "file:///tmp/image-native.png",
+            "prompt": "Detect animals and return region JSON.",
+            "expected_output_json": json.dumps(
+                {
+                    "regions": [
+                        {"target_id": "image:region:1", "x": 10, "y": 20, "width": 30, "height": 40, "label": "cat"}
+                    ]
+                }
+            ),
+            "output_schema_json": json.dumps({"type": "object", "required": ["regions"]}),
+            "scoring_standard": "region target ids and labels must match.",
+            "predictions_json": json.dumps(predictions),
+            "avg_score": "0.0",
+        }
+    )
+
+    result = parse_csv_cases(output.getvalue())
+
+    assert result.rejected_rows == []
+    case = result.cases[0]
+    assert case.task_type == "image_detection"
+    assert case.expected_output["regions"][0]["target_id"] == "image:region:1"
+    assert case.golden_answer.answers == []
+
+
 def test_parse_csv_cases_imports_box_regions_json() -> None:
     golden_answer = {"answers": [{"box_id": 7, "student_answer": "低昷烘干"}]}
     raw_output = json.dumps({"answers": [{"box_id": 7, "student_answer": "低温烘干"}]})

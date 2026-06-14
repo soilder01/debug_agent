@@ -47,13 +47,15 @@ def parse_spreadsheet_rows(rows: list[dict[str, object]]) -> SpreadsheetRowImpor
 
 
 def _row_to_case(row: dict[str, object]) -> DebugCase:
+    task_type = _optional_string(row.get("task_type")) or "handwriting_ocr"
+    expected_output = _loads_optional_json_object(row.get("expected_output_json"), "expected_output_json")
     return DebugCase(
         case_id=_required_string(row, "case_id"),
-        task_type=_optional_string(row.get("task_type")) or "handwriting_ocr",
+        task_type=task_type,
         image_uri=_optional_string(row.get("image_uri")),
         prompt=_required_string(row, "prompt"),
-        golden_answer=AnswerSet.model_validate(_loads_json_value(_required(row, "golden_answer_json"), "golden_answer_json")),
-        expected_output=_loads_optional_json_object(row.get("expected_output_json"), "expected_output_json"),
+        golden_answer=_load_golden_answer(row, task_type=task_type, expected_output=expected_output),
+        expected_output=expected_output,
         output_schema=_loads_optional_json_object(row.get("output_schema_json"), "output_schema_json"),
         scoring_standard=_required_string(row, "scoring_standard"),
         predictions=[
@@ -67,6 +69,20 @@ def _row_to_case(row: dict[str, object]) -> DebugCase:
             root_cause=_optional_string(row.get("root_cause")),
         ),
     )
+
+
+def _load_golden_answer(
+    row: dict[str, object],
+    *,
+    task_type: str,
+    expected_output: dict[str, object],
+) -> AnswerSet:
+    value = row.get("golden_answer_json")
+    if value is not None and value != "":
+        return AnswerSet.model_validate(_loads_json_value(value, "golden_answer_json"))
+    if task_type == "handwriting_ocr" or not expected_output:
+        raise ValueError("Missing required spreadsheet row value: golden_answer_json")
+    return AnswerSet(answers=[])
 
 
 def _parse_box_regions(row: dict[str, object]) -> list[BoxRegion]:
