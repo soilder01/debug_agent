@@ -645,6 +645,11 @@ def update_recommended_action_status(
 ) -> RecommendedActionStatus:
     if job_repository.get_job(job_id) is None:
         raise HTTPException(status_code=404, detail=f"Debug job not found: {job_id}")
+    report = build_report_for_job(job_repository, job_id)
+    if report is None:
+        raise HTTPException(status_code=404, detail=f"Debug report not found for job: {job_id}")
+    if action_index < 0 or action_index >= len(report.recommended_actions):
+        raise HTTPException(status_code=404, detail=f"Recommended action not found: {action_index}")
     return job_repository.save_recommended_action_status(
         job_id=job_id,
         action_index=action_index,

@@ -423,6 +423,17 @@
 - [x] Keep missing-job report behavior unchanged.
 - [x] Keep recommended action status update/list APIs compatible with report reconstruction.
 
+### Task 29: Recommended Action Status Index Validation
+
+**Files:**
+- Modify: `backend/src/debug_agent/api/routes.py`
+- Test: `backend/tests/api/test_recommended_action_status.py`
+
+- [x] Validate that `action_index` refers to an existing generated recommended action before persisting status.
+- [x] Return 404 for out-of-range action indices.
+- [x] Keep missing-job 404 behavior unchanged.
+- [x] Preserve valid status update/list behavior for jobs with generated recommendations.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs
