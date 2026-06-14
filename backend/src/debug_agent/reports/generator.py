@@ -26,6 +26,7 @@ class ExperimentSummary(BaseModel):
     stability_label: str = "not_run"
     evidence_ids: list[str]
     artifact_ids: list[str] = Field(default_factory=list)
+    artifact_evidence_links: list[dict[str, str]] = Field(default_factory=list)
     image_artifact_ids: list[str]
     step_summaries: list[dict[str, object]] = Field(default_factory=list)
 
@@ -65,6 +66,7 @@ def generate_initial_report(
                 for evidence in run_result.evidence
                 for artifact in evidence.artifacts
             ],
+            artifact_evidence_links=_build_artifact_evidence_links(run_result.evidence),
             image_artifact_ids=[
                 artifact.artifact_id
                 for evidence in run_result.evidence
@@ -114,6 +116,16 @@ def _build_step_summaries(evidence: list[ExperimentEvidence]) -> list[dict[str, 
         by_step[item.step_name].append(item)
 
     return [_build_step_summary(step_name, by_step[step_name]) for step_name in step_names]
+
+
+def _build_artifact_evidence_links(evidence: list[ExperimentEvidence]) -> list[dict[str, str]]:
+    links: list[dict[str, str]] = []
+    for item in evidence:
+        for evidence_artifact in item.artifacts:
+            links.append({"artifact_id": evidence_artifact.artifact_id, "evidence_id": item.evidence_id})
+        for image_artifact in item.image_artifacts:
+            links.append({"artifact_id": image_artifact.artifact_id, "evidence_id": item.evidence_id})
+    return links
 
 
 def _build_step_summary(step_name: str, evidence: list[ExperimentEvidence]) -> dict[str, object]:

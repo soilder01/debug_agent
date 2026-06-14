@@ -11,6 +11,9 @@ export function ReportPanel({ report, onSelectEvidence, onUpdateRecommendedActio
   const artifactIds = experimentSummary?.artifact_ids?.length
     ? experimentSummary.artifact_ids
     : (experimentSummary?.image_artifact_ids ?? []);
+  const artifactEvidenceIdByArtifactId = new Map(
+    (experimentSummary?.artifact_evidence_links ?? []).map((link) => [link.artifact_id, link.evidence_id])
+  );
   const failedTrialCount = experimentSummary?.failed_trial_count ?? 0;
   const evidenceCitations = report.evidence_citations ?? [];
   const stepSummaries = experimentSummary?.step_summaries ?? [];
@@ -148,9 +151,20 @@ export function ReportPanel({ report, onSelectEvidence, onUpdateRecommendedActio
       <p>证据产物：{artifactIds.length}</p>
       {artifactIds.length > 0 ? (
         <ul>
-          {artifactIds.map((artifactId) => (
-            <li key={artifactId}>{artifactId}</li>
-          ))}
+          {artifactIds.map((artifactId) => {
+            const evidenceId = artifactEvidenceIdByArtifactId.get(artifactId);
+            return (
+              <li key={artifactId}>
+                {onSelectEvidence && evidenceId ? (
+                  <button type="button" onClick={() => onSelectEvidence(evidenceId)}>
+                    Open artifact {artifactId}
+                  </button>
+                ) : (
+                  artifactId
+                )}
+              </li>
+            );
+          })}
         </ul>
       ) : null}
       {evidenceCitations.length > 0 ? (

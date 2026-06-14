@@ -96,6 +96,16 @@ def test_generate_report_includes_experiment_summary() -> None:
     assert report.experiment_summary.evidence_ids == ["e1"]
     assert report.experiment_summary.image_artifact_ids == ["case-1:box-7:localized-candidate"]
     assert report.experiment_summary.artifact_ids == ["case-1:baseline:0:input-snapshot"]
+    assert report.experiment_summary.artifact_evidence_links == [
+        {
+            "artifact_id": "case-1:baseline:0:input-snapshot",
+            "evidence_id": "e1",
+        },
+        {
+            "artifact_id": "case-1:box-7:localized-candidate",
+            "evidence_id": "e1",
+        }
+    ]
 
 
 def test_generate_report_summarizes_replay_stability() -> None:

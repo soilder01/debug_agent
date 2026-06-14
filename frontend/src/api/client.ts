@@ -16,6 +16,10 @@ export type DebugReport = {
     stability_label?: string;
     evidence_ids: string[];
     artifact_ids?: string[];
+    artifact_evidence_links?: Array<{
+      artifact_id: string;
+      evidence_id: string;
+    }>;
     image_artifact_ids?: string[];
     step_summaries?: Array<{
       step_name: string;

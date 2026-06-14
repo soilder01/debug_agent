@@ -543,6 +543,21 @@
 - [x] Preserve the existing citation artifact text summary for scanability and copy/paste.
 - [x] Run `npx --yes pnpm@9.15.4 test -- --run src/reports/ReportPanel.test.tsx`.
 
+### Task 39: Global Artifact Evidence Ownership Links
+
+**Files:**
+- Modify: `backend/src/debug_agent/reports/generator.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `backend/tests/reports/test_generator.py`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Add `experiment_summary.artifact_evidence_links` so report consumers can resolve artifact ownership.
+- [x] Include both generic evidence artifacts and legacy image artifacts in the ownership map.
+- [x] Render global `Evidence Artifacts` as selectable evidence-detail buttons only when ownership is known.
+- [x] Preserve text-only global artifact rendering when ownership is absent or no evidence callback is provided.
+- [x] Run focused backend and frontend report tests.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

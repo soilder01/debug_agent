@@ -110,6 +110,51 @@ describe("ReportPanel", () => {
     expect(onSelectEvidence).toHaveBeenCalledWith("citation-evidence-1");
   });
 
+  it("selects evidence from global artifact summary links when ownership is known", async () => {
+    const onSelectEvidence = vi.fn();
+    const report: DebugReport = {
+      job_id: "job-global-artifact-links",
+      case_id: "case-global-artifact-links",
+      status: "needs_human_review",
+      observed_failure: {
+        type: "output_mismatch",
+        summary: "global artifact mismatch",
+        affected_box_ids: []
+      },
+      planned_experiments: ["baseline_replay"],
+      experiment_summary: {
+        total_trials: 1,
+        success_count: 0,
+        failed_trial_count: 1,
+        success_rate: 0,
+        stability_label: "stable_failure",
+        evidence_ids: ["global-artifact-evidence-1"],
+        artifact_ids: ["global:video_segment_1:delta"],
+        artifact_evidence_links: [
+          {
+            artifact_id: "global:video_segment_1:delta",
+            evidence_id: "global-artifact-evidence-1"
+          }
+        ],
+        image_artifact_ids: []
+      },
+      root_cause: {
+        label: "output_mismatch",
+        confidence: "high",
+        evidence_summary: "global artifact should open evidence."
+      },
+      suggested_sheet_fields: {
+        错误原因: "视频片段差异"
+      }
+    };
+
+    render(<ReportPanel report={report} onSelectEvidence={onSelectEvidence} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Open artifact global:video_segment_1:delta" }));
+
+    expect(onSelectEvidence).toHaveBeenCalledWith("global-artifact-evidence-1");
+  });
+
   it("renders replay stability metrics from experiment summary", () => {
     const report: DebugReport = {
       job_id: "job-1",
