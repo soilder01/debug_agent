@@ -113,6 +113,7 @@ async def run_experiments(
                             raw_output="",
                             image_artifacts=[],
                             response_parse_error="",
+                            judge=judge,
                         ),
                         raw_output="",
                         judge=judge,
@@ -169,6 +170,7 @@ async def run_experiments(
                         raw_output=response.raw_output,
                         image_artifacts=image_artifacts,
                         response_parse_error=response_parse_error,
+                        judge=judge,
                     ),
                     raw_output=response.raw_output,
                     judge=judge,
@@ -243,8 +245,18 @@ def _build_generic_artifacts(
     raw_output: str,
     image_artifacts: list[ImageArtifact],
     response_parse_error: str,
+    judge: JudgeResult | None = None,
 ) -> list[EvidenceArtifact]:
     artifacts = _image_artifacts_to_evidence_artifacts(image_artifacts)
+    if judge is not None:
+        artifacts.extend(
+            _build_native_delta_artifacts(
+                case=case,
+                step_name=step_name,
+                trial_index=trial_index,
+                deltas=judge.deltas,
+            )
+        )
     artifacts.append(
         EvidenceArtifact(
             artifact_id=f"{case.case_id}:{step_name}:{trial_index}:input-snapshot",
@@ -270,6 +282,65 @@ def _build_generic_artifacts(
         )
     )
     return artifacts
+
+
+def _build_native_delta_artifacts(
+    *,
+    case: DebugCase,
+    step_name: str,
+    trial_index: int,
+    deltas: list[dict[str, object]],
+) -> list[EvidenceArtifact]:
+    return [
+        EvidenceArtifact(
+            artifact_id=f"{case.case_id}:{step_name}:{trial_index}:{_safe_target_fragment(target_id)}:delta",
+            kind=f"{artifact_type}_delta",
+            artifact_type=artifact_type,
+            source_uri=case.image_uri,
+            metadata=_native_delta_metadata(delta),
+        )
+        for delta in deltas
+        if (target_id := _delta_target_id(delta))
+        if (artifact_type := _artifact_type_from_target_id(target_id))
+    ]
+
+
+def _delta_target_id(delta: dict[str, object]) -> str:
+    target_id = delta.get("target_id")
+    return target_id if isinstance(target_id, str) else ""
+
+
+def _artifact_type_from_target_id(target_id: str) -> str:
+    if target_id.startswith("image:region:"):
+        return "image_region"
+    if target_id.startswith("video:segment:"):
+        return "video_segment"
+    if target_id.startswith("multimodal:conflict:"):
+        return "multimodal_conflict"
+    return ""
+
+
+def _safe_target_fragment(target_id: str) -> str:
+    return target_id.replace(":", "_")
+
+
+def _native_delta_metadata(delta: dict[str, object]) -> dict[str, object]:
+    metadata: dict[str, object] = {
+        "target_id": str(delta.get("target_id") or ""),
+        "reason": str(delta.get("reason") or ""),
+        "expected": _metadata_value(delta.get("expected")),
+        "actual": _metadata_value(delta.get("actual")),
+    }
+    nested_metadata = delta.get("metadata")
+    if isinstance(nested_metadata, dict):
+        metadata.update(nested_metadata)
+    return metadata
+
+
+def _metadata_value(value: object) -> object:
+    if value is None or isinstance(value, str | int | float | bool | list | dict):
+        return value
+    return str(value)
 
 
 def _image_artifacts_to_evidence_artifacts(image_artifacts: list[ImageArtifact]) -> list[EvidenceArtifact]:

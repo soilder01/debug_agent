@@ -204,6 +204,17 @@
 - [x] Keep raw spreadsheet field lists visible for compatibility and troubleshooting.
 - [x] Hide the native summary when no native fields are present.
 
+### Task 13: Task-Native Delta Evidence Artifacts
+
+**Files:**
+- Modify: `backend/src/debug_agent/experiments/runner.py`
+- Test: `backend/tests/experiments/test_runner.py`
+
+- [x] Generate `image_region_delta` evidence artifacts for image-native target deltas.
+- [x] Generate `video_segment_delta` evidence artifacts for video-native target deltas.
+- [x] Generate `multimodal_conflict_delta` evidence artifacts for multimodal conflict deltas.
+- [x] Preserve existing input snapshot, structured output, and OCR localized crop artifacts.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

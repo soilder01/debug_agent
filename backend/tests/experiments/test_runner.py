@@ -509,6 +509,20 @@ async def test_run_experiments_judges_image_detection_output_natively() -> None:
             "metadata": {"field": "label", "confidence": 0.57},
         }
     ]
+    native_artifact = next(
+        artifact for artifact in result.evidence[0].artifacts if artifact.artifact_id.endswith(":image_region_1:delta")
+    )
+    assert native_artifact.kind == "image_region_delta"
+    assert native_artifact.artifact_type == "image_region"
+    assert native_artifact.source_uri == "file:///tmp/image-detection.png"
+    assert native_artifact.metadata == {
+        "target_id": "image:region:1",
+        "reason": "region_label_mismatch",
+        "expected": "cat",
+        "actual": "dog",
+        "field": "label",
+        "confidence": 0.57,
+    }
 
 
 @pytest.mark.asyncio
@@ -608,6 +622,20 @@ async def test_run_experiments_judges_video_detection_output_natively() -> None:
             "metadata": {"field": "label", "confidence": 0.62},
         }
     ]
+    native_artifact = next(
+        artifact for artifact in result.evidence[0].artifacts if artifact.artifact_id.endswith(":video_segment_1:delta")
+    )
+    assert native_artifact.kind == "video_segment_delta"
+    assert native_artifact.artifact_type == "video_segment"
+    assert native_artifact.source_uri == "file:///tmp/video-detection.mp4"
+    assert native_artifact.metadata == {
+        "target_id": "video:segment:1",
+        "reason": "segment_label_mismatch",
+        "expected": "person_enters",
+        "actual": "person_leaves",
+        "field": "label",
+        "confidence": 0.62,
+    }
 
 
 @pytest.mark.asyncio
@@ -713,6 +741,22 @@ async def test_run_experiments_judges_multimodal_detection_output_natively() -> 
             },
         }
     ]
+    native_artifact = next(
+        artifact for artifact in result.evidence[0].artifacts if artifact.artifact_id.endswith(":multimodal_conflict_1:delta")
+    )
+    assert native_artifact.kind == "multimodal_conflict_delta"
+    assert native_artifact.artifact_type == "multimodal_conflict"
+    assert native_artifact.source_uri == "file:///tmp/multimodal-input.mp4"
+    assert native_artifact.metadata == {
+        "target_id": "multimodal:conflict:1",
+        "reason": "conflict_actual_mismatch",
+        "expected": "image and caption both describe a cat",
+        "actual": "image shows dog while caption says cat",
+        "field": "actual",
+        "conflict_type": "visual_text_conflict",
+        "modalities": ["image", "text"],
+        "confidence": 0.76,
+    }
 
 
 @pytest.mark.asyncio
