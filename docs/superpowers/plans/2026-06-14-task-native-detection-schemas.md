@@ -45,7 +45,7 @@
 - [x] Route `task_type="classification"` runner parsing and judging through classification output models.
 - [x] Preserve OCR runner behavior for `handwriting_ocr`.
 - [x] Run focused judge and runner tests.
-- [ ] Commit as `feat(core): judge classification outputs natively`.
+- [x] Commit as `feat(core): judge classification outputs natively`.
 
 ### Task 3: Classification Case Payload Compatibility
 
@@ -79,7 +79,31 @@
 - [x] Define image-native output examples: `regions`, `objects`, `attributes`, `relations`, and crop/zoom artifact strategies.
 - [x] Define video-native output examples: `temporal_segments`, `keyframes`, `events`, `transcript_alignment`, and frame-sampling artifact strategies.
 - [x] Define multimodal output examples: cross-modal target ids, conflict deltas, and evidence citations.
-- [ ] Commit as `docs: add multimodal harness schema roadmap`.
+- [x] Commit as `docs: add multimodal harness schema roadmap`.
+
+### Task 6: Image-Native Output Comparator And Recipe
+
+**Files:**
+- Modify: `backend/src/debug_agent/cases/models.py`
+- Modify: `backend/src/debug_agent/cases/comparator.py`
+- Modify: `backend/src/debug_agent/judging/runner.py`
+- Modify: `backend/src/debug_agent/experiments/runner.py`
+- Create: `backend/src/debug_agent/recipes/image_detection.py`
+- Modify: `backend/src/debug_agent/recipes/registry.py`
+- Modify: `backend/src/debug_agent/recipes/__init__.py`
+- Test: `backend/tests/cases/test_models.py`
+- Test: `backend/tests/cases/test_comparator.py`
+- Test: `backend/tests/judging/test_runner.py`
+- Test: `backend/tests/experiments/test_runner.py`
+- Test: `backend/tests/experiments/test_planner.py`
+- Test: `backend/tests/recipes/test_registry.py`
+
+- [x] Add `ImageRegionOutput` and `ImageDetectionOutput` with task-native `target_id`, region geometry, label, and confidence fields.
+- [x] Add `parse_image_detection_output(raw_output: str)`.
+- [x] Add `compare_image_detection_outputs(expected, predicted)` returning generic deltas such as `image:region:1 region_label_mismatch` and `missing_region`.
+- [x] Add `judge_image_detection_output()` and route `task_type="image_detection"` runner parsing through `expected_output.regions`.
+- [x] Add `ImageDetectionRecipe` with baseline replay, region schema check, and localization prompt check steps.
+- [x] Keep OCR `AnswerSet`, `box_id`, and `student_answer` as compatibility-only paths.
 
 ## Multimodal Harness Schema Roadmap
 

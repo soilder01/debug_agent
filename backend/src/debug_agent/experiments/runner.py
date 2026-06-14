@@ -12,10 +12,15 @@ from debug_agent.artifacts.images import (
     image_artifact_preview_url,
     materialize_image_crop,
 )
-from debug_agent.cases.comparator import compare_answer_sets, parse_classification_output, parse_prediction_answer
-from debug_agent.cases.models import AnswerSet, ClassificationOutput, DebugCase
+from debug_agent.cases.comparator import (
+    compare_answer_sets,
+    parse_classification_output,
+    parse_image_detection_output,
+    parse_prediction_answer,
+)
+from debug_agent.cases.models import AnswerSet, ClassificationOutput, DebugCase, ImageDetectionOutput
 from debug_agent.experiments.planner import ExperimentPlan
-from debug_agent.judging.runner import JudgeResult, judge_answer, judge_classification_output
+from debug_agent.judging.runner import JudgeResult, judge_answer, judge_classification_output, judge_image_detection_output
 from debug_agent.models.adapters import ModelAdapter
 from debug_agent.recipes import recipe_for_task_type
 
@@ -104,6 +109,8 @@ async def run_experiments(
             try:
                 if case.task_type == "classification":
                     judge = _judge_classification_response(case=case, raw_output=response.raw_output)
+                elif case.task_type == "image_detection":
+                    judge = _judge_image_detection_response(case=case, raw_output=response.raw_output)
                 else:
                     predicted = parse_prediction_answer(response.raw_output)
                     judge = judge_answer(case.golden_answer, predicted, scoring_standard=case.scoring_standard)
@@ -183,6 +190,12 @@ def _classification_expected_output(case: DebugCase) -> ClassificationOutput:
     if not case.golden_answer.answers:
         raise ValueError("classification case requires at least one golden answer label")
     return ClassificationOutput(label=case.golden_answer.answers[0].student_answer)
+
+
+def _judge_image_detection_response(case: DebugCase, raw_output: str) -> JudgeResult:
+    predicted = parse_image_detection_output(raw_output)
+    expected = ImageDetectionOutput.model_validate(case.expected_output)
+    return judge_image_detection_output(expected, predicted, scoring_standard=case.scoring_standard)
 
 
 def _build_step_prompt(case: DebugCase, step_name: str) -> str:

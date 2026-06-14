@@ -15,6 +15,21 @@ class ClassificationOutput(BaseModel):
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
 
 
+class ImageRegionOutput(BaseModel):
+    target_id: str
+    x: int
+    y: int
+    width: int
+    height: int
+    unit: str = "pixel"
+    label: str = ""
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+
+
+class ImageDetectionOutput(BaseModel):
+    regions: list[ImageRegionOutput] = Field(default_factory=list)
+
+
 class Prediction(BaseModel):
     trial: int
     raw_output: str

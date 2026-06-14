@@ -8,6 +8,7 @@ from debug_agent.cases.models import (
     DetectionOutput,
     DetectionPrediction,
     DetectionRegion,
+    ImageDetectionOutput,
 )
 
 
@@ -122,3 +123,27 @@ def test_detection_case_accepts_task_native_expected_output() -> None:
 
     assert case.expected_output == {"label": "positive"}
     assert case.output_schema == {"type": "object", "required": ["label"]}
+
+
+def test_image_detection_output_parses_task_native_regions() -> None:
+    output = ImageDetectionOutput.model_validate(
+        {
+            "regions": [
+                {
+                    "target_id": "image:region:1",
+                    "x": 10,
+                    "y": 20,
+                    "width": 30,
+                    "height": 40,
+                    "unit": "pixel",
+                    "label": "cat",
+                    "confidence": 0.91,
+                }
+            ]
+        }
+    )
+
+    assert output.regions[0].target_id == "image:region:1"
+    assert output.regions[0].x == 10
+    assert output.regions[0].label == "cat"
+    assert output.regions[0].confidence == 0.91

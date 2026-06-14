@@ -450,3 +450,104 @@ async def test_run_experiments_prefers_classification_expected_output_over_legac
     assert result.evidence[0].response_parse_error == ""
     assert result.evidence[0].judge.score == 1
     assert result.evidence[0].judge.reasons == []
+
+
+@pytest.mark.asyncio
+async def test_run_experiments_judges_image_detection_output_natively() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "image-detection-native-runner",
+            "task_type": "image_detection",
+            "image_uri": "file:///tmp/image-detection.png",
+            "prompt": "Detect the main animal and return region JSON.",
+            "golden_answer": {"answers": [{"box_id": 1, "student_answer": "legacy-cat"}]},
+            "expected_output": {
+                "regions": [
+                    {
+                        "target_id": "image:region:1",
+                        "x": 10,
+                        "y": 20,
+                        "width": 30,
+                        "height": 40,
+                        "label": "cat",
+                    }
+                ]
+            },
+            "scoring_standard": "region target ids and labels must match.",
+            "predictions": [
+                {
+                    "trial": 0,
+                    "raw_output": (
+                        "{\"regions\":[{\"target_id\":\"image:region:1\",\"x\":10,\"y\":20,"
+                        "\"width\":30,\"height\":40,\"label\":\"dog\",\"confidence\":0.57}]}"
+                    ),
+                    "score": 0,
+                }
+            ],
+            "avg_score": 0.0,
+        }
+    )
+    plan = ExperimentPlan(
+        case_id=case.case_id,
+        max_model_calls=1,
+        steps=[ExperimentStep(name="baseline_replay", description="Replay baseline.", trials=1)],
+    )
+    adapter = FakeModelAdapter(outputs=[case.predictions[0].raw_output])
+
+    result = await run_experiments(case=case, plan=plan, adapter=adapter)
+
+    assert result.evidence[0].response_parse_error == ""
+    assert result.evidence[0].judge.score == 0
+    assert result.evidence[0].judge.reasons == ["image:region:1 region_label_mismatch"]
+    assert result.evidence[0].judge.affected_box_ids == []
+    assert result.evidence[0].judge.deltas == [
+        {
+            "target_id": "image:region:1",
+            "expected": "cat",
+            "actual": "dog",
+            "reason": "region_label_mismatch",
+            "metadata": {"field": "label", "confidence": 0.57},
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_run_experiments_uses_image_detection_recipe_prompt() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "image-detection-prompt",
+            "task_type": "image_detection",
+            "image_uri": "file:///tmp/image-detection-prompt.png",
+            "prompt": "Detect objects and return region JSON.",
+            "golden_answer": {"answers": [{"box_id": 1, "student_answer": "legacy-cat"}]},
+            "expected_output": {
+                "regions": [
+                    {
+                        "target_id": "image:region:1",
+                        "x": 10,
+                        "y": 20,
+                        "width": 30,
+                        "height": 40,
+                        "label": "cat",
+                    }
+                ]
+            },
+            "scoring_standard": "region target ids and labels must match.",
+            "predictions": [{"trial": 0, "raw_output": "{\"regions\":[]}", "score": 0}],
+            "avg_score": 0.0,
+        }
+    )
+    plan = ExperimentPlan(
+        case_id=case.case_id,
+        max_model_calls=1,
+        steps=[ExperimentStep(name="localization_prompt_check", description="Check localization.", trials=1)],
+    )
+    adapter = PromptRecordingModelAdapter(raw_output=case.predictions[0].raw_output)
+
+    await run_experiments(case=case, plan=plan, adapter=adapter)
+
+    assert len(adapter.prompts) == 1
+    assert "localization_prompt_check" in adapter.prompts[0]
+    assert "image:region:1" in adapter.prompts[0]
+    assert "region target ids and labels must match." in adapter.prompts[0]
+    assert "affected answer region" not in adapter.prompts[0]

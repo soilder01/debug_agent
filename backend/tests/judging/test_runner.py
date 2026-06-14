@@ -1,5 +1,5 @@
-from debug_agent.cases.models import AnswerSet, ClassificationOutput
-from debug_agent.judging.runner import judge_answer, judge_classification_output
+from debug_agent.cases.models import AnswerSet, ClassificationOutput, ImageDetectionOutput
+from debug_agent.judging.runner import judge_answer, judge_classification_output, judge_image_detection_output
 
 
 def test_judge_answer_passes_exact_match() -> None:
@@ -95,5 +95,42 @@ def test_judge_classification_output_returns_label_delta() -> None:
             "actual": "negative",
             "reason": "label_mismatch",
             "metadata": {"field": "label", "confidence": 0.61},
+        }
+    ]
+
+
+def test_judge_image_detection_output_returns_region_delta() -> None:
+    expected = ImageDetectionOutput.model_validate(
+        {"regions": [{"target_id": "image:region:1", "x": 1, "y": 2, "width": 3, "height": 4, "label": "cat"}]}
+    )
+    predicted = ImageDetectionOutput.model_validate(
+        {
+            "regions": [
+                {
+                    "target_id": "image:region:1",
+                    "x": 1,
+                    "y": 2,
+                    "width": 3,
+                    "height": 4,
+                    "label": "dog",
+                    "confidence": 0.57,
+                }
+            ]
+        }
+    )
+
+    result = judge_image_detection_output(expected, predicted, scoring_standard="region labels must match.")
+
+    assert result.score == 0
+    assert result.reasons == ["image:region:1 region_label_mismatch"]
+    assert result.affected_box_ids == []
+    assert result.scoring_standard == "region labels must match."
+    assert result.deltas == [
+        {
+            "target_id": "image:region:1",
+            "expected": "cat",
+            "actual": "dog",
+            "reason": "region_label_mismatch",
+            "metadata": {"field": "label", "confidence": 0.57},
         }
     ]

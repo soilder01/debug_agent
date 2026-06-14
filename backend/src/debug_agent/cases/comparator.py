@@ -2,7 +2,7 @@ import json
 
 from pydantic import BaseModel
 
-from debug_agent.cases.models import AnswerSet, ClassificationOutput
+from debug_agent.cases.models import AnswerSet, ClassificationOutput, ImageDetectionOutput, ImageRegionOutput
 
 
 class AnswerDelta(BaseModel):
@@ -32,6 +32,11 @@ class ClassificationDiff(BaseModel):
     detection_deltas: list[dict[str, object]]
 
 
+class ImageDetectionDiff(BaseModel):
+    has_differences: bool
+    detection_deltas: list[dict[str, object]]
+
+
 def parse_prediction_answer(raw_output: str) -> AnswerSet:
     payload = json.loads(raw_output)
     return AnswerSet.model_validate(payload)
@@ -40,6 +45,11 @@ def parse_prediction_answer(raw_output: str) -> AnswerSet:
 def parse_classification_output(raw_output: str) -> ClassificationOutput:
     payload = json.loads(raw_output)
     return ClassificationOutput.model_validate(payload)
+
+
+def parse_image_detection_output(raw_output: str) -> ImageDetectionOutput:
+    payload = json.loads(raw_output)
+    return ImageDetectionOutput.model_validate(payload)
 
 
 def compare_classification_outputs(
@@ -60,6 +70,25 @@ def compare_classification_outputs(
             ).model_dump()
         ],
     )
+
+
+def compare_image_detection_outputs(
+    expected: ImageDetectionOutput,
+    predicted: ImageDetectionOutput,
+) -> ImageDetectionDiff:
+    expected_by_target = {region.target_id: region for region in expected.regions}
+    predicted_by_target = {region.target_id: region for region in predicted.regions}
+    all_target_ids = sorted(set(expected_by_target) | set(predicted_by_target))
+    deltas: list[dict[str, object]] = []
+
+    for target_id in all_target_ids:
+        expected_region = expected_by_target.get(target_id)
+        predicted_region = predicted_by_target.get(target_id)
+        delta = _image_region_delta(target_id, expected_region, predicted_region)
+        if delta is not None:
+            deltas.append(delta)
+
+    return ImageDetectionDiff(has_differences=bool(deltas), detection_deltas=deltas)
 
 
 def compare_answer_sets(expected: AnswerSet, predicted: AnswerSet) -> AnswerDiff:
@@ -107,3 +136,43 @@ def _answer_delta_to_detection_delta(delta: AnswerDelta) -> DetectionDelta:
             "legacy_reason": delta.reason,
         },
     )
+
+
+def _image_region_delta(
+    target_id: str,
+    expected_region: ImageRegionOutput | None,
+    predicted_region: ImageRegionOutput | None,
+) -> dict[str, object] | None:
+    if expected_region is None and predicted_region is None:
+        return None
+    if expected_region is None:
+        return DetectionDelta(
+            target_id=target_id,
+            expected=None,
+            actual=_region_label(predicted_region),
+            reason="extra_region",
+            metadata={"field": "regions"},
+        ).model_dump()
+    if predicted_region is None:
+        return DetectionDelta(
+            target_id=target_id,
+            expected=_region_label(expected_region),
+            actual=None,
+            reason="missing_region",
+            metadata={"field": "regions"},
+        ).model_dump()
+    if expected_region.label != predicted_region.label:
+        return DetectionDelta(
+            target_id=target_id,
+            expected=expected_region.label,
+            actual=predicted_region.label,
+            reason="region_label_mismatch",
+            metadata={"field": "label", "confidence": predicted_region.confidence},
+        ).model_dump()
+    return None
+
+
+def _region_label(region: ImageRegionOutput | None) -> str | None:
+    if region is None or not region.label:
+        return None
+    return region.label
