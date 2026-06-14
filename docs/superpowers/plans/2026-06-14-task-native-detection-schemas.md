@@ -558,6 +558,24 @@
 - [x] Preserve text-only global artifact rendering when ownership is absent or no evidence callback is provided.
 - [x] Run focused backend and frontend report tests.
 
+### Task 40: Recommended Action Status Event UI
+
+**Files:**
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/app/App.tsx`
+- Modify: `frontend/src/reports/DebugReportWorkspace.tsx`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `frontend/src/api/client.test.ts`
+- Test: `frontend/src/app/App.test.tsx`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Add a frontend API client for `GET /jobs/{job_id}/recommended-actions/statuses`.
+- [x] Type recommended action status events separately from current status rows.
+- [x] Load status events when opening a persisted report with recommended actions.
+- [x] Refresh status events after accepting, rejecting, or applying a recommended action.
+- [x] Render immutable recommended action status events in the report panel.
+- [x] Run focused frontend API, report, and App tests.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

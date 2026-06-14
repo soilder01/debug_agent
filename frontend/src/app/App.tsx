@@ -14,6 +14,7 @@ import {
   fetchJobStatus,
   fetchLarkSpreadsheetStatus,
   fetchObservabilitySummary,
+  fetchRecommendedActionStatuses,
   fetchSpreadsheetWritebackAudit,
   fetchSpreadsheetWritebackAudits,
   fetchSpreadsheetWritebackAuditSummary,
@@ -25,6 +26,7 @@ import {
   type LarkSpreadsheetStatus,
   type ObservabilitySummary,
   type RecommendedActionStatusValue,
+  type RecommendedActionStatusEvent,
   startWorker,
   submitBatchDebugJobs,
   submitDebugJob,
@@ -84,6 +86,7 @@ export function App() {
   const [spreadsheetSyncResult, setSpreadsheetSyncResult] = useState<SpreadsheetSyncResponse | null>(null);
   const [spreadsheetWritebackResult, setSpreadsheetWritebackResult] = useState<SpreadsheetWritebackResult | null>(null);
   const [spreadsheetWritebackAudit, setSpreadsheetWritebackAudit] = useState<SpreadsheetWritebackAudit | null>(null);
+  const [recommendedActionStatusEvents, setRecommendedActionStatusEvents] = useState<RecommendedActionStatusEvent[]>([]);
   const [spreadsheetWritebackAuditSummary, setSpreadsheetWritebackAuditSummary] =
     useState<SpreadsheetWritebackAuditCounts | null>(null);
   const [spreadsheetWritebackAuditList, setSpreadsheetWritebackAuditList] =
@@ -493,7 +496,14 @@ export function App() {
     }
     setError("");
     try {
-      setReport(await fetchJobReport(currentJob.job_id));
+      const loadedReport = await fetchJobReport(currentJob.job_id);
+      setReport(loadedReport);
+      if (loadedReport.job_id && (loadedReport.recommended_actions ?? []).length > 0) {
+        const actionStatuses = await fetchRecommendedActionStatuses(loadedReport.job_id);
+        setRecommendedActionStatusEvents(actionStatuses.events);
+      } else {
+        setRecommendedActionStatusEvents([]);
+      }
       setSpreadsheetWritebackResult(null);
       setSpreadsheetWritebackAudit(null);
       setSelectedEvidence(null);
@@ -569,6 +579,8 @@ export function App() {
           recommended_actions: recommendedActions
         };
       });
+      const actionStatuses = await fetchRecommendedActionStatuses(report.job_id);
+      setRecommendedActionStatusEvents(actionStatuses.events);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
     }
@@ -675,6 +687,7 @@ export function App() {
         <DebugReportWorkspace
           report={report}
           selectedEvidence={selectedEvidence}
+          recommendedActionStatusEvents={recommendedActionStatusEvents}
           writebackResult={spreadsheetWritebackResult}
           writebackAudit={spreadsheetWritebackAudit}
           onSelectEvidence={selectEvidence}

@@ -688,6 +688,15 @@ describe("App", () => {
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
+            statuses: [],
+            events: []
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
             job_id: "job-action-status-1",
             action_index: 0,
             status: "accepted",
@@ -695,6 +704,35 @@ describe("App", () => {
             note: "",
             created_at: "2026-06-14T00:00:00+00:00",
             updated_at: "2026-06-14T00:00:02+00:00"
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            statuses: [
+              {
+                job_id: "job-action-status-1",
+                action_index: 0,
+                status: "accepted",
+                actor: "frontend-operator",
+                note: "",
+                created_at: "2026-06-14T00:00:00+00:00",
+                updated_at: "2026-06-14T00:00:02+00:00"
+              }
+            ],
+            events: [
+              {
+                event_id: 1,
+                job_id: "job-action-status-1",
+                action_index: 0,
+                status: "accepted",
+                actor: "frontend-operator",
+                note: "",
+                created_at: "2026-06-14T00:00:02+00:00"
+              }
+            ]
           }),
           { status: 200, headers: { "Content-Type": "application/json" } }
         )
@@ -715,7 +753,14 @@ describe("App", () => {
       headers: { "Content-Type": "application/json" },
       method: "PATCH"
     });
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-action-status-1/recommended-actions/statuses");
+    expect(
+      fetchMock.mock.calls.filter((call) => call[0] === "/api/jobs/job-action-status-1/recommended-actions/statuses")
+    ).toHaveLength(2);
     expect(await screen.findByText("状态：accepted")).toBeInTheDocument();
+    expect(await screen.findByText("Recommended Action Status Events")).toBeInTheDocument();
+    expect(screen.getByText("操作 1：accepted")).toBeInTheDocument();
+    expect(screen.getByText("操作者：frontend-operator")).toBeInTheDocument();
   });
 
   it("loads failed debug jobs with a status filter", async () => {

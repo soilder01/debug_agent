@@ -79,6 +79,21 @@ export type RecommendedActionStatus = {
   updated_at: string;
 };
 
+export type RecommendedActionStatusEvent = {
+  event_id: number;
+  job_id: string;
+  action_index: number;
+  status: RecommendedActionStatusValue;
+  actor: string;
+  note: string;
+  created_at: string;
+};
+
+export type RecommendedActionStatusListResponse = {
+  statuses: RecommendedActionStatus[];
+  events: RecommendedActionStatusEvent[];
+};
+
 export type RetryRecommendationDetail = {
   code: string;
   label: string;
@@ -572,6 +587,14 @@ export async function updateRecommendedActionStatus(
     throw new Error(`Failed to update recommended action ${actionIndex} for job ${jobId}: ${response.status}`);
   }
   return (await response.json()) as RecommendedActionStatus;
+}
+
+export async function fetchRecommendedActionStatuses(jobId: string): Promise<RecommendedActionStatusListResponse> {
+  const response = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/recommended-actions/statuses`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch recommended action statuses for job ${jobId}: ${response.status}`);
+  }
+  return (await response.json()) as RecommendedActionStatusListResponse;
 }
 
 export async function fetchSpreadsheetWritebackAudit(jobId: string): Promise<SpreadsheetWritebackAudit> {

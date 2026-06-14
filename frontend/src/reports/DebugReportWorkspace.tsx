@@ -1,6 +1,7 @@
 import type {
   DebugReport,
   ExperimentEvidence,
+  RecommendedActionStatusEvent,
   RecommendedActionStatusValue,
   SpreadsheetWritebackAudit,
   SpreadsheetWritebackResult
@@ -14,6 +15,7 @@ import { ReportPanel } from "./ReportPanel";
 type DebugReportWorkspaceProps = {
   report: DebugReport;
   selectedEvidence: ExperimentEvidence | null;
+  recommendedActionStatusEvents?: RecommendedActionStatusEvent[];
   writebackResult: SpreadsheetWritebackResult | null;
   writebackAudit: SpreadsheetWritebackAudit | null;
   onSelectEvidence: (evidenceId: string) => void;
@@ -25,6 +27,7 @@ type DebugReportWorkspaceProps = {
 export function DebugReportWorkspace({
   report,
   selectedEvidence,
+  recommendedActionStatusEvents = [],
   writebackResult,
   writebackAudit,
   onSelectEvidence,
@@ -43,6 +46,7 @@ export function DebugReportWorkspace({
       <EvidenceDetail evidence={selectedEvidence} />
       <ReportPanel
         report={report}
+        recommendedActionStatusEvents={recommendedActionStatusEvents}
         onSelectEvidence={onSelectEvidence}
         onUpdateRecommendedActionStatus={onUpdateRecommendedActionStatus}
       />

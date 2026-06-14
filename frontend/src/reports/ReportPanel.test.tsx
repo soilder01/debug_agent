@@ -515,4 +515,59 @@ describe("ReportPanel", () => {
     expect(onUpdateRecommendedActionStatus).toHaveBeenNthCalledWith(2, 0, "rejected");
     expect(onUpdateRecommendedActionStatus).toHaveBeenNthCalledWith(3, 0, "applied");
   });
+
+  it("renders recommended action status event audit", () => {
+    const report: DebugReport = {
+      job_id: "job-action-events",
+      case_id: "case-action-events",
+      status: "needs_human_review",
+      observed_failure: {
+        type: "cross_modal_alignment_failure",
+        summary: "cross-modal compare failed",
+        affected_box_ids: []
+      },
+      planned_experiments: ["modality_ablation_check"],
+      experiment_summary: null,
+      root_cause: {
+        label: "cross_modal_alignment_failure",
+        confidence: "high",
+        evidence_summary: "cross-modal variant failed."
+      },
+      recommended_actions: [
+        {
+          category: "prompt",
+          priority: "high",
+          status: "accepted",
+          summary: "强化跨模态对比步骤。",
+          detail: "要求模型先分别列出 image/text 证据，再输出冲突结论。"
+        }
+      ],
+      suggested_sheet_fields: {
+        错误原因: "跨模态对齐问题"
+      }
+    };
+
+    render(
+      <ReportPanel
+        report={report}
+        recommendedActionStatusEvents={[
+          {
+            event_id: 7,
+            job_id: "job-action-events",
+            action_index: 0,
+            status: "accepted",
+            actor: "qa-reviewer",
+            note: "approved prompt update",
+            created_at: "2026-06-14T00:00:01+00:00"
+          }
+        ]}
+      />
+    );
+
+    expect(screen.getByText("Recommended Action Status Events")).toBeInTheDocument();
+    expect(screen.getByText("操作 1：accepted")).toBeInTheDocument();
+    expect(screen.getByText("操作者：qa-reviewer")).toBeInTheDocument();
+    expect(screen.getByText("备注：approved prompt update")).toBeInTheDocument();
+    expect(screen.getByText("时间：2026-06-14T00:00:01+00:00")).toBeInTheDocument();
+  });
 });

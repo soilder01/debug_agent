@@ -1,12 +1,18 @@
-import type { DebugReport, RecommendedActionStatusValue } from "../api/client";
+import type { DebugReport, RecommendedActionStatusEvent, RecommendedActionStatusValue } from "../api/client";
 
 type ReportPanelProps = {
   report: DebugReport;
+  recommendedActionStatusEvents?: RecommendedActionStatusEvent[];
   onSelectEvidence?: (evidenceId: string) => void;
   onUpdateRecommendedActionStatus?: (actionIndex: number, status: RecommendedActionStatusValue) => void;
 };
 
-export function ReportPanel({ report, onSelectEvidence, onUpdateRecommendedActionStatus }: ReportPanelProps) {
+export function ReportPanel({
+  report,
+  recommendedActionStatusEvents = [],
+  onSelectEvidence,
+  onUpdateRecommendedActionStatus
+}: ReportPanelProps) {
   const experimentSummary = report.experiment_summary;
   const artifactIds = experimentSummary?.artifact_ids?.length
     ? experimentSummary.artifact_ids
@@ -142,6 +148,23 @@ export function ReportPanel({ report, onSelectEvidence, onUpdateRecommendedActio
                     </button>
                   </p>
                 ) : null}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {recommendedActionStatusEvents.length > 0 ? (
+        <>
+          <h3>Recommended Action Status Events</h3>
+          <ul aria-label="Recommended action status events">
+            {recommendedActionStatusEvents.map((event) => (
+              <li key={event.event_id}>
+                <p>
+                  操作 {event.action_index + 1}：{event.status}
+                </p>
+                <p>操作者：{event.actor || "unknown"}</p>
+                {event.note ? <p>备注：{event.note}</p> : null}
+                <p>时间：{event.created_at}</p>
               </li>
             ))}
           </ul>
