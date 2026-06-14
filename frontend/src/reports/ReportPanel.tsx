@@ -11,6 +11,7 @@ export function ReportPanel({ report }: ReportPanelProps) {
     : (experimentSummary?.image_artifact_ids ?? []);
   const failedTrialCount = experimentSummary?.failed_trial_count ?? 0;
   const evidenceCitations = report.evidence_citations ?? [];
+  const stepSummaries = experimentSummary?.step_summaries ?? [];
 
   return (
     <section>
@@ -26,6 +27,26 @@ export function ReportPanel({ report }: ReportPanelProps) {
           <p>
             失败次数：{failedTrialCount}/{experimentSummary.total_trials}
           </p>
+        </>
+      ) : null}
+      {stepSummaries.length > 0 ? (
+        <>
+          <h3>Experiment Trajectory</h3>
+          <ul aria-label="Experiment step trajectory">
+            {stepSummaries.map((step) => (
+              <li key={step.step_name}>
+                <p>步骤：{step.step_name}</p>
+                <p>步骤通过率：{formatPercent(step.success_rate)}</p>
+                <p>
+                  步骤失败次数：{step.failed_trial_count}/{step.total_trials}
+                </p>
+                <p>Delta 类型：{step.delta_reasons.length > 0 ? step.delta_reasons.join(", ") : "无"}</p>
+                <p>目标：{step.target_ids.length > 0 ? step.target_ids.join(", ") : "无"}</p>
+                <p>证据：{step.evidence_ids.join(", ")}</p>
+                <p>产物：{step.artifact_ids.length > 0 ? step.artifact_ids.join(", ") : "无"}</p>
+              </li>
+            ))}
+          </ul>
         </>
       ) : null}
       <h3>Evidence Artifacts</h3>

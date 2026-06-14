@@ -139,6 +139,113 @@ def test_generate_report_summarizes_replay_stability() -> None:
     assert report.experiment_summary.stability_label == "unstable"
 
 
+def test_generate_report_groups_experiment_results_by_step() -> None:
+    fixture_path = Path(__file__).parents[1] / "fixtures" / "handwrite233.json"
+    case = DebugCase.model_validate(json.loads(fixture_path.read_text(encoding="utf-8")))
+    plan = plan_experiments(case)
+    run_result = ExperimentRunResult(
+        case_id=case.case_id,
+        total_trials=3,
+        success_count=1,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="e-baseline-pass",
+                step_name="baseline_replay",
+                trial=0,
+                raw_output=case.predictions[0].raw_output,
+                artifacts=[
+                    {
+                        "artifact_id": "baseline:input",
+                        "kind": "input_snapshot",
+                        "artifact_type": "request",
+                    }
+                ],
+                judge=JudgeResult(score=1, reasons=[]),
+            ),
+            ExperimentEvidence(
+                evidence_id="e-baseline-fail",
+                step_name="baseline_replay",
+                trial=1,
+                raw_output=case.predictions[0].raw_output,
+                artifacts=[
+                    {
+                        "artifact_id": "baseline:delta",
+                        "kind": "image_region_delta",
+                        "artifact_type": "image_region",
+                    }
+                ],
+                judge=JudgeResult(
+                    score=0,
+                    reasons=["image:region:1 region_label_mismatch"],
+                    deltas=[
+                        {
+                            "target_id": "image:region:1",
+                            "expected": "cat",
+                            "actual": "dog",
+                            "reason": "region_label_mismatch",
+                            "metadata": {"field": "label"},
+                        }
+                    ],
+                ),
+            ),
+            ExperimentEvidence(
+                evidence_id="e-ablation-fail",
+                step_name="modality_ablation_check",
+                trial=0,
+                raw_output=case.predictions[0].raw_output,
+                artifacts=[
+                    {
+                        "artifact_id": "ablation:delta",
+                        "kind": "multimodal_conflict_delta",
+                        "artifact_type": "multimodal_conflict",
+                    }
+                ],
+                judge=JudgeResult(
+                    score=0,
+                    reasons=["multimodal:conflict:1 conflict_actual_mismatch"],
+                    deltas=[
+                        {
+                            "target_id": "multimodal:conflict:1",
+                            "expected": "same",
+                            "actual": "different",
+                            "reason": "conflict_actual_mismatch",
+                            "metadata": {"field": "actual"},
+                        }
+                    ],
+                ),
+            ),
+        ],
+    )
+
+    report = generate_initial_report(case, plan, run_result)
+
+    assert report.experiment_summary is not None
+    assert report.experiment_summary.step_summaries == [
+        {
+            "step_name": "baseline_replay",
+            "total_trials": 2,
+            "success_count": 1,
+            "failed_trial_count": 1,
+            "success_rate": 0.5,
+            "delta_reasons": ["region_label_mismatch"],
+            "target_ids": ["image:region:1"],
+            "evidence_ids": ["e-baseline-pass", "e-baseline-fail"],
+            "artifact_ids": ["baseline:input", "baseline:delta"],
+        },
+        {
+            "step_name": "modality_ablation_check",
+            "total_trials": 1,
+            "success_count": 0,
+            "failed_trial_count": 1,
+            "success_rate": 0.0,
+            "delta_reasons": ["conflict_actual_mismatch"],
+            "target_ids": ["multimodal:conflict:1"],
+            "evidence_ids": ["e-ablation-fail"],
+            "artifact_ids": ["ablation:delta"],
+        },
+    ]
+
+
 def test_generate_report_infers_root_cause_from_structured_judge_deltas() -> None:
     fixture_path = Path(__file__).parents[1] / "fixtures" / "handwrite233.json"
     case = DebugCase.model_validate(json.loads(fixture_path.read_text(encoding="utf-8")))

@@ -17,6 +17,17 @@ export type DebugReport = {
     evidence_ids: string[];
     artifact_ids?: string[];
     image_artifact_ids?: string[];
+    step_summaries?: Array<{
+      step_name: string;
+      total_trials: number;
+      success_count: number;
+      failed_trial_count: number;
+      success_rate: number;
+      delta_reasons: string[];
+      target_ids: string[];
+      evidence_ids: string[];
+      artifact_ids: string[];
+    }>;
   } | null;
   root_cause: {
     label: string;

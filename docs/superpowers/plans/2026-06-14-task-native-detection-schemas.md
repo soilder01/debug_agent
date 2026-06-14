@@ -229,6 +229,20 @@
 - [x] Render multimodal metadata as expected/actual modalities and conflict type transitions.
 - [x] Keep raw metadata JSON visible for troubleshooting and compatibility.
 
+### Task 15: Experiment Step Trajectory Summary
+
+**Files:**
+- Modify: `backend/src/debug_agent/reports/generator.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `backend/tests/reports/test_generator.py`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Group evidence by experiment step in `experiment_summary.step_summaries`.
+- [x] Summarize per-step trials, success count, failed count, success rate, delta reasons, targets, evidence ids, and artifact ids.
+- [x] Render an `Experiment Trajectory` section in the report UI.
+- [x] Preserve global replay stability and existing evidence artifact summaries.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

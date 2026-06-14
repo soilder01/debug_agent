@@ -27,6 +27,7 @@ class ExperimentSummary(BaseModel):
     evidence_ids: list[str]
     artifact_ids: list[str] = Field(default_factory=list)
     image_artifact_ids: list[str]
+    step_summaries: list[dict[str, object]] = Field(default_factory=list)
 
 
 class DebugReport(BaseModel):
@@ -67,6 +68,7 @@ def generate_initial_report(
                 for evidence in run_result.evidence
                 for artifact in evidence.image_artifacts
             ],
+            step_summaries=_build_step_summaries(run_result.evidence),
         )
     observed_failure, root_cause, suggested_sheet_fields = _infer_report_findings(case=case, run_result=run_result)
     return DebugReport(
@@ -96,6 +98,61 @@ def _stability_label(success_count: int, failed_trial_count: int, total_trials: 
     if failed_trial_count == total_trials:
         return "stable_failure"
     return "unstable"
+
+
+def _build_step_summaries(evidence: list[ExperimentEvidence]) -> list[dict[str, object]]:
+    step_names: list[str] = []
+    by_step: dict[str, list[ExperimentEvidence]] = {}
+    for item in evidence:
+        if item.step_name not in by_step:
+            step_names.append(item.step_name)
+            by_step[item.step_name] = []
+        by_step[item.step_name].append(item)
+
+    return [_build_step_summary(step_name, by_step[step_name]) for step_name in step_names]
+
+
+def _build_step_summary(step_name: str, evidence: list[ExperimentEvidence]) -> dict[str, object]:
+    total_trials = len(evidence)
+    success_count = sum(item.judge.score for item in evidence)
+    failed_trial_count = total_trials - success_count
+    return {
+        "step_name": step_name,
+        "total_trials": total_trials,
+        "success_count": success_count,
+        "failed_trial_count": failed_trial_count,
+        "success_rate": _success_rate(success_count, total_trials),
+        "delta_reasons": _step_delta_reasons(evidence),
+        "target_ids": _step_target_ids(evidence),
+        "evidence_ids": [item.evidence_id for item in evidence],
+        "artifact_ids": [
+            artifact.artifact_id
+            for item in evidence
+            for artifact in item.artifacts
+        ],
+    }
+
+
+def _step_delta_reasons(evidence: list[ExperimentEvidence]) -> list[str]:
+    return sorted(
+        {
+            str(delta["reason"])
+            for item in evidence
+            for delta in item.judge.deltas
+            if isinstance(delta.get("reason"), str) and str(delta.get("reason")).strip()
+        }
+    )
+
+
+def _step_target_ids(evidence: list[ExperimentEvidence]) -> list[str]:
+    return sorted(
+        {
+            str(delta["target_id"])
+            for item in evidence
+            for delta in item.judge.deltas
+            if isinstance(delta.get("target_id"), str) and str(delta.get("target_id")).strip()
+        }
+    )
 
 
 def _infer_report_findings(

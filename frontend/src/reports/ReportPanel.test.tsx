@@ -97,4 +97,74 @@ describe("ReportPanel", () => {
     expect(screen.getByText("复测通过率：40%")).toBeInTheDocument();
     expect(screen.getByText("失败次数：3/5")).toBeInTheDocument();
   });
+
+  it("renders experiment step trajectory summaries", () => {
+    const report: DebugReport = {
+      job_id: "job-trajectory",
+      case_id: "case-trajectory",
+      status: "needs_human_review",
+      observed_failure: {
+        type: "output_mismatch",
+        summary: "native mismatch",
+        affected_box_ids: []
+      },
+      planned_experiments: ["baseline_replay", "modality_ablation_check"],
+      experiment_summary: {
+        total_trials: 3,
+        success_count: 1,
+        failed_trial_count: 2,
+        success_rate: 1 / 3,
+        stability_label: "unstable",
+        evidence_ids: ["e-baseline-pass", "e-baseline-fail", "e-ablation-fail"],
+        artifact_ids: ["baseline:input", "baseline:delta", "ablation:delta"],
+        image_artifact_ids: [],
+        step_summaries: [
+          {
+            step_name: "baseline_replay",
+            total_trials: 2,
+            success_count: 1,
+            failed_trial_count: 1,
+            success_rate: 0.5,
+            delta_reasons: ["region_label_mismatch"],
+            target_ids: ["image:region:1"],
+            evidence_ids: ["e-baseline-pass", "e-baseline-fail"],
+            artifact_ids: ["baseline:input", "baseline:delta"]
+          },
+          {
+            step_name: "modality_ablation_check",
+            total_trials: 1,
+            success_count: 0,
+            failed_trial_count: 1,
+            success_rate: 0,
+            delta_reasons: ["conflict_actual_mismatch"],
+            target_ids: ["multimodal:conflict:1"],
+            evidence_ids: ["e-ablation-fail"],
+            artifact_ids: ["ablation:delta"]
+          }
+        ]
+      },
+      root_cause: {
+        label: "output_mismatch",
+        confidence: "high",
+        evidence_summary: "step comparison found different failures."
+      },
+      suggested_sheet_fields: {
+        错误原因: "结构化差异"
+      }
+    };
+
+    render(<ReportPanel report={report} />);
+
+    expect(screen.getByText("Experiment Trajectory")).toBeInTheDocument();
+    expect(screen.getByText("步骤：baseline_replay")).toBeInTheDocument();
+    expect(screen.getByText("步骤通过率：50%")).toBeInTheDocument();
+    expect(screen.getByText("步骤失败次数：1/2")).toBeInTheDocument();
+    expect(screen.getByText("Delta 类型：region_label_mismatch")).toBeInTheDocument();
+    expect(screen.getByText("目标：image:region:1")).toBeInTheDocument();
+    expect(screen.getByText("证据：e-baseline-pass, e-baseline-fail")).toBeInTheDocument();
+    expect(screen.getByText("产物：baseline:input, baseline:delta")).toBeInTheDocument();
+    expect(screen.getByText("步骤：modality_ablation_check")).toBeInTheDocument();
+    expect(screen.getByText("Delta 类型：conflict_actual_mismatch")).toBeInTheDocument();
+    expect(screen.getByText("目标：multimodal:conflict:1")).toBeInTheDocument();
+  });
 });
