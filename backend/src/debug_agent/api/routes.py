@@ -607,6 +607,19 @@ def get_artifact_image(filename: str) -> FileResponse:
     return FileResponse(artifact_path, media_type="image/png")
 
 
+@router.get("/artifacts/manifests/{filename}")
+def get_artifact_manifest(filename: str) -> FileResponse:
+    artifact_dir = settings.image_artifact_dir.resolve()
+    artifact_path = (artifact_dir / filename).resolve()
+    if (
+        artifact_path.parent != artifact_dir
+        or artifact_path.suffix != ".json"
+        or not artifact_path.is_file()
+    ):
+        raise HTTPException(status_code=404, detail=f"Artifact manifest not found: {filename}")
+    return FileResponse(artifact_path, media_type="application/json")
+
+
 @router.post("/worker/start", status_code=202)
 async def start_worker() -> WorkerRuntimeStatus:
     job_worker.start()

@@ -496,6 +496,19 @@
 - [x] Attach `derived_uri` and `manifest_type` metadata to multimodal conflict delta artifacts.
 - [x] Render multimodal conflict manifest artifacts as a dedicated frontend audit section.
 
+### Task 35: Manifest Artifact Serving
+
+**Files:**
+- Modify: `backend/src/debug_agent/api/routes.py`
+- Modify: `backend/src/debug_agent/artifacts/videos.py`
+- Test: `backend/tests/api/test_artifact_images.py`
+- Test: `backend/tests/experiments/test_runner.py`
+
+- [x] Add a safe `/artifacts/manifests/{filename}` route for generated JSON evidence manifests.
+- [x] Reject missing files, non-JSON files, and path traversal attempts.
+- [x] Return web-accessible manifest URLs from video segment and multimodal conflict artifact generation.
+- [x] Preserve manifest file materialization and existing image crop serving.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

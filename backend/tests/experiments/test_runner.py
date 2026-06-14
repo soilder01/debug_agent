@@ -806,8 +806,10 @@ async def test_run_experiments_materializes_video_segment_delta_manifest() -> No
         native_artifact = next(
             artifact for artifact in result.evidence[0].artifacts if artifact.kind == "video_segment_delta"
         )
-        assert native_artifact.derived_uri
-        manifest_path = _path_from_file_uri(native_artifact.derived_uri)
+        assert native_artifact.derived_uri == (
+            "/api/artifacts/manifests/video-detection-manifest_baseline_replay_0_video_segment_1_delta.json"
+        )
+        manifest_path = artifact_dir / "video-detection-manifest_baseline_replay_0_video_segment_1_delta.json"
         assert manifest_path.exists()
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         assert manifest["artifact_id"] == native_artifact.artifact_id
@@ -1007,8 +1009,11 @@ async def test_run_experiments_materializes_multimodal_conflict_delta_manifest()
         native_artifact = next(
             artifact for artifact in result.evidence[0].artifacts if artifact.kind == "multimodal_conflict_delta"
         )
-        assert native_artifact.derived_uri
-        manifest_path = _path_from_file_uri(native_artifact.derived_uri)
+        assert native_artifact.derived_uri == (
+            "/api/artifacts/manifests/"
+            "multimodal-conflict-manifest_baseline_replay_0_multimodal_conflict_1_delta.json"
+        )
+        manifest_path = artifact_dir / "multimodal-conflict-manifest_baseline_replay_0_multimodal_conflict_1_delta.json"
         assert manifest_path.exists()
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         assert manifest["artifact_id"] == native_artifact.artifact_id

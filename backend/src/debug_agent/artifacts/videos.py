@@ -17,7 +17,7 @@ def materialize_video_segment_manifest(
         metadata=metadata,
     )
     output_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
-    return output_path.resolve().as_uri()
+    return manifest_artifact_url(artifact_id)
 
 
 def materialize_multimodal_conflict_manifest(
@@ -35,7 +35,7 @@ def materialize_multimodal_conflict_manifest(
         metadata=metadata,
     )
     output_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
-    return output_path.resolve().as_uri()
+    return manifest_artifact_url(artifact_id)
 
 
 def video_segment_manifest_filename(artifact_id: str) -> str:
@@ -44,6 +44,10 @@ def video_segment_manifest_filename(artifact_id: str) -> str:
 
 def multimodal_conflict_manifest_filename(artifact_id: str) -> str:
     return f"{_safe_artifact_filename(artifact_id)}.json"
+
+
+def manifest_artifact_url(artifact_id: str) -> str:
+    return f"/api/artifacts/manifests/{_safe_artifact_filename(artifact_id)}.json"
 
 
 def _video_segment_manifest(
