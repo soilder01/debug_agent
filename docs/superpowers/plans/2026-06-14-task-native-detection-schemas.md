@@ -448,6 +448,17 @@
 - [x] Expose status events from the recommended action status list API.
 - [x] Preserve existing latest-status response compatibility.
 
+### Task 31: Image Region Delta Crop Artifacts
+
+**Files:**
+- Modify: `backend/src/debug_agent/experiments/runner.py`
+- Test: `backend/tests/experiments/test_runner.py`
+
+- [x] Materialize image-native `image_region_delta` artifacts as PNG crops when an artifact directory is configured.
+- [x] Attach `derived_uri`, `preview_url`, and structured `region` to native image delta artifacts.
+- [x] Prefer actual region geometry for failed predictions, falling back to expected region geometry.
+- [x] Preserve non-image native delta artifacts and existing OCR localized crop behavior.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

@@ -562,6 +562,76 @@ async def test_run_experiments_judges_image_detection_output_natively() -> None:
 
 
 @pytest.mark.asyncio
+async def test_run_experiments_materializes_image_region_delta_crop_artifacts() -> None:
+    with TemporaryDirectory(dir=Path.cwd()) as temp_dir:
+        temp_path = Path(temp_dir)
+        source_image_path = temp_path / "image-detection.png"
+        artifact_dir = temp_path / "artifacts"
+        Image.new("RGB", (100, 100), color="white").save(source_image_path)
+        case = DebugCase.model_validate(
+            {
+                "case_id": "image-detection-crop",
+                "task_type": "image_detection",
+                "image_uri": source_image_path.as_uri(),
+                "prompt": "Detect the main animal and return region JSON.",
+                "golden_answer": {"answers": []},
+                "expected_output": {
+                    "regions": [
+                        {
+                            "target_id": "image:region:1",
+                            "x": 10,
+                            "y": 20,
+                            "width": 30,
+                            "height": 40,
+                            "label": "cat",
+                        }
+                    ]
+                },
+                "scoring_standard": "region target ids and labels must match.",
+                "predictions": [
+                    {
+                        "trial": 0,
+                        "raw_output": (
+                            "{\"regions\":[{\"target_id\":\"image:region:1\",\"x\":10,\"y\":20,"
+                            "\"width\":30,\"height\":40,\"label\":\"dog\"}]}"
+                        ),
+                        "score": 0,
+                    }
+                ],
+                "avg_score": 0.0,
+            }
+        )
+        plan = ExperimentPlan(
+            case_id=case.case_id,
+            max_model_calls=1,
+            steps=[ExperimentStep(name="baseline_replay", description="Replay baseline.", trials=1)],
+        )
+        adapter = FakeModelAdapter(outputs=[case.predictions[0].raw_output])
+
+        result = await run_experiments(
+            case=case,
+            plan=plan,
+            adapter=adapter,
+            image_artifact_dir=artifact_dir,
+        )
+
+        native_artifact = next(
+            artifact for artifact in result.evidence[0].artifacts if artifact.kind == "image_region_delta"
+        )
+        assert native_artifact.region is not None
+        assert native_artifact.region.x == 10
+        assert native_artifact.region.width == 30
+        assert native_artifact.derived_uri
+        assert native_artifact.preview_url == (
+            "/api/artifacts/images/image-detection-crop_baseline_replay_0_image_region_1_delta.png"
+        )
+        crop_path = _path_from_file_uri(native_artifact.derived_uri)
+        assert crop_path.exists()
+        with Image.open(crop_path) as crop:
+            assert crop.size == (30, 40)
+
+
+@pytest.mark.asyncio
 async def test_run_experiments_uses_image_detection_recipe_prompt() -> None:
     case = DebugCase.model_validate(
         {

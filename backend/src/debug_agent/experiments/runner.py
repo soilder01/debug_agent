@@ -123,6 +123,7 @@ async def run_experiments(
                             judge=judge,
                             request_image_uri=request_image_uri,
                             ablation_variant=ablation_variant,
+                            image_artifact_dir=image_artifact_dir,
                         ),
                         raw_output="",
                         judge=judge,
@@ -183,6 +184,7 @@ async def run_experiments(
                         judge=judge,
                         request_image_uri=request_image_uri,
                         ablation_variant=ablation_variant,
+                        image_artifact_dir=image_artifact_dir,
                     ),
                     raw_output=response.raw_output,
                     judge=judge,
@@ -284,6 +286,7 @@ def _build_generic_artifacts(
     judge: JudgeResult | None = None,
     request_image_uri: str | None = None,
     ablation_variant: AblationVariant | None = None,
+    image_artifact_dir: Path | None = None,
 ) -> list[EvidenceArtifact]:
     artifacts = _image_artifacts_to_evidence_artifacts(image_artifacts)
     if judge is not None:
@@ -293,6 +296,8 @@ def _build_generic_artifacts(
                 step_name=step_name,
                 trial_index=trial_index,
                 deltas=judge.deltas,
+                source_image_uri=request_image_uri if request_image_uri is not None else case.image_uri,
+                image_artifact_dir=image_artifact_dir,
             )
         )
     artifacts.append(
@@ -355,19 +360,44 @@ def _build_native_delta_artifacts(
     step_name: str,
     trial_index: int,
     deltas: list[dict[str, object]],
+    source_image_uri: str,
+    image_artifact_dir: Path | None,
 ) -> list[EvidenceArtifact]:
-    return [
-        EvidenceArtifact(
-            artifact_id=f"{case.case_id}:{step_name}:{trial_index}:{_safe_target_fragment(target_id)}:delta",
-            kind=f"{artifact_type}_delta",
-            artifact_type=artifact_type,
-            source_uri=case.image_uri,
-            metadata=_native_delta_metadata(delta),
+    artifacts: list[EvidenceArtifact] = []
+    for delta in deltas:
+        target_id = _delta_target_id(delta)
+        artifact_type = _artifact_type_from_target_id(target_id)
+        if not target_id or not artifact_type:
+            continue
+        artifact_id = f"{case.case_id}:{step_name}:{trial_index}:{_safe_target_fragment(target_id)}:delta"
+        region = _image_region_from_delta(delta) if artifact_type == "image_region" else None
+        derived_uri = ""
+        preview_url = ""
+        if image_artifact_dir is not None and region is not None:
+            try:
+                derived_uri = materialize_image_crop(
+                    source_image_uri=source_image_uri,
+                    region=region,
+                    output_dir=image_artifact_dir,
+                    artifact_id=artifact_id,
+                )
+                preview_url = image_artifact_preview_url(artifact_id)
+            except (OSError, ValueError):
+                derived_uri = ""
+                preview_url = ""
+        artifacts.append(
+            EvidenceArtifact(
+                artifact_id=artifact_id,
+                kind=f"{artifact_type}_delta",
+                artifact_type=artifact_type,
+                source_uri=source_image_uri,
+                derived_uri=derived_uri,
+                preview_url=preview_url,
+                region=region,
+                metadata=_native_delta_metadata(delta),
+            )
         )
-        for delta in deltas
-        if (target_id := _delta_target_id(delta))
-        if (artifact_type := _artifact_type_from_target_id(target_id))
-    ]
+    return artifacts
 
 
 def _delta_target_id(delta: dict[str, object]) -> str:
@@ -387,6 +417,19 @@ def _artifact_type_from_target_id(target_id: str) -> str:
 
 def _safe_target_fragment(target_id: str) -> str:
     return target_id.replace(":", "_")
+
+
+def _image_region_from_delta(delta: dict[str, object]) -> ImageRegion | None:
+    metadata = delta.get("metadata")
+    if not isinstance(metadata, dict):
+        return None
+    region_payload = metadata.get("actual_region") or metadata.get("expected_region")
+    if not isinstance(region_payload, dict):
+        return None
+    try:
+        return ImageRegion.model_validate(region_payload)
+    except ValueError:
+        return None
 
 
 def _native_delta_metadata(delta: dict[str, object]) -> dict[str, object]:
