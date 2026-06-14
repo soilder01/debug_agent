@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 
-from debug_agent.cases.comparator import compare_answer_sets
-from debug_agent.cases.models import AnswerSet
+from debug_agent.cases.comparator import compare_answer_sets, compare_classification_outputs
+from debug_agent.cases.models import AnswerSet, ClassificationOutput
 
 
 class JudgeResult(BaseModel):
@@ -22,4 +22,20 @@ def judge_answer(expected: AnswerSet, predicted: AnswerSet, scoring_standard: st
         scoring_standard=scoring_standard,
         affected_box_ids=diff.affected_box_ids,
         deltas=[delta.model_dump() for delta in diff.detection_deltas],
+    )
+
+
+def judge_classification_output(
+    expected: ClassificationOutput,
+    predicted: ClassificationOutput,
+    scoring_standard: str = "",
+) -> JudgeResult:
+    diff = compare_classification_outputs(expected, predicted)
+    if not diff.has_differences:
+        return JudgeResult(score=1, reasons=[], scoring_standard=scoring_standard)
+    return JudgeResult(
+        score=0,
+        reasons=[f"{delta['target_id']} {delta['reason']}" for delta in diff.detection_deltas],
+        scoring_standard=scoring_standard,
+        deltas=diff.detection_deltas,
     )

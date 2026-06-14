@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use test-driven-development before production edits. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Evolve the current handwriting OCR debug agent into a general debug detection platform while preserving the OCR workflow as the first supported task type.
+**Goal:** Build a general harness-based debug detection platform for image, video, text, and multimodal model failures while preserving historical OCR fixtures only as one compatibility recipe.
 
-**Architecture:** Keep the durable job/evidence/report/writeback architecture, and introduce a compatibility layer that names the core domain as generic detection cases, outputs, regions, deltas, and reports. OCR-specific schemas remain supported as adapters so existing fixtures, imports, APIs, and spreadsheet workflows keep working during migration.
+**Architecture:** Keep the durable job/evidence/report/writeback architecture, and make task type, modality, output schema, evidence artifacts, and report taxonomy generic first-class concepts. OCR-specific schemas remain supported only as adapters so existing fixtures, imports, APIs, and spreadsheet workflows keep working during migration.
 
 **Tech Stack:** FastAPI, Pydantic v2, SQLAlchemy/SQLite, pytest, React/TypeScript/Vitest.
 
@@ -12,28 +12,29 @@
 
 ## Product Direction
 
-The final target is not only handwriting OCR badcase debug. Handwriting OCR is the first vertical recipe. The reusable core must support generic model/debug detection scenarios:
+The final target is a high-generalization harness debug agent, not an OCR product. OCR is only the historical fixture set that helped bootstrap the system. The reusable core must help exploit model potential through disciplined harness experiments across many model/debug scenarios:
 
-- OCR answer extraction and handwritten region analysis.
-- Visual object or region detection mismatch analysis.
-- Classification mismatch analysis.
-- Text/schema extraction validation.
-- Prompt, expected-output, scoring-standard, and runtime-error diagnosis.
+- Image understanding failures: object/region detection, visual QA, chart/table/image-text mismatch, crop/zoom sensitivity.
+- Video understanding failures: temporal grounding, frame sampling, action/event detection, subtitle/audio/visual alignment.
+- Text and schema failures: extraction, classification, long-context consistency, structured output validation.
+- Multimodal failures: prompt-image/video mismatch, modality conflict, tool/crop/frame evidence attribution.
+- Harness-level diagnosis: replay stability, counterfactual prompts, evidence isolation, scoring-standard validation, golden-answer validation, and runtime-error diagnosis.
 
 ## Core Principles
 
 - Keep `DebugJob`, `ExperimentEvidence`, `DebugReport`, worker, storage, observability, budget, and spreadsheet writeback as shared platform capabilities.
 - Add generic names and task-type routing before replacing OCR-specific data structures.
 - Maintain backward compatibility for existing `golden_answer`, `answers`, `box_id`, and `student_answer` fixtures and imports.
-- Move OCR-only labels into recipes/taxonomies rather than allowing them to define the platform.
+- Move OCR-only labels into compatibility adapters; the product surface, reports, and plans must use generic target/evidence/modality language.
+- Prioritize harness engineering that reveals model capability boundaries: repeated trials, prompt perturbations, modality-specific evidence isolation, counterfactual inputs, and auditable scoring.
 - Ensure every migration step has focused tests and full verification before commit.
 
 ## Target Domain Model
 
-- `DetectionCase`: generic alias/wrapper for the current `DebugCase`.
+- `DetectionCase`: generic case wrapper for a harness debug task.
 - `DetectionTarget`: generic target identity replacing hard-coded `box_id` semantics.
-- `DetectionOutput`: generic model output representation; OCR maps to `AnswerSet`.
-- `DetectionRegion`: generic spatial or logical region; OCR maps to `BoxRegion`.
+- `DetectionOutput`: task-native model output representation; OCR maps to `AnswerSet` only through an adapter.
+- `DetectionRegion`: generic spatial, temporal, or logical region; OCR maps to `BoxRegion` only through an adapter.
 - `DetectionDelta`: generic mismatch unit with `target_id`, `expected`, `actual`, `reason`, and `metadata`.
 - `DetectionReport`: generic report contract; current `DebugReport` remains compatible.
 
@@ -137,11 +138,13 @@ Only commit after focused and full verification pass.
 ## Completion Snapshot
 
 - Completed the generic case, delta, recipe, artifact, report taxonomy, and UI-copy migration path.
-- Handwriting OCR remains the first vertical recipe and keeps backward compatibility for existing fixtures and spreadsheet flows.
-- Classification now has a dedicated recipe in the follow-up multi-recipe orchestration plan.
+- Historical handwriting OCR fixtures remain compatible, but are no longer the product center.
+- Classification now has a dedicated recipe in the follow-up multi-recipe orchestration plan, proving non-OCR routing.
+- The next priority is task-native schemas for image/video/text/multimodal outputs so the harness can evaluate model capability without OCR-shaped fields.
 
 ## Remaining Risks
 
-- `DetectionOutput` is still an alias over OCR `AnswerSet`; richer task-native schemas remain future work.
+- `DetectionOutput` is still partially backed by OCR-compatible fields in storage/import paths; richer task-native schemas remain active work.
 - Spreadsheet import/writeback fields still preserve OCR-compatible columns such as `golden_answer_json` and `box_regions_json`.
 - Logical agent capabilities are explicit, but not yet deployed as independent services.
+- Video and multimodal evidence strategies are not yet implemented; current artifacts cover request/output snapshots and image crops.

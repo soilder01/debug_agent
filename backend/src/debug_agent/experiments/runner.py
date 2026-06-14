@@ -12,10 +12,10 @@ from debug_agent.artifacts.images import (
     image_artifact_preview_url,
     materialize_image_crop,
 )
-from debug_agent.cases.comparator import compare_answer_sets, parse_prediction_answer
-from debug_agent.cases.models import AnswerSet, DebugCase
+from debug_agent.cases.comparator import compare_answer_sets, parse_classification_output, parse_prediction_answer
+from debug_agent.cases.models import AnswerSet, ClassificationOutput, DebugCase
 from debug_agent.experiments.planner import ExperimentPlan
-from debug_agent.judging.runner import JudgeResult, judge_answer
+from debug_agent.judging.runner import JudgeResult, judge_answer, judge_classification_output
 from debug_agent.models.adapters import ModelAdapter
 from debug_agent.recipes import recipe_for_task_type
 
@@ -102,14 +102,17 @@ async def run_experiments(
             response_parse_error = ""
             image_artifacts: list[ImageArtifact] = []
             try:
-                predicted = parse_prediction_answer(response.raw_output)
-                judge = judge_answer(case.golden_answer, predicted, scoring_standard=case.scoring_standard)
-                image_artifacts = _build_localized_image_artifacts(
-                    case=case,
-                    step_name=step.name,
-                    predicted=predicted,
-                    image_artifact_dir=image_artifact_dir,
-                )
+                if case.task_type == "classification":
+                    judge = _judge_classification_response(case=case, raw_output=response.raw_output)
+                else:
+                    predicted = parse_prediction_answer(response.raw_output)
+                    judge = judge_answer(case.golden_answer, predicted, scoring_standard=case.scoring_standard)
+                    image_artifacts = _build_localized_image_artifacts(
+                        case=case,
+                        step_name=step.name,
+                        predicted=predicted,
+                        image_artifact_dir=image_artifact_dir,
+                    )
             except Exception as exc:
                 response_parse_error = str(exc)
                 judge = JudgeResult(score=0, reasons=["response_parse_error"])
@@ -161,6 +164,18 @@ def _build_request_summary(prompt: str, image_uri: str, scoring_standard: str) -
         "image_uri_scheme": parsed_uri.scheme,
         "scoring_standard_present": bool(scoring_standard.strip()),
     }
+
+
+def _judge_classification_response(case: DebugCase, raw_output: str) -> JudgeResult:
+    predicted = parse_classification_output(raw_output)
+    expected = _classification_expected_output(case)
+    return judge_classification_output(expected, predicted, scoring_standard=case.scoring_standard)
+
+
+def _classification_expected_output(case: DebugCase) -> ClassificationOutput:
+    if not case.golden_answer.answers:
+        raise ValueError("classification case requires at least one golden answer label")
+    return ClassificationOutput(label=case.golden_answer.answers[0].student_answer)
 
 
 def _build_step_prompt(case: DebugCase, step_name: str) -> str:

@@ -1,16 +1,22 @@
-# Task Native Detection Schemas Implementation Plan
+# Harness Native Detection Schemas Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use test-driven-development before production edits. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Move non-OCR debug tasks toward task-native schemas while preserving OCR-compatible imports, storage, reports, and spreadsheet flows.
+**Goal:** Move harness debug tasks toward modality- and task-native schemas so image, video, text, and multimodal failures can be evaluated without OCR-shaped fields.
 
-**Architecture:** Keep `AnswerSet` as the OCR adapter and introduce task-native output models beside it. Add focused parse/compare/judge paths for classification first, then route runner/judge behavior through task recipes so future visual detection and text/schema extraction can avoid OCR field names.
+**Architecture:** Keep `AnswerSet` only as a compatibility adapter and introduce task-native output models beside it. Add focused parse/compare/judge paths for classification first, then route runner/judge behavior through task recipes so future image, video, text, and multimodal extraction tasks can avoid OCR field names.
 
 **Tech Stack:** FastAPI, Pydantic v2, pytest, React/TypeScript/Vitest.
 
 ---
 
 ## Target Milestones
+
+### Guiding Principle: Harness First, Not OCR First
+
+- Recipes should express how to probe model capability: replay stability, perturbation, evidence isolation, counterfactual prompts, and scoring audit.
+- Schemas should match the task and modality: label outputs for classification, regions for images, temporal spans for video, structured fields for extraction, and cross-modal references for multimodal tasks.
+- OCR compatibility must remain for existing data, but no new generic capability should depend on `box_id` or `student_answer`.
 
 ### Task 1: Classification Output Model And Comparator
 
@@ -25,7 +31,7 @@
 - [x] Add `compare_classification_outputs(expected, predicted)` returning generic `DetectionDelta` with `target_id="label:classification"`.
 - [x] Keep OCR `AnswerSet` parsing and deltas unchanged.
 - [x] Run `python -m pytest backend/tests/cases/test_models.py backend/tests/cases/test_comparator.py -q`.
-- [ ] Commit as `feat(core): add classification output comparator`.
+- [x] Commit as `feat(core): add classification output comparator`.
 
 ### Task 2: Classification Judge Path
 
@@ -35,10 +41,10 @@
 - Test: `backend/tests/judging/test_runner.py`
 - Test: `backend/tests/experiments/test_runner.py`
 
-- [ ] Add `judge_classification_output()`.
-- [ ] Route `task_type="classification"` runner parsing and judging through classification output models.
-- [ ] Preserve OCR runner behavior for `handwriting_ocr`.
-- [ ] Run focused judge and runner tests.
+- [x] Add `judge_classification_output()`.
+- [x] Route `task_type="classification"` runner parsing and judging through classification output models.
+- [x] Preserve OCR runner behavior for `handwriting_ocr`.
+- [x] Run focused judge and runner tests.
 - [ ] Commit as `feat(core): judge classification outputs natively`.
 
 ### Task 3: Classification Case Payload Compatibility
@@ -64,6 +70,16 @@
 - [ ] Display `expected_output` when present.
 - [ ] Keep OCR answer and region display unchanged.
 - [ ] Commit as `feat(frontend): show task native expected output`.
+
+### Task 5: Image And Video Harness Schema Roadmap
+
+**Files:**
+- Modify: `docs/superpowers/plans/2026-06-14-task-native-detection-schemas.md`
+
+- [ ] Define image-native output examples: `regions`, `objects`, `attributes`, `relations`, and crop/zoom artifact strategies.
+- [ ] Define video-native output examples: `temporal_segments`, `keyframes`, `events`, `transcript_alignment`, and frame-sampling artifact strategies.
+- [ ] Define multimodal output examples: cross-modal target ids, conflict deltas, and evidence citations.
+- [ ] Commit as `docs: add multimodal harness schema roadmap`.
 
 ## Verification Policy
 

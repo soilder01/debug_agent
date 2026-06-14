@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use test-driven-development before production edits. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Turn the current Debug Detection Agent from one OCR-first workflow into a multi-recipe orchestration core that can route generic debug tasks without OCR fallback.
+**Goal:** Turn the harness Debug Detection Agent into a multi-recipe orchestration core that can route image, video, text, and multimodal debug tasks without OCR-shaped fallback.
 
-**Architecture:** Keep the single durable worker as the enterprise execution boundary, but make its internal agent capabilities explicit and swappable by task type. Introduce a recipe registry, a generic classification recipe, and agent-role metadata so the main worker can coordinate Case Intake, Planning, Runner, Judge, Evidence, Report, and Writeback capabilities consistently.
+**Architecture:** Keep the single durable worker as the enterprise execution boundary, but make its internal agent capabilities explicit and swappable by task type and modality. Introduce a recipe registry, non-OCR recipes, and agent-role metadata so the main worker can coordinate Case Intake, Planning, Runner, Judge, Evidence, Report, and Writeback capabilities consistently.
 
 **Tech Stack:** FastAPI, Pydantic v2, SQLAlchemy/SQLite, pytest, React/TypeScript/Vitest.
 
@@ -12,7 +12,7 @@
 
 ## Product Direction
 
-The current system has one main durable debug worker and seven logical sub-agent capabilities implemented as modules:
+The current system has one main durable debug worker and seven logical sub-agent capabilities implemented as modules. These are harness capabilities, not OCR sub-flows:
 
 - Case Intake Agent: imports JSONL/CSV/spreadsheet rows and stores debug cases.
 - Experiment Planner/Recipe Agent: turns a case into replay and diagnosis steps.
@@ -22,7 +22,7 @@ The current system has one main durable debug worker and seven logical sub-agent
 - Report/Root Cause Agent: infers root cause and builds writeback fields.
 - Writeback/Operator Agent: syncs conclusions back to spreadsheet/operator views.
 
-These are not separate deployed services yet. The next goal is to make their contracts explicit enough that the main worker can safely support multiple task types before any service split.
+These are not separate deployed services yet. The next goal is to make their contracts explicit enough that the main worker can safely support image, video, text, and multimodal recipes before any service split.
 
 ## Target Milestones
 
@@ -116,10 +116,11 @@ Only commit after focused and full verification pass.
 
 ## Completion Snapshot
 
-- Added explicit recipe registry with OCR, classification, and generic fallback routing.
+- Added explicit recipe registry with compatibility OCR, classification, and generic fallback routing.
 - Added `ClassificationRecipe` with label/schema-focused replay steps and prompt augmentation.
 - Added backend logical agent roles for seven internal sub-agent capabilities.
 - Added frontend Agent Topology panel so operators can see the current orchestration shape.
+- Established the direction that future image/video/text recipes should be harness-native, not OCR-derived.
 
 ## Current Agent Topology
 
@@ -135,4 +136,5 @@ Only commit after focused and full verification pass.
 
 - Agent roles are still logical modules inside one durable worker, not separately deployed services.
 - Frontend topology is static; later work should fetch backend role metadata through an API to avoid drift.
-- Classification recipe still uses OCR-compatible `AnswerSet` input/output shape until task-native schemas are introduced.
+- Classification recipe is being moved to task-native output and judge schemas; import/storage compatibility still needs generic expected-output fields.
+- Image/video recipes still need modality-specific evidence strategies such as frame sampling, temporal windows, region proposals, crop/zoom pyramids, and multimodal counterfactual prompts.

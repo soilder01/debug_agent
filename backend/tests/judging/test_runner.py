@@ -1,5 +1,5 @@
-from debug_agent.cases.models import AnswerSet
-from debug_agent.judging.runner import judge_answer
+from debug_agent.cases.models import AnswerSet, ClassificationOutput
+from debug_agent.judging.runner import judge_answer, judge_classification_output
 
 
 def test_judge_answer_passes_exact_match() -> None:
@@ -65,4 +65,35 @@ def test_judge_answer_structures_missing_and_extra_boxes() -> None:
             "reason": "extra_box",
             "metadata": {"box_id": 3, "field": "student_answer", "legacy_reason": "extra_box"},
         },
+    ]
+
+
+def test_judge_classification_output_passes_exact_label_match() -> None:
+    expected = ClassificationOutput(label="positive")
+    predicted = ClassificationOutput(label="positive", confidence=0.91)
+
+    result = judge_classification_output(expected, predicted, scoring_standard="label must match exactly.")
+
+    assert result.score == 1
+    assert result.reasons == []
+    assert result.scoring_standard == "label must match exactly."
+
+
+def test_judge_classification_output_returns_label_delta() -> None:
+    expected = ClassificationOutput(label="positive")
+    predicted = ClassificationOutput(label="negative", confidence=0.61)
+
+    result = judge_classification_output(expected, predicted, scoring_standard="label must match exactly.")
+
+    assert result.score == 0
+    assert result.reasons == ["label:classification label_mismatch"]
+    assert result.affected_box_ids == []
+    assert result.deltas == [
+        {
+            "target_id": "label:classification",
+            "expected": "positive",
+            "actual": "negative",
+            "reason": "label_mismatch",
+            "metadata": {"field": "label", "confidence": 0.61},
+        }
     ]

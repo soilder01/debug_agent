@@ -364,7 +364,7 @@ async def test_run_experiments_uses_classification_recipe_prompt() -> None:
             "predictions": [
                 {
                     "trial": 0,
-                    "raw_output": "{\"answers\":[{\"box_id\":1,\"student_answer\":\"negative\"}]}",
+                    "raw_output": "{\"label\":\"negative\",\"confidence\":0.61}",
                     "score": 0,
                 }
             ],
@@ -384,3 +384,40 @@ async def test_run_experiments_uses_classification_recipe_prompt() -> None:
     assert "label_schema_check" in adapter.prompts[0]
     assert "expected label" in adapter.prompts[0]
     assert "affected answer region" not in adapter.prompts[0]
+
+
+@pytest.mark.asyncio
+async def test_run_experiments_judges_classification_output_natively() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "classification-native-runner",
+            "task_type": "classification",
+            "image_uri": "",
+            "prompt": "Classify sentiment and return JSON.",
+            "golden_answer": {"answers": [{"box_id": 1, "student_answer": "positive"}]},
+            "scoring_standard": "label must match exactly.",
+            "predictions": [{"trial": 0, "raw_output": "{\"label\":\"negative\",\"confidence\":0.61}", "score": 0}],
+            "avg_score": 0.0,
+        }
+    )
+    plan = ExperimentPlan(
+        case_id=case.case_id,
+        max_model_calls=1,
+        steps=[ExperimentStep(name="baseline_replay", description="Replay baseline.", trials=1)],
+    )
+    adapter = FakeModelAdapter(outputs=[case.predictions[0].raw_output])
+
+    result = await run_experiments(case=case, plan=plan, adapter=adapter)
+
+    assert result.evidence[0].response_parse_error == ""
+    assert result.evidence[0].judge.score == 0
+    assert result.evidence[0].judge.reasons == ["label:classification label_mismatch"]
+    assert result.evidence[0].judge.deltas == [
+        {
+            "target_id": "label:classification",
+            "expected": "positive",
+            "actual": "negative",
+            "reason": "label_mismatch",
+            "metadata": {"field": "label", "confidence": 0.61},
+        }
+    ]
