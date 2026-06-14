@@ -22,6 +22,7 @@ type DebugReportWorkspaceProps = {
   onWriteReport: () => void;
   onLoadWritebackAudit: () => void;
   onUpdateRecommendedActionStatus?: (actionIndex: number, status: RecommendedActionStatusValue) => void;
+  onVerifyRecommendedAction?: (actionIndex: number) => void;
 };
 
 export function DebugReportWorkspace({
@@ -33,7 +34,8 @@ export function DebugReportWorkspace({
   onSelectEvidence,
   onWriteReport,
   onLoadWritebackAudit,
-  onUpdateRecommendedActionStatus
+  onUpdateRecommendedActionStatus,
+  onVerifyRecommendedAction
 }: DebugReportWorkspaceProps) {
   return (
     <>
@@ -49,6 +51,7 @@ export function DebugReportWorkspace({
         recommendedActionStatusEvents={recommendedActionStatusEvents}
         onSelectEvidence={onSelectEvidence}
         onUpdateRecommendedActionStatus={onUpdateRecommendedActionStatus}
+        onVerifyRecommendedAction={onVerifyRecommendedAction}
       />
       {report.job_id ? (
         <SpreadsheetWritebackPanel

@@ -576,6 +576,23 @@
 - [x] Render immutable recommended action status events in the report panel.
 - [x] Run focused frontend API, report, and App tests.
 
+### Task 41: Applied Action Verification Rerun
+
+**Files:**
+- Modify: `frontend/src/app/App.tsx`
+- Modify: `frontend/src/reports/DebugReportWorkspace.tsx`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `frontend/src/app/App.test.tsx`
+- Test: `frontend/src/reports/DebugReportWorkspace.test.tsx`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Render a verification rerun button for recommended actions whose status is `applied`.
+- [x] Delegate verification requests from `ReportPanel` through `DebugReportWorkspace`.
+- [x] Reuse the existing debug job submission API to create a verification job for the same case.
+- [x] Display the created verification job in the existing job status panel.
+- [x] Preserve non-applied action behavior without verification controls.
+- [x] Run focused report workspace and App tests.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs

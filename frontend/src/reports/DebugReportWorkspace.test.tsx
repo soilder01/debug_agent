@@ -258,4 +258,36 @@ describe("DebugReportWorkspace", () => {
 
     expect(onUpdateRecommendedActionStatus).toHaveBeenCalledWith(0, "accepted");
   });
+
+  it("delegates recommended action verification reruns from the report panel", async () => {
+    const onVerifyRecommendedAction = vi.fn();
+    const report = makeReport({
+      recommended_actions: [
+        {
+          category: "prompt",
+          priority: "high",
+          status: "applied",
+          summary: "强化跨模态对比步骤。",
+          detail: "要求模型先分别列出 image/text 证据，再输出冲突结论。"
+        }
+      ]
+    });
+
+    render(
+      <DebugReportWorkspace
+        report={report}
+        selectedEvidence={null}
+        writebackResult={null}
+        writebackAudit={null}
+        onSelectEvidence={vi.fn()}
+        onWriteReport={vi.fn()}
+        onLoadWritebackAudit={vi.fn()}
+        onVerifyRecommendedAction={onVerifyRecommendedAction}
+      />
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Verify recommended action 1" }));
+
+    expect(onVerifyRecommendedAction).toHaveBeenCalledWith(0);
+  });
 });

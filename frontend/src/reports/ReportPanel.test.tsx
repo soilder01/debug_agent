@@ -516,6 +516,45 @@ describe("ReportPanel", () => {
     expect(onUpdateRecommendedActionStatus).toHaveBeenNthCalledWith(3, 0, "applied");
   });
 
+  it("delegates verification reruns for applied recommended actions", async () => {
+    const onVerifyRecommendedAction = vi.fn();
+    const report: DebugReport = {
+      job_id: "job-action-verify",
+      case_id: "case-action-verify",
+      status: "needs_human_review",
+      observed_failure: {
+        type: "cross_modal_alignment_failure",
+        summary: "cross-modal compare failed",
+        affected_box_ids: []
+      },
+      planned_experiments: ["modality_ablation_check"],
+      experiment_summary: null,
+      root_cause: {
+        label: "cross_modal_alignment_failure",
+        confidence: "high",
+        evidence_summary: "cross-modal variant failed."
+      },
+      recommended_actions: [
+        {
+          category: "prompt",
+          priority: "high",
+          status: "applied",
+          summary: "强化跨模态对比步骤。",
+          detail: "要求模型先分别列出 image/text 证据，再输出冲突结论。"
+        }
+      ],
+      suggested_sheet_fields: {
+        错误原因: "跨模态对齐问题"
+      }
+    };
+
+    render(<ReportPanel report={report} onVerifyRecommendedAction={onVerifyRecommendedAction} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Verify recommended action 1" }));
+
+    expect(onVerifyRecommendedAction).toHaveBeenCalledWith(0);
+  });
+
   it("renders recommended action status event audit", () => {
     const report: DebugReport = {
       job_id: "job-action-events",

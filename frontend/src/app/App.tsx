@@ -586,6 +586,21 @@ export function App() {
     }
   }
 
+  async function verifyCurrentRecommendedAction() {
+    if (!report) {
+      return;
+    }
+    setError("");
+    try {
+      const verificationJob = await submitDebugJob(report.case_id);
+      setSubmittedJob(verificationJob);
+      setJobStatus(null);
+      setSelectedEvidence(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
   return (
     <main>
       <h1>Debug Detection Agent</h1>
@@ -696,6 +711,7 @@ export function App() {
           onUpdateRecommendedActionStatus={(actionIndex, status) =>
             void updateCurrentRecommendedActionStatus(actionIndex, status)
           }
+          onVerifyRecommendedAction={() => void verifyCurrentRecommendedAction()}
         />
       ) : submittedJob ? null : (
         <p>点击按钮运行第一条可验证 debug 闭环。</p>

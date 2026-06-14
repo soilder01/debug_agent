@@ -5,13 +5,15 @@ type ReportPanelProps = {
   recommendedActionStatusEvents?: RecommendedActionStatusEvent[];
   onSelectEvidence?: (evidenceId: string) => void;
   onUpdateRecommendedActionStatus?: (actionIndex: number, status: RecommendedActionStatusValue) => void;
+  onVerifyRecommendedAction?: (actionIndex: number) => void;
 };
 
 export function ReportPanel({
   report,
   recommendedActionStatusEvents = [],
   onSelectEvidence,
-  onUpdateRecommendedActionStatus
+  onUpdateRecommendedActionStatus,
+  onVerifyRecommendedAction
 }: ReportPanelProps) {
   const experimentSummary = report.experiment_summary;
   const artifactIds = experimentSummary?.artifact_ids?.length
@@ -145,6 +147,13 @@ export function ReportPanel({
                       onClick={() => onUpdateRecommendedActionStatus(actionIndex, "applied")}
                     >
                       Mark recommended action {actionIndex + 1} applied
+                    </button>
+                  </p>
+                ) : null}
+                {onVerifyRecommendedAction && action.status === "applied" ? (
+                  <p>
+                    <button type="button" onClick={() => onVerifyRecommendedAction(actionIndex)}>
+                      Verify recommended action {actionIndex + 1}
                     </button>
                   </p>
                 ) : null}

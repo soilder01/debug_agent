@@ -763,6 +763,110 @@ describe("App", () => {
     expect(screen.getByText("操作者：frontend-operator")).toBeInTheDocument();
   });
 
+  it("creates a verification debug job for an applied recommended action", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jobs: [
+              {
+                job_id: "job-action-verify-source",
+                case_id: "case-action-verify",
+                status: "completed",
+                attempt_count: 1,
+                max_attempts: 2,
+                remaining_attempts: 1,
+                will_retry: false,
+                retry_recommendation: "none",
+                retry_recommendation_detail: {
+                  code: "none",
+                  label: "无需重试",
+                  action: "查看报告",
+                  severity: "info"
+                },
+                error_message: null,
+                evidence_ids: [],
+                evidence_error_counts: {
+                  total_evidence: 0,
+                  failed_judgements: 0,
+                  response_parse_errors: 0,
+                  model_call_errors: 0
+                },
+                spreadsheet_writeback_audit: null,
+                created_at: "2026-06-14T00:00:00+00:00",
+                updated_at: "2026-06-14T00:00:01+00:00"
+              }
+            ],
+            total_count: 1
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            job_id: "job-action-verify-source",
+            case_id: "case-action-verify",
+            status: "needs_human_review",
+            observed_failure: {
+              type: "cross_modal_alignment_failure",
+              summary: "cross-modal compare failed",
+              affected_box_ids: []
+            },
+            planned_experiments: ["modality_ablation_check"],
+            experiment_summary: null,
+            root_cause: {
+              label: "cross_modal_alignment_failure",
+              confidence: "high",
+              evidence_summary: "cross-modal variant failed."
+            },
+            recommended_actions: [
+              {
+                category: "prompt",
+                priority: "high",
+                status: "applied",
+                summary: "强化跨模态对比步骤。",
+                detail: "要求模型先分别列出 image/text 证据，再输出冲突结论。"
+              }
+            ],
+            suggested_sheet_fields: {
+              错误原因: "跨模态对齐问题"
+            }
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ statuses: [], events: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            job_id: "job-action-verify-rerun",
+            case_id: "case-action-verify",
+            status: "created"
+          }),
+          { status: 202, headers: { "Content-Type": "application/json" } }
+        )
+      );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load debug jobs" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Open job job-action-verify-source" }));
+    await userEvent.click(screen.getByRole("button", { name: "Load persisted report" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Verify recommended action 1" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/cases/case-action-verify/debug-jobs?auto_run=true&baseline_trials=5", {
+      method: "POST"
+    });
+    expect(await screen.findByText("Job ID：job-action-verify-rerun")).toBeInTheDocument();
+    expect(screen.getAllByText("样本 ID：case-action-verify").length).toBeGreaterThan(0);
+  });
+
   it("loads failed debug jobs with a status filter", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(
