@@ -425,7 +425,11 @@ describe("ReportPanel", () => {
           judge_score: 0,
           delta_reasons: ["conflict_actual_mismatch"],
           target_ids: ["multimodal:conflict:1"],
-          artifact_ids: ["ablation:delta"]
+          artifact_ids: ["ablation:delta"],
+          hypothesis: "检查 cross_modal_compare 是否暴露跨模态对齐或融合问题。",
+          observation: "modality_ablation_check/cross_modal_compare judge_score=0，delta=conflict_actual_mismatch。",
+          conclusion: "cross_modal_compare 失败，当前证据支持继续定位该变体覆盖的能力链路。",
+          next_probe: "围绕 multimodal:conflict:1 执行 targeted evidence replay。"
         }
       ],
       recommended_actions: [
@@ -481,6 +485,12 @@ describe("ReportPanel", () => {
     expect(screen.getByText("Delta：conflict_actual_mismatch")).toBeInTheDocument();
     expect(screen.getByText("目标：multimodal:conflict:1")).toBeInTheDocument();
     expect(screen.getByText("产物：ablation:delta")).toBeInTheDocument();
+    expect(screen.getByText("假设：检查 cross_modal_compare 是否暴露跨模态对齐或融合问题。")).toBeInTheDocument();
+    expect(
+      screen.getByText("观察：modality_ablation_check/cross_modal_compare judge_score=0，delta=conflict_actual_mismatch。")
+    ).toBeInTheDocument();
+    expect(screen.getByText("结论：cross_modal_compare 失败，当前证据支持继续定位该变体覆盖的能力链路。")).toBeInTheDocument();
+    expect(screen.getByText("下一步：围绕 multimodal:conflict:1 执行 targeted evidence replay。")).toBeInTheDocument();
     expect(screen.getByText("Recommended Actions")).toBeInTheDocument();
     expect(screen.getByText("prompt/high：强化跨模态对比步骤。")).toBeInTheDocument();
     expect(screen.getAllByText("状态：pending")[0]).toBeInTheDocument();

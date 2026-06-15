@@ -119,6 +119,10 @@ export function ReportPanel({
                 <p>Delta：{trace.delta_reasons.length > 0 ? trace.delta_reasons.join(", ") : "无"}</p>
                 <p>目标：{trace.target_ids.length > 0 ? trace.target_ids.join(", ") : "无"}</p>
                 <p>产物：{trace.artifact_ids.length > 0 ? trace.artifact_ids.join(", ") : "无"}</p>
+                {trace.hypothesis ? <p>假设：{trace.hypothesis}</p> : null}
+                {trace.observation ? <p>观察：{trace.observation}</p> : null}
+                {trace.conclusion ? <p>结论：{trace.conclusion}</p> : null}
+                {trace.next_probe ? <p>下一步：{trace.next_probe}</p> : null}
                 {onSelectEvidence && trace.artifact_ids.length > 0 ? (
                   <ArtifactEvidenceButtons
                     artifactIds={trace.artifact_ids}

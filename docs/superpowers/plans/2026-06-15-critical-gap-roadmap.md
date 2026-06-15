@@ -124,6 +124,19 @@
 - [x] Rebuild verification result summaries from saved verification lineage.
 - [x] Include verification result summaries in spreadsheet `评估问题反馈`.
 
+### Task 7: Explainable Root Cause Trace
+
+**Files:**
+- Modify: `backend/src/debug_agent/reports/generator.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `backend/tests/reports/test_generator.py`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Add structured `hypothesis`, `observation`, `conclusion`, and `next_probe` fields to root cause trace items.
+- [x] Keep evidence, target, delta, and artifact links attached to each reasoning step.
+- [x] Render the richer reasoning trace in the frontend report panel.
+
 ## Verification Policy
 
 Every task must follow:

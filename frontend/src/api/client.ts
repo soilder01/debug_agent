@@ -56,6 +56,10 @@ export type DebugReport = {
     delta_reasons: string[];
     target_ids: string[];
     artifact_ids: string[];
+    hypothesis?: string;
+    observation?: string;
+    conclusion?: string;
+    next_probe?: string;
   }>;
   recommended_actions?: Array<{
     category: string;

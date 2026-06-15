@@ -628,6 +628,13 @@ def test_generate_report_builds_ablation_root_cause_trace() -> None:
             "delta_reasons": ["conflict_actual_mismatch"],
             "target_ids": ["multimodal:conflict:1"],
             "artifact_ids": ["ablation:conflict:delta"],
+            "hypothesis": "检查 cross_modal_compare 是否暴露跨模态对齐或融合问题。",
+            "observation": (
+                "modality_ablation_check/cross_modal_compare judge_score=0，"
+                "delta=conflict_actual_mismatch，target=multimodal:conflict:1。"
+            ),
+            "conclusion": "cross_modal_compare 失败，当前证据支持继续定位该变体覆盖的能力链路。",
+            "next_probe": "围绕 multimodal:conflict:1 执行 targeted evidence replay，并对比 image/text 单模态结果。",
         }
     ]
 

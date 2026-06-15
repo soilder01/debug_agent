@@ -171,19 +171,68 @@ def _build_root_cause_trace(run_result: ExperimentRunResult | None) -> list[dict
     if run_result is None:
         return []
     return [
-        {
-            "step_name": item.step_name,
-            "variant": variant,
-            "modalities": _string_list_from_request_summary(item.request_summary.get("ablation_modalities")),
-            "evidence_id": item.evidence_id,
-            "judge_score": item.judge.score,
-            "delta_reasons": _delta_reasons_from_evidence(item),
-            "target_ids": _target_ids_from_evidence(item),
-            "artifact_ids": [artifact.artifact_id for artifact in item.artifacts],
-        }
+        _root_cause_trace_item(item=item, variant=variant)
         for item in run_result.evidence
         if (variant := _string_from_request_summary(item.request_summary.get("ablation_variant")))
     ]
+
+
+def _root_cause_trace_item(item: ExperimentEvidence, variant: str) -> dict[str, object]:
+    modalities = _string_list_from_request_summary(item.request_summary.get("ablation_modalities"))
+    delta_reasons = _delta_reasons_from_evidence(item)
+    target_ids = _target_ids_from_evidence(item)
+    return {
+        "step_name": item.step_name,
+        "variant": variant,
+        "modalities": modalities,
+        "evidence_id": item.evidence_id,
+        "judge_score": item.judge.score,
+        "delta_reasons": delta_reasons,
+        "target_ids": target_ids,
+        "artifact_ids": [artifact.artifact_id for artifact in item.artifacts],
+        "hypothesis": _trace_hypothesis(variant),
+        "observation": _trace_observation(
+            step_name=item.step_name,
+            variant=variant,
+            judge_score=item.judge.score,
+            delta_reasons=delta_reasons,
+            target_ids=target_ids,
+        ),
+        "conclusion": _trace_conclusion(variant=variant, judge_score=item.judge.score),
+        "next_probe": _trace_next_probe(target_ids=target_ids, modalities=modalities),
+    }
+
+
+def _trace_hypothesis(variant: str) -> str:
+    if variant == "cross_modal_compare":
+        return "检查 cross_modal_compare 是否暴露跨模态对齐或融合问题。"
+    return f"检查 {variant} 是否暴露该实验变体覆盖的能力问题。"
+
+
+def _trace_observation(
+    *,
+    step_name: str,
+    variant: str,
+    judge_score: int,
+    delta_reasons: list[str],
+    target_ids: list[str],
+) -> str:
+    delta_summary = ", ".join(delta_reasons) if delta_reasons else "无"
+    target_summary = ", ".join(target_ids) if target_ids else "无"
+    return f"{step_name}/{variant} judge_score={judge_score}，delta={delta_summary}，target={target_summary}。"
+
+
+def _trace_conclusion(*, variant: str, judge_score: int) -> str:
+    outcome = "失败" if judge_score == 0 else "通过"
+    return f"{variant} {outcome}，当前证据支持继续定位该变体覆盖的能力链路。"
+
+
+def _trace_next_probe(*, target_ids: list[str], modalities: list[str]) -> str:
+    target_summary = ", ".join(target_ids) if target_ids else "当前目标"
+    if modalities:
+        modality_summary = "/".join(modalities)
+        return f"围绕 {target_summary} 执行 targeted evidence replay，并对比 {modality_summary} 单模态结果。"
+    return f"围绕 {target_summary} 执行 targeted evidence replay，并补充对照实验。"
 
 
 def _build_recommended_actions(root_cause: RootCause) -> list[dict[str, str]]:
