@@ -202,6 +202,26 @@
 - [x] Include strategy-driven follow-up experiments in `DebugReport`.
 - [x] Render strategy-driven follow-up experiments in the frontend report panel.
 
+### Task 13: Strategy Follow-Up Job Submission
+
+**Files:**
+- Modify: `backend/src/debug_agent/api/routes.py`
+- Modify: `backend/src/debug_agent/storage/models.py`
+- Modify: `backend/src/debug_agent/storage/repository.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/app/App.tsx`
+- Modify: `frontend/src/reports/DebugReportWorkspace.tsx`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `backend/tests/api/test_recommended_action_status.py`
+- Test: `frontend/src/api/client.test.ts`
+- Test: `frontend/src/app/App.test.tsx`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Add a strategy follow-up job lineage table and repository methods.
+- [x] Add API endpoints to create and list strategy follow-up debug jobs.
+- [x] Add frontend API/client support and report panel action buttons.
+- [x] Wire strategy follow-up job creation into the main app flow.
+
 ## Verification Policy
 
 Every task must follow:

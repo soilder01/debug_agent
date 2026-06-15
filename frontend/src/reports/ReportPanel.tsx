@@ -14,6 +14,7 @@ type ReportPanelProps = {
   onSelectEvidence?: (evidenceId: string) => void;
   onUpdateRecommendedActionStatus?: (actionIndex: number, status: RecommendedActionStatusValue) => void;
   onVerifyRecommendedAction?: (actionIndex: number) => void;
+  onCreateStrategyFollowUp?: (stage: string) => void;
 };
 
 export function ReportPanel({
@@ -23,7 +24,8 @@ export function ReportPanel({
   recommendedActionVerificationResults = [],
   onSelectEvidence,
   onUpdateRecommendedActionStatus,
-  onVerifyRecommendedAction
+  onVerifyRecommendedAction,
+  onCreateStrategyFollowUp
 }: ReportPanelProps) {
   const experimentSummary = report.experiment_summary;
   const artifactIds = experimentSummary?.artifact_ids?.length
@@ -237,6 +239,13 @@ export function ReportPanel({
                   {followUp.source}/{followUp.stage ?? followUp.result ?? "unknown"}：{followUp.planned_steps}
                 </p>
                 <p>{followUp.summary}</p>
+                {onCreateStrategyFollowUp && followUp.source === "debug_strategy" && followUp.stage ? (
+                  <p>
+                    <button type="button" onClick={() => onCreateStrategyFollowUp(followUp.stage!)}>
+                      Run strategy follow-up {followUp.stage}
+                    </button>
+                  </p>
+                ) : null}
               </li>
             ))}
           </ul>

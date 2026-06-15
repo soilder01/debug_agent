@@ -35,6 +35,7 @@ from debug_agent.storage.repository import (
     RecommendedActionStatusEvent,
     RecommendedActionVerification,
     SpreadsheetWritebackAudit,
+    StrategyFollowUpJob,
 )
 
 settings = DebugAgentSettings.from_env()
@@ -209,8 +210,21 @@ class RecommendedActionVerificationRequest(BaseModel):
     note: str = ""
 
 
+class StrategyFollowUpJobRequest(BaseModel):
+    actor: str = ""
+    note: str = ""
+
+
 class RecommendedActionVerificationResponse(RecommendedActionVerification):
     verification_job: SubmittedDebugJob
+
+
+class StrategyFollowUpJobResponse(StrategyFollowUpJob):
+    follow_up_job: SubmittedDebugJob
+
+
+class StrategyFollowUpJobListResponse(BaseModel):
+    follow_ups: list[StrategyFollowUpJob] = Field(default_factory=list)
 
 
 class RecommendedActionVerificationResult(BaseModel):
@@ -746,6 +760,48 @@ def create_recommended_action_verification_job(
     )
 
 
+@router.post(
+    "/jobs/{job_id}/strategy-follow-ups/{stage}/debug-jobs",
+    status_code=202,
+)
+def create_strategy_follow_up_job(
+    job_id: str,
+    stage: str,
+    request: StrategyFollowUpJobRequest,
+) -> StrategyFollowUpJobResponse:
+    job = job_repository.get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail=f"Debug job not found: {job_id}")
+    report = build_report_for_job(job_repository, job_id)
+    if report is None:
+        raise HTTPException(status_code=404, detail=f"Debug report not found for job: {job_id}")
+    follow_up = _strategy_follow_up_from_report(report, stage)
+    if follow_up is None:
+        raise HTTPException(status_code=404, detail=f"Strategy follow-up stage not found: {stage}")
+    actor = _resolved_actor(request.actor)
+    _raise_if_usage_budget_blocks_submission()
+    follow_up_job = job_service.submit_case_debug(job.case_id, baseline_trials=job.baseline_trials)
+    lineage = job_repository.save_strategy_follow_up_job(
+        source_job_id=job_id,
+        stage=stage,
+        planned_steps=str(follow_up.get("planned_steps", "")),
+        follow_up_job_id=follow_up_job.job_id,
+        actor=actor,
+        note=request.note,
+    )
+    return StrategyFollowUpJobResponse(
+        **lineage.model_dump(),
+        follow_up_job=follow_up_job,
+    )
+
+
+@router.get("/jobs/{job_id}/strategy-follow-ups")
+def list_strategy_follow_up_jobs(job_id: str) -> StrategyFollowUpJobListResponse:
+    if job_repository.get_job(job_id) is None:
+        raise HTTPException(status_code=404, detail=f"Debug job not found: {job_id}")
+    return StrategyFollowUpJobListResponse(follow_ups=job_repository.list_strategy_follow_up_jobs(job_id))
+
+
 @router.get("/jobs/{job_id}/recommended-actions/statuses")
 def list_recommended_action_statuses(job_id: str) -> RecommendedActionStatusListResponse:
     if job_repository.get_job(job_id) is None:
@@ -882,6 +938,13 @@ def _raise_if_usage_budget_blocks_submission() -> None:
     )
     if usage.budget_status == "over_budget":
         raise HTTPException(status_code=429, detail="Usage budget exceeded; new debug jobs are disabled.")
+
+
+def _strategy_follow_up_from_report(report: DebugReport, stage: str) -> dict[str, str] | None:
+    for follow_up in report.follow_up_experiments:
+        if follow_up.get("source") == "debug_strategy" and follow_up.get("stage") == stage:
+            return follow_up
+    return None
 
 
 def _build_observability_health(

@@ -144,6 +144,24 @@ export type RecommendedActionVerificationResponse = RecommendedActionVerificatio
   verification_job: SubmittedDebugJob;
 };
 
+export type StrategyFollowUpJob = {
+  source_job_id: string;
+  stage: string;
+  planned_steps: string;
+  follow_up_job_id: string;
+  actor: string;
+  note: string;
+  created_at: string;
+};
+
+export type StrategyFollowUpJobResponse = StrategyFollowUpJob & {
+  follow_up_job: SubmittedDebugJob;
+};
+
+export type StrategyFollowUpJobListResponse = {
+  follow_ups: StrategyFollowUpJob[];
+};
+
 export type RecommendedActionVerificationResult = {
   job_id: string;
   action_index: number;
@@ -689,6 +707,31 @@ export async function createRecommendedActionVerificationJob(
     throw new Error(`Failed to create recommended action verification job ${actionIndex} for ${jobId}: ${response.status}`);
   }
   return (await response.json()) as RecommendedActionVerificationResponse;
+}
+
+export async function createStrategyFollowUpJob(
+  jobId: string,
+  stage: string,
+  request: {
+    actor?: string;
+    note?: string;
+  }
+): Promise<StrategyFollowUpJobResponse> {
+  const response = await fetch(
+    `/api/jobs/${encodeURIComponent(jobId)}/strategy-follow-ups/${encodeURIComponent(stage)}/debug-jobs`,
+    {
+      body: JSON.stringify({
+        actor: request.actor ?? "",
+        note: request.note ?? ""
+      }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST"
+    }
+  );
+  if (!response.ok) {
+    throw new Error(`Failed to create strategy follow-up job ${stage} for ${jobId}: ${response.status}`);
+  }
+  return (await response.json()) as StrategyFollowUpJobResponse;
 }
 
 export async function fetchSpreadsheetWritebackAudit(jobId: string): Promise<SpreadsheetWritebackAudit> {

@@ -19,6 +19,7 @@ from debug_agent.storage.models import (
     RecommendedActionVerificationRow,
     SpreadsheetRowMappingRow,
     SpreadsheetWritebackAuditRow,
+    StrategyFollowUpJobRow,
 )
 
 
@@ -67,6 +68,16 @@ class RecommendedActionVerification(BaseModel):
     job_id: str
     action_index: int
     verification_job_id: str
+    actor: str
+    note: str
+    created_at: str
+
+
+class StrategyFollowUpJob(BaseModel):
+    source_job_id: str
+    stage: str
+    planned_steps: str
+    follow_up_job_id: str
     actor: str
     note: str
     created_at: str
@@ -388,6 +399,47 @@ class DebugJobRepository:
                 if action_index is not None:
                     query = query.where(RecommendedActionVerificationRow.action_index == action_index)
                 return [_recommended_action_verification_from_row(row) for row in session.scalars(query)]
+
+    def save_strategy_follow_up_job(
+        self,
+        *,
+        source_job_id: str,
+        stage: str,
+        planned_steps: str,
+        follow_up_job_id: str,
+        actor: str = "",
+        note: str = "",
+    ) -> StrategyFollowUpJob:
+        with self._lock:
+            with self._session_factory() as session:
+                now = _utc_now_iso()
+                row = StrategyFollowUpJobRow(
+                    source_job_id=source_job_id,
+                    stage=stage,
+                    planned_steps=planned_steps,
+                    follow_up_job_id=follow_up_job_id,
+                    actor=actor,
+                    note=note,
+                    created_at=now,
+                )
+                session.add(row)
+                session.commit()
+                return _strategy_follow_up_job_from_row(row)
+
+    def list_strategy_follow_up_jobs(self, source_job_id: str, stage: str | None = None) -> list[StrategyFollowUpJob]:
+        with self._lock:
+            with self._session_factory() as session:
+                query = (
+                    select(StrategyFollowUpJobRow)
+                    .where(StrategyFollowUpJobRow.source_job_id == source_job_id)
+                    .order_by(
+                        StrategyFollowUpJobRow.created_at,
+                        StrategyFollowUpJobRow.follow_up_job_id,
+                    )
+                )
+                if stage is not None:
+                    query = query.where(StrategyFollowUpJobRow.stage == stage)
+                return [_strategy_follow_up_job_from_row(row) for row in session.scalars(query)]
 
     def list_cases(self, has_regions: bool = False, limit: int | None = None, offset: int = 0) -> list[DebugCase]:
         with self._lock:
@@ -715,6 +767,18 @@ def _recommended_action_verification_from_row(row: RecommendedActionVerification
         job_id=row.job_id,
         action_index=row.action_index,
         verification_job_id=row.verification_job_id,
+        actor=row.actor,
+        note=row.note,
+        created_at=row.created_at,
+    )
+
+
+def _strategy_follow_up_job_from_row(row: StrategyFollowUpJobRow) -> StrategyFollowUpJob:
+    return StrategyFollowUpJob(
+        source_job_id=row.source_job_id,
+        stage=row.stage,
+        planned_steps=row.planned_steps,
+        follow_up_job_id=row.follow_up_job_id,
         actor=row.actor,
         note=row.note,
         created_at=row.created_at,

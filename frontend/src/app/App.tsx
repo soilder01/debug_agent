@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   type BatchDebugJobResponse,
   createRecommendedActionVerificationJob,
+  createStrategyFollowUpJob,
   type CsvImportResponse,
   type DebugCaseDetail,
   type DebugCaseSummary,
@@ -622,6 +623,31 @@ export function App() {
     }
   }
 
+  async function createCurrentStrategyFollowUp(stage: string) {
+    if (!report?.job_id) {
+      return;
+    }
+    setError("");
+    try {
+      const followUp = await createStrategyFollowUpJob(report.job_id, stage, {
+        actor: localDevActor,
+        note: ""
+      });
+      setSubmittedJob(
+        followUp.follow_up_job ?? {
+          job_id: followUp.follow_up_job_id,
+          case_id: report.case_id,
+          status: "created"
+        }
+      );
+      setJobStatus(null);
+      setReport(null);
+      setSelectedEvidence(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
   return (
     <main>
       <h1>Debug Detection Agent</h1>
@@ -735,6 +761,7 @@ export function App() {
             void updateCurrentRecommendedActionStatus(actionIndex, status)
           }
           onVerifyRecommendedAction={(actionIndex) => void verifyCurrentRecommendedAction(actionIndex)}
+          onCreateStrategyFollowUp={(stage) => void createCurrentStrategyFollowUp(stage)}
         />
       ) : submittedJob ? null : (
         <p>点击按钮运行第一条可验证 debug 闭环。</p>

@@ -449,7 +449,7 @@ describe("ReportPanel", () => {
     expect(onSelectEvidence).toHaveBeenNthCalledWith(2, "trace-evidence");
   });
 
-  it("highlights ablation diagnosis fields", () => {
+  it("highlights ablation diagnosis fields", async () => {
     const report: DebugReport = {
       job_id: "job-ablation-root-cause",
       case_id: "case-ablation-root-cause",
@@ -547,7 +547,9 @@ describe("ReportPanel", () => {
       }
     };
 
-    render(<ReportPanel report={report} />);
+    const onCreateStrategyFollowUp = vi.fn();
+
+    render(<ReportPanel report={report} onCreateStrategyFollowUp={onCreateStrategyFollowUp} />);
 
     expect(screen.getByText("Ablation Diagnosis")).toBeInTheDocument();
     const diagnosis = within(screen.getByLabelText("Ablation diagnosis"));
@@ -581,6 +583,8 @@ describe("ReportPanel", () => {
     expect(screen.getByText("Follow-up Experiments")).toBeInTheDocument();
     expect(screen.getByText("debug_strategy/ablation_expansion：strategy_ablation_expansion_probe")).toBeInTheDocument();
     expect(screen.getByText("策略阶段 ablation_expansion 已转为 follow-up experiment：strategy_ablation_expansion_probe。")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Run strategy follow-up ablation_expansion" }));
+    expect(onCreateStrategyFollowUp).toHaveBeenCalledWith("ablation_expansion");
     expect(screen.getByText("Confidence Reasons")).toBeInTheDocument();
     expect(screen.getByText("evidence_count/high：3 条 evidence 支撑当前判断。")).toBeInTheDocument();
     expect(

@@ -161,6 +161,54 @@ def test_recommended_action_verification_api_rejects_empty_actor_when_trusted_ac
     assert response.json()["detail"] == "Actor is required when trusted actor enforcement is enabled."
 
 
+def test_strategy_follow_up_api_creates_traceable_debug_job() -> None:
+    client = TestClient(app)
+    job_id = _create_job_with_recommended_actions()
+
+    response = client.post(
+        f"/jobs/{job_id}/strategy-follow-ups/evidence_audit/debug-jobs",
+        json={"actor": "strategy-operator", "note": "run evidence audit probe"},
+    )
+
+    assert response.status_code == 202
+    body = response.json()
+    assert body["source_job_id"] == job_id
+    assert body["stage"] == "evidence_audit"
+    assert body["planned_steps"] == "strategy_evidence_audit_probe"
+    assert body["actor"] == "strategy-operator"
+    assert body["note"] == "run evidence audit probe"
+    assert body["follow_up_job_id"] == body["follow_up_job"]["job_id"]
+    assert body["follow_up_job"]["status"] == "created"
+
+    list_response = client.get(f"/jobs/{job_id}/strategy-follow-ups")
+    assert list_response.status_code == 200
+    assert list_response.json()["follow_ups"] == [
+        {
+            "source_job_id": job_id,
+            "stage": "evidence_audit",
+            "planned_steps": "strategy_evidence_audit_probe",
+            "follow_up_job_id": body["follow_up_job_id"],
+            "actor": "strategy-operator",
+            "note": "run evidence audit probe",
+            "created_at": body["created_at"],
+        }
+    ]
+    routes.job_repository.mark_failed(body["follow_up_job_id"], "test cleanup")
+
+
+def test_strategy_follow_up_api_rejects_unknown_stage() -> None:
+    client = TestClient(app)
+    job_id = _create_job_with_recommended_actions()
+
+    response = client.post(
+        f"/jobs/{job_id}/strategy-follow-ups/missing_stage/debug-jobs",
+        json={"actor": "strategy-operator", "note": ""},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Strategy follow-up stage not found: missing_stage"
+
+
 def test_recommended_action_status_api_evaluates_resolved_verification_job() -> None:
     client = TestClient(app)
     job_id = _create_job_with_recommended_actions()

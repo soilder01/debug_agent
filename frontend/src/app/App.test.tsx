@@ -901,6 +901,134 @@ describe("App", () => {
     expect(screen.getAllByText("样本 ID：case-action-verify").length).toBeGreaterThan(0);
   });
 
+  it("creates strategy follow-up jobs from a persisted report", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jobs: [
+              {
+                job_id: "job-strategy-source",
+                case_id: "case-strategy-follow-up",
+                status: "completed",
+                attempt_count: 1,
+                max_attempts: 2,
+                remaining_attempts: 1,
+                will_retry: false,
+                retry_recommendation: "none",
+                retry_recommendation_detail: {
+                  code: "none",
+                  label: "无需重试",
+                  action: "查看报告",
+                  severity: "info"
+                },
+                error_message: null,
+                evidence_ids: [],
+                evidence_error_counts: {
+                  total_evidence: 0,
+                  failed_judgements: 0,
+                  response_parse_errors: 0,
+                  model_call_errors: 0
+                },
+                spreadsheet_writeback_audit: null,
+                created_at: "2026-06-15T00:00:00+00:00",
+                updated_at: "2026-06-15T00:00:01+00:00"
+              }
+            ],
+            total_count: 1
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            job_id: "job-strategy-source",
+            case_id: "case-strategy-follow-up",
+            status: "needs_human_review",
+            observed_failure: {
+              type: "cross_modal_alignment_failure",
+              summary: "cross-modal compare failed",
+              affected_box_ids: []
+            },
+            planned_experiments: ["modality_ablation_check"],
+            experiment_summary: null,
+            root_cause: {
+              label: "cross_modal_alignment_failure",
+              confidence: "high",
+              evidence_summary: "cross-modal variant failed."
+            },
+            recommended_actions: [
+              {
+                category: "prompt",
+                priority: "high",
+                status: "pending",
+                summary: "保留推荐操作状态查询。",
+                detail: "该测试需要加载状态接口后再创建 strategy follow-up。"
+              }
+            ],
+            follow_up_experiments: [
+              {
+                source: "debug_strategy",
+                stage: "ablation_expansion",
+                planned_steps: "strategy_ablation_expansion_probe",
+                summary: "策略阶段 ablation_expansion 已转为 follow-up experiment：strategy_ablation_expansion_probe。"
+              }
+            ],
+            suggested_sheet_fields: {
+              错误原因: "跨模态对齐问题"
+            }
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ statuses: [], events: [], verifications: [], verification_results: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            source_job_id: "job-strategy-source",
+            stage: "ablation_expansion",
+            planned_steps: "strategy_ablation_expansion_probe",
+            follow_up_job_id: "job-strategy-follow-up",
+            actor: "local-dev-operator",
+            note: "",
+            created_at: "2026-06-15T00:00:02+00:00",
+            follow_up_job: {
+              job_id: "job-strategy-follow-up",
+              case_id: "case-strategy-follow-up",
+              status: "created"
+            }
+          }),
+          { status: 202, headers: { "Content-Type": "application/json" } }
+        )
+      );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load debug jobs" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Open job job-strategy-source" }));
+    await userEvent.click(screen.getByRole("button", { name: "Load persisted report" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Run strategy follow-up ablation_expansion" }));
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/jobs/job-strategy-source/strategy-follow-ups/ablation_expansion/debug-jobs",
+      {
+        body: JSON.stringify({
+          actor: "local-dev-operator",
+          note: ""
+        }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST"
+      }
+    );
+    expect(await screen.findByText("Job ID：job-strategy-follow-up")).toBeInTheDocument();
+  });
+
   it("loads failed debug jobs with a status filter", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(
