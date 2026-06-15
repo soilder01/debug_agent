@@ -107,6 +107,10 @@ function StrategyFollowUpHistory({ followUps, onOpenStrategyFollowUp }: Strategy
               {followUp.stage}：{followUp.planned_steps}
             </p>
             <p>任务：{followUp.follow_up_job_id}</p>
+            <p>Outcome：{followUp.outcome}</p>
+            <p>Success Rate：{formatPercent(followUp.success_rate)}</p>
+            <p>{followUp.summary}</p>
+            {followUp.escalation ? <p>Escalation：{followUp.escalation}</p> : null}
             <p>操作者：{followUp.actor || "unknown"}</p>
             {followUp.note ? <p>备注：{followUp.note}</p> : null}
             <p>时间：{followUp.created_at}</p>
@@ -120,6 +124,10 @@ function StrategyFollowUpHistory({ followUps, onOpenStrategyFollowUp }: Strategy
       </ul>
     </section>
   );
+}
+
+function formatPercent(value: number) {
+  return `${Math.round(value * 100)}%`;
 }
 
 type ExplainabilityWorkspaceProps = {

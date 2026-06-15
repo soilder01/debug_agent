@@ -191,9 +191,49 @@ def test_strategy_follow_up_api_creates_traceable_debug_job() -> None:
             "actor": "strategy-operator",
             "note": "run evidence audit probe",
             "created_at": body["created_at"],
+            "outcome": "pending",
+            "success_rate": 0.0,
+            "summary": "Strategy follow-up job is not completed yet.",
+            "escalation": "",
         }
     ]
     routes.job_repository.mark_failed(body["follow_up_job_id"], "test cleanup")
+
+
+def test_strategy_follow_up_api_evaluates_completed_follow_up_outcome() -> None:
+    client = TestClient(app)
+    job_id = _create_job_with_recommended_actions()
+    create_response = client.post(
+        f"/jobs/{job_id}/strategy-follow-ups/evidence_audit/debug-jobs",
+        json={"actor": "strategy-operator", "note": "run evidence audit probe"},
+    )
+    assert create_response.status_code == 202
+    follow_up_job_id = create_response.json()["follow_up_job_id"]
+    source_job = routes.job_repository.get_job(job_id)
+    assert source_job is not None
+    routes.job_repository.save_evidence(
+        job_id=follow_up_job_id,
+        case_id=source_job.case_id,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id=f"{follow_up_job_id}:strategy-pass",
+                step_name="strategy_evidence_audit_probe",
+                trial=0,
+                raw_output="{\"conflicts\":[]}",
+                judge=JudgeResult(score=1, reasons=[]),
+            )
+        ],
+    )
+    routes.job_repository.mark_completed(follow_up_job_id)
+
+    response = client.get(f"/jobs/{job_id}/strategy-follow-ups")
+
+    assert response.status_code == 200
+    follow_up = response.json()["follow_ups"][0]
+    assert follow_up["outcome"] == "passed_stop_condition"
+    assert follow_up["success_rate"] == 1.0
+    assert follow_up["summary"] == "Strategy follow-up job passed all probes; stop condition is likely satisfied."
+    assert follow_up["escalation"] == ""
 
 
 def test_strategy_follow_up_api_rejects_unknown_stage() -> None:

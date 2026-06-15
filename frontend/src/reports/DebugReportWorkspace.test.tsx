@@ -99,7 +99,11 @@ function makeStrategyFollowUp(): StrategyFollowUpJob {
     follow_up_job_id: "job-follow-up-1",
     actor: "strategy-operator",
     note: "run ablation expansion",
-    created_at: "2026-06-15T00:00:02+00:00"
+    created_at: "2026-06-15T00:00:02+00:00",
+    outcome: "needs_escalation",
+    success_rate: 0,
+    summary: "Strategy follow-up job still failed; escalation is recommended.",
+    escalation: "Run single-modality capability probes before keeping cross-modal attribution."
   };
 }
 
@@ -329,6 +333,10 @@ describe("DebugReportWorkspace", () => {
     expect(screen.getByRole("heading", { name: "Strategy Follow-Up Job History" })).toBeInTheDocument();
     expect(screen.getByText("ablation_expansion：strategy_ablation_expansion_probe")).toBeInTheDocument();
     expect(screen.getByText("任务：job-follow-up-1")).toBeInTheDocument();
+    expect(screen.getByText("Outcome：needs_escalation")).toBeInTheDocument();
+    expect(screen.getByText("Success Rate：0%")).toBeInTheDocument();
+    expect(screen.getByText("Strategy follow-up job still failed; escalation is recommended.")).toBeInTheDocument();
+    expect(screen.getByText("Escalation：Run single-modality capability probes before keeping cross-modal attribution.")).toBeInTheDocument();
     expect(screen.getByText("操作者：strategy-operator")).toBeInTheDocument();
     expect(screen.getByText("备注：run ablation expansion")).toBeInTheDocument();
 

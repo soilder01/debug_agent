@@ -196,7 +196,11 @@ describe("api client recommended action status", () => {
               follow_up_job_id: "job-follow-up-1",
               actor: "strategy-operator",
               note: "run ablation expansion",
-              created_at: "2026-06-15T00:00:02+00:00"
+              created_at: "2026-06-15T00:00:02+00:00",
+              outcome: "needs_escalation",
+              success_rate: 0,
+              summary: "Strategy follow-up job still failed; escalation is recommended.",
+              escalation: "Run single-modality capability probes before keeping cross-modal attribution."
             }
           ]
         }),
@@ -208,5 +212,6 @@ describe("api client recommended action status", () => {
 
     expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1/strategy-follow-ups");
     expect(response.follow_ups[0].follow_up_job_id).toBe("job-follow-up-1");
+    expect(response.follow_ups[0].outcome).toBe("needs_escalation");
   });
 });

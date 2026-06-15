@@ -237,6 +237,22 @@
 - [x] Render strategy follow-up job history in the report workspace.
 - [x] Allow operators to open persisted strategy follow-up jobs from the history panel.
 
+### Task 15: Strategy Follow-Up Outcome Evaluation
+
+**Files:**
+- Modify: `backend/src/debug_agent/api/routes.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/reports/DebugReportWorkspace.tsx`
+- Test: `backend/tests/api/test_recommended_action_status.py`
+- Test: `frontend/src/api/client.test.ts`
+- Test: `frontend/src/app/App.test.tsx`
+- Test: `frontend/src/reports/DebugReportWorkspace.test.tsx`
+
+- [x] Evaluate strategy follow-up job outcome from job status and evidence success rate.
+- [x] Classify follow-ups as `pending`, `passed_stop_condition`, or `needs_escalation`.
+- [x] Return outcome summary, success rate, and escalation recommendation in follow-up history.
+- [x] Render strategy outcome evaluation in the report workspace.
+
 ## Verification Policy
 
 Every task must follow:

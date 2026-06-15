@@ -152,6 +152,10 @@ export type StrategyFollowUpJob = {
   actor: string;
   note: string;
   created_at: string;
+  outcome: "pending" | "passed_stop_condition" | "needs_escalation" | "inconclusive";
+  success_rate: number;
+  summary: string;
+  escalation: string;
 };
 
 export type StrategyFollowUpJobResponse = StrategyFollowUpJob & {

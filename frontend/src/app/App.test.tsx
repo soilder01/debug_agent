@@ -1000,7 +1000,11 @@ describe("App", () => {
                 follow_up_job_id: "job-existing-strategy-follow-up",
                 actor: "strategy-operator",
                 note: "existing evidence audit",
-                created_at: "2026-06-15T00:00:02+00:00"
+                created_at: "2026-06-15T00:00:02+00:00",
+                outcome: "passed_stop_condition",
+                success_rate: 1,
+                summary: "Strategy follow-up job passed all probes; stop condition is likely satisfied.",
+                escalation: ""
               }
             ]
           }),
@@ -1033,6 +1037,7 @@ describe("App", () => {
     await userEvent.click(screen.getByRole("button", { name: "Load persisted report" }));
     expect(await screen.findByText("Strategy Follow-Up Job History")).toBeInTheDocument();
     expect(screen.getByText("任务：job-existing-strategy-follow-up")).toBeInTheDocument();
+    expect(screen.getByText("Outcome：passed_stop_condition")).toBeInTheDocument();
     await userEvent.click(await screen.findByRole("button", { name: "Run strategy follow-up ablation_expansion" }));
 
     expect(fetchMock).toHaveBeenCalledWith(
