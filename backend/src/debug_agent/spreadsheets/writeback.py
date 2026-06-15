@@ -173,6 +173,9 @@ def _evaluation_feedback(report: DebugReport) -> str:
     targeted_guardrails = _targeted_probe_guardrails(report)
     if targeted_guardrails:
         lines.append(f"Targeted Guardrail：{targeted_guardrails}")
+    human_handoffs = _human_handoff_requests(report)
+    if human_handoffs:
+        lines.append(f"人工接管：{human_handoffs}")
     if report.experiment_summary is not None:
         summary = report.experiment_summary
         lines.extend(
@@ -259,4 +262,25 @@ def _targeted_probe_guardrail_line(follow_up: dict[str, str]) -> str:
     line = f"{target_id}/{result}：{summary}"
     if stop_condition:
         line = f"{line}\n停止条件：{stop_condition}"
+    return line
+
+
+def _human_handoff_requests(report: DebugReport) -> str:
+    return "\n".join(
+        _human_handoff_line(request)
+        for request in report.human_handoff_requests
+    )
+
+
+def _human_handoff_line(request: dict[str, str]) -> str:
+    target_id = request.get("target_id", "unknown")
+    priority = request.get("priority", "unknown")
+    reason = request.get("reason", "unknown")
+    owner = request.get("recommended_owner", "human-debugger")
+    next_action = request.get("next_action", "")
+    line = f"{target_id}/{priority}/{reason}"
+    if owner:
+        line = f"{line}\n负责人：{owner}"
+    if next_action:
+        line = f"{line}\n下一步：{next_action}"
     return line

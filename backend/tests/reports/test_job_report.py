@@ -537,6 +537,17 @@ def test_build_report_for_job_stops_targeted_escalation_at_max_depth() -> None:
         ),
         "stop_condition": "max_targeted_probe_depth_reached",
     } in report.follow_up_experiments
+    assert report.human_handoff_requests == [
+        {
+            "source": "targeted_probe_guardrail",
+            "target_id": "multimodal:conflict:1",
+            "priority": "high",
+            "reason": "max_targeted_probe_depth_reached",
+            "summary": "Targeted probe chain for multimodal:conflict:1 reached max depth 3.",
+            "recommended_owner": "human-debugger",
+            "next_action": "Review the full targeted probe chain, inspect evidence artifacts, and decide whether to update prompt, evaluation assets, or model capability attribution.",
+        }
+    ]
 
 
 def test_build_report_for_job_adds_escalation_follow_up_for_failed_strategy_outcome() -> None:

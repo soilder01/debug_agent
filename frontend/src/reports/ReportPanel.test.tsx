@@ -792,6 +792,18 @@ describe("ReportPanel", () => {
           stop_condition: "max_targeted_probe_depth_reached"
         }
       ],
+      human_handoff_requests: [
+        {
+          source: "targeted_probe_guardrail",
+          target_id: "multimodal:conflict:1",
+          priority: "high",
+          reason: "max_targeted_probe_depth_reached",
+          summary: "Targeted probe chain for multimodal:conflict:1 reached max depth 3.",
+          recommended_owner: "human-debugger",
+          next_action:
+            "Review the full targeted probe chain, inspect evidence artifacts, and decide whether to update prompt, evaluation assets, or model capability attribution."
+        }
+      ],
       suggested_sheet_fields: {
         错误原因: "跨模态对齐问题"
       }
@@ -801,6 +813,16 @@ describe("ReportPanel", () => {
 
     expect(screen.getByText("targeted_probe_guardrail/target_still_failing：")).toBeInTheDocument();
     expect(screen.getByText("Stop condition：max_targeted_probe_depth_reached")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Human Handoff Requests" })).toBeInTheDocument();
+    expect(screen.getByText("Handoff target：multimodal:conflict:1")).toBeInTheDocument();
+    expect(screen.getByText("Handoff priority：high")).toBeInTheDocument();
+    expect(screen.getByText("Handoff reason：max_targeted_probe_depth_reached")).toBeInTheDocument();
+    expect(screen.getByText("Handoff owner：human-debugger")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Handoff next action：Review the full targeted probe chain, inspect evidence artifacts, and decide whether to update prompt, evaluation assets, or model capability attribution."
+      )
+    ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Run targeted probe multimodal:conflict:1" })).not.toBeInTheDocument();
   });
 

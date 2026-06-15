@@ -496,6 +496,24 @@
 - [x] Add operator action guidance for guardrail-triggered human investigation.
 - [x] Render targeted max-depth metrics in the observability panel.
 
+### Task 31: Targeted Probe Human Handoff
+
+**Files:**
+- Modify: `backend/src/debug_agent/reports/generator.py`
+- Modify: `backend/src/debug_agent/reports/job_report.py`
+- Modify: `backend/src/debug_agent/spreadsheets/writeback.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `backend/tests/reports/test_job_report.py`
+- Test: `backend/tests/spreadsheets/test_writeback.py`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Add structured human handoff requests to `DebugReport`.
+- [x] Convert targeted probe guardrail follow-ups into high-priority human handoff tasks.
+- [x] Include target id, reason, summary, owner, and next action for each handoff request.
+- [x] Include human handoff requests in spreadsheet `评估问题反馈`.
+- [x] Render human handoff requests in the frontend report panel.
+
 ## Verification Policy
 
 Every task must follow:

@@ -85,6 +85,15 @@ export type DebugReport = {
     summary: string;
     escalation: string;
   }>;
+  human_handoff_requests?: Array<{
+    source: string;
+    target_id: string;
+    priority: string;
+    reason: string;
+    summary: string;
+    recommended_owner: string;
+    next_action: string;
+  }>;
   evaluation_asset_diagnostics?: Array<{
     source: string;
     status: string;

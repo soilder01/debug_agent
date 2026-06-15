@@ -46,6 +46,7 @@ export function ReportPanel({
   const confidenceReasons = report.confidence_reasons ?? [];
   const debugStrategy = report.debug_strategy ?? [];
   const followUpExperiments = report.follow_up_experiments ?? [];
+  const humanHandoffRequests = report.human_handoff_requests ?? [];
   const verificationResultByJobId = new Map(
     recommendedActionVerificationResults.map((result) => [result.verification_job_id, result])
   );
@@ -256,6 +257,23 @@ export function ReportPanel({
                     </button>
                   </p>
                 ) : null}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {humanHandoffRequests.length > 0 ? (
+        <>
+          <h3>Human Handoff Requests</h3>
+          <ul aria-label="Human handoff requests">
+            {humanHandoffRequests.map((request) => (
+              <li key={`${request.source}:${request.target_id}:${request.reason}`}>
+                <p>Handoff target：{request.target_id}</p>
+                <p>Handoff priority：{request.priority}</p>
+                <p>Handoff reason：{request.reason}</p>
+                <p>{request.summary}</p>
+                <p>Handoff owner：{request.recommended_owner}</p>
+                <p>Handoff next action：{request.next_action}</p>
               </li>
             ))}
           </ul>

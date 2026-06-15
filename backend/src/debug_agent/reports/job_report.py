@@ -46,6 +46,7 @@ def build_report_for_job(repository: DebugJobRepository, job_id: str) -> DebugRe
                 targeted_probe_results=report.targeted_probe_results,
             ),
         ]
+        report.human_handoff_requests = _build_human_handoff_requests(report.follow_up_experiments)
     return _merge_recommended_action_statuses(repository, job_id, report)
 
 
@@ -305,6 +306,25 @@ def _order_targeted_probe_chain(items: list[dict[str, object]]) -> list[dict[str
         if item not in ordered:
             visit(item)
     return ordered
+
+
+def _build_human_handoff_requests(follow_up_experiments: list[dict[str, str]]) -> list[dict[str, str]]:
+    return [
+        {
+            "source": "targeted_probe_guardrail",
+            "target_id": follow_up.get("target_id", "unknown"),
+            "priority": "high",
+            "reason": follow_up.get("stop_condition", "targeted_probe_guardrail"),
+            "summary": f"Targeted probe chain for {follow_up.get('target_id', 'unknown')} reached max depth {MAX_TARGETED_PROBE_DEPTH}.",
+            "recommended_owner": "human-debugger",
+            "next_action": (
+                "Review the full targeted probe chain, inspect evidence artifacts, and decide whether to update prompt, "
+                "evaluation assets, or model capability attribution."
+            ),
+        }
+        for follow_up in follow_up_experiments
+        if follow_up.get("source") == "targeted_probe_guardrail"
+    ]
 
 
 def _recommended_action_verification_result(

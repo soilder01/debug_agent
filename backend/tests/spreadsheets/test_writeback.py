@@ -229,7 +229,18 @@ def test_build_report_writeback_fields_includes_targeted_probe_guardrails() -> N
                     ),
                     "stop_condition": "max_targeted_probe_depth_reached",
                 }
-            ]
+            ],
+            "human_handoff_requests": [
+                {
+                    "source": "targeted_probe_guardrail",
+                    "target_id": "multimodal:conflict:1",
+                    "priority": "high",
+                    "reason": "max_targeted_probe_depth_reached",
+                    "summary": "Targeted probe chain for multimodal:conflict:1 reached max depth 3.",
+                    "recommended_owner": "human-debugger",
+                    "next_action": "Review the full targeted probe chain, inspect evidence artifacts, and decide whether to update prompt, evaluation assets, or model capability attribution.",
+                }
+            ],
         }
     )
 
@@ -240,6 +251,9 @@ def test_build_report_writeback_fields_includes_targeted_probe_guardrails() -> N
         "评估问题反馈"
     ]
     assert "停止条件：max_targeted_probe_depth_reached" in fields["评估问题反馈"]
+    assert "人工接管：" in fields["评估问题反馈"]
+    assert "multimodal:conflict:1/high/max_targeted_probe_depth_reached" in fields["评估问题反馈"]
+    assert "负责人：human-debugger" in fields["评估问题反馈"]
 
 
 def test_write_report_to_spreadsheet_row_updates_client_with_payload() -> None:
