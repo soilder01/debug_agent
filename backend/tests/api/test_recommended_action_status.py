@@ -58,6 +58,41 @@ def test_recommended_action_status_api_lists_status_events() -> None:
     assert body["events"][0]["created_at"]
 
 
+def test_recommended_action_status_api_uses_local_dev_actor_fallback() -> None:
+    client = TestClient(app)
+    job_id = _create_job_with_recommended_actions()
+
+    response = client.patch(
+        f"/jobs/{job_id}/recommended-actions/0/status",
+        json={"status": "accepted", "note": "approved without actor"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["actor"] == "local-dev-operator"
+    list_response = client.get(f"/jobs/{job_id}/recommended-actions/statuses")
+    assert list_response.status_code == 200
+    assert list_response.json()["events"][0]["actor"] == "local-dev-operator"
+
+
+def test_recommended_action_status_api_rejects_empty_actor_when_trusted_actor_required(monkeypatch) -> None:
+    monkeypatch.setattr(
+        routes,
+        "settings",
+        routes.settings.model_copy(update={"require_trusted_actor": True}),
+    )
+    client = TestClient(app)
+    job_id = _create_job_with_recommended_actions()
+
+    response = client.patch(
+        f"/jobs/{job_id}/recommended-actions/0/status",
+        json={"status": "accepted", "actor": "   ", "note": "missing trusted actor"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Actor is required when trusted actor enforcement is enabled."
+
+
 def test_recommended_action_status_api_creates_verification_job_link() -> None:
     client = TestClient(app)
     job_id = _create_job_with_recommended_actions()
@@ -90,6 +125,40 @@ def test_recommended_action_status_api_creates_verification_job_link() -> None:
         }
     ]
     routes.job_repository.mark_failed(body["verification_job_id"], "test cleanup")
+
+
+def test_recommended_action_verification_api_uses_local_dev_actor_fallback() -> None:
+    client = TestClient(app)
+    job_id = _create_job_with_recommended_actions()
+
+    response = client.post(
+        f"/jobs/{job_id}/recommended-actions/0/verification-jobs",
+        json={"note": "verify without actor"},
+    )
+
+    assert response.status_code == 202
+    body = response.json()
+    assert body["actor"] == "local-dev-operator"
+    assert body["note"] == "verify without actor"
+    routes.job_repository.mark_failed(body["verification_job_id"], "test cleanup")
+
+
+def test_recommended_action_verification_api_rejects_empty_actor_when_trusted_actor_required(monkeypatch) -> None:
+    monkeypatch.setattr(
+        routes,
+        "settings",
+        routes.settings.model_copy(update={"require_trusted_actor": True}),
+    )
+    client = TestClient(app)
+    job_id = _create_job_with_recommended_actions()
+
+    response = client.post(
+        f"/jobs/{job_id}/recommended-actions/0/verification-jobs",
+        json={"actor": "", "note": "missing trusted actor"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Actor is required when trusted actor enforcement is enabled."
 
 
 def test_recommended_action_status_api_evaluates_resolved_verification_job() -> None:

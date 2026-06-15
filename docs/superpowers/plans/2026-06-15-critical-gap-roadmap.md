@@ -105,9 +105,9 @@
 - Test: `backend/tests/api/test_recommended_action_status.py`
 - Test: `frontend/src/app/App.test.tsx`
 
-- [ ] Centralize actor defaults for recommended action status and verification requests.
-- [ ] Reject empty actor values once trusted actor source is configured.
-- [ ] Keep local development fallback actor explicit and auditable.
+- [x] Centralize actor defaults for recommended action status and verification requests.
+- [x] Reject empty actor values once trusted actor source is configured.
+- [x] Keep local development fallback actor explicit and auditable.
 
 ## Verification Policy
 

@@ -700,7 +700,7 @@ describe("App", () => {
             job_id: "job-action-status-1",
             action_index: 0,
             status: "accepted",
-            actor: "frontend-operator",
+            actor: "local-dev-operator",
             note: "",
             created_at: "2026-06-14T00:00:00+00:00",
             updated_at: "2026-06-14T00:00:02+00:00"
@@ -716,7 +716,7 @@ describe("App", () => {
                 job_id: "job-action-status-1",
                 action_index: 0,
                 status: "accepted",
-                actor: "frontend-operator",
+                actor: "local-dev-operator",
                 note: "",
                 created_at: "2026-06-14T00:00:00+00:00",
                 updated_at: "2026-06-14T00:00:02+00:00"
@@ -728,7 +728,7 @@ describe("App", () => {
                 job_id: "job-action-status-1",
                 action_index: 0,
                 status: "accepted",
-                actor: "frontend-operator",
+                actor: "local-dev-operator",
                 note: "",
                 created_at: "2026-06-14T00:00:02+00:00"
               }
@@ -747,7 +747,7 @@ describe("App", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-action-status-1/recommended-actions/0/status", {
       body: JSON.stringify({
         status: "accepted",
-        actor: "frontend-operator",
+        actor: "local-dev-operator",
         note: ""
       }),
       headers: { "Content-Type": "application/json" },
@@ -760,7 +760,7 @@ describe("App", () => {
     expect(await screen.findByText("状态：accepted")).toBeInTheDocument();
     expect(await screen.findByText("Recommended Action Status Events")).toBeInTheDocument();
     expect(screen.getByText("操作 1：accepted")).toBeInTheDocument();
-    expect(screen.getByText("操作者：frontend-operator")).toBeInTheDocument();
+    expect(screen.getByText("操作者：local-dev-operator")).toBeInTheDocument();
   });
 
   it("creates a verification debug job for an applied recommended action", async () => {
@@ -849,7 +849,7 @@ describe("App", () => {
             job_id: "job-action-verify-source",
             action_index: 0,
             verification_job_id: "job-action-verify-rerun",
-            actor: "frontend-operator",
+            actor: "local-dev-operator",
             note: "",
             created_at: "2026-06-14T00:00:02+00:00",
             verification_job: {
@@ -871,7 +871,7 @@ describe("App", () => {
                 job_id: "job-action-verify-source",
                 action_index: 0,
                 verification_job_id: "job-action-verify-rerun",
-                actor: "frontend-operator",
+                actor: "local-dev-operator",
                 note: "",
                 created_at: "2026-06-14T00:00:02+00:00"
               }
@@ -889,7 +889,7 @@ describe("App", () => {
 
     expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-action-verify-source/recommended-actions/0/verification-jobs", {
       body: JSON.stringify({
-        actor: "frontend-operator",
+        actor: "local-dev-operator",
         note: ""
       }),
       headers: { "Content-Type": "application/json" },

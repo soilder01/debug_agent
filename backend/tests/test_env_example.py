@@ -55,3 +55,9 @@ def test_env_example_disables_auto_writeback_by_default() -> None:
     values = _read_env_example()
 
     assert values["DEBUG_AGENT_AUTO_WRITEBACK_ENABLED"] == "0"
+
+
+def test_env_example_keeps_trusted_actor_enforcement_off_for_local_dev() -> None:
+    values = _read_env_example()
+
+    assert values["DEBUG_AGENT_REQUIRE_TRUSTED_ACTOR"] == "0"

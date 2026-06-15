@@ -65,6 +65,7 @@ const caseListLimit = 50;
 const defaultSpreadsheetUrl = "https://bytedance.larkoffice.com/sheets/NLews6C2ShValptV7IdcJ62tnWc?sheet=qJAomX";
 const defaultSpreadsheetId = "NLews6C2ShValptV7IdcJ62tnWc";
 const defaultSheetId = "qJAomX";
+const localDevActor = "local-dev-operator";
 
 export function App() {
   const [report, setReport] = useState<DebugReport | null>(null);
@@ -569,7 +570,7 @@ export function App() {
     try {
       const updatedStatus = await updateRecommendedActionStatus(report.job_id, actionIndex, {
         status,
-        actor: "frontend-operator",
+        actor: localDevActor,
         note: ""
       });
       setReport((current) => {
@@ -606,7 +607,7 @@ export function App() {
     setError("");
     try {
       const verification = await createRecommendedActionVerificationJob(report.job_id, actionIndex, {
-        actor: "frontend-operator",
+        actor: localDevActor,
         note: ""
       });
       setSubmittedJob(verification.verification_job);

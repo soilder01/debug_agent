@@ -45,6 +45,7 @@ class DebugAgentSettings(BaseModel):
     auto_writeback_enabled: bool = False
     usage_budget_units: float = 0.0
     enforce_usage_budget: bool = False
+    require_trusted_actor: bool = False
 
     @classmethod
     def from_env(cls) -> "DebugAgentSettings":
@@ -73,6 +74,7 @@ class DebugAgentSettings(BaseModel):
                 )
             ),
             enforce_usage_budget=_env_bool("DEBUG_AGENT_ENFORCE_USAGE_BUDGET", default=False),
+            require_trusted_actor=_env_bool("DEBUG_AGENT_REQUIRE_TRUSTED_ACTOR", default=False),
         )
 
 

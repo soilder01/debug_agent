@@ -75,6 +75,22 @@ def test_debug_agent_settings_read_enforce_usage_budget_from_env(monkeypatch) ->
     assert settings.enforce_usage_budget is True
 
 
+def test_debug_agent_settings_do_not_require_trusted_actor_by_default(monkeypatch) -> None:
+    monkeypatch.delenv("DEBUG_AGENT_REQUIRE_TRUSTED_ACTOR", raising=False)
+
+    settings = DebugAgentSettings.from_env()
+
+    assert settings.require_trusted_actor is False
+
+
+def test_debug_agent_settings_read_require_trusted_actor_from_env(monkeypatch) -> None:
+    monkeypatch.setenv("DEBUG_AGENT_REQUIRE_TRUSTED_ACTOR", "true")
+
+    settings = DebugAgentSettings.from_env()
+
+    assert settings.require_trusted_actor is True
+
+
 def test_load_env_file_populates_missing_environment_values(monkeypatch) -> None:
     monkeypatch.delenv("DEBUG_AGENT_MODEL_PROVIDER", raising=False)
     env_file = Path(__file__).with_name(".settings-provider-test.env")

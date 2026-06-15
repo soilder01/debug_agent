@@ -45,6 +45,16 @@ job_service = DebugJobService(job_repository, image_artifact_dir=settings.image_
 spreadsheet_writeback_client: SpreadsheetWritebackClient | None = None
 spreadsheet_sync_client: SpreadsheetClient | None = None
 lark_spreadsheet_settings = LarkSpreadsheetSettings.from_env()
+LOCAL_DEV_OPERATOR = "local-dev-operator"
+
+
+def _resolved_actor(actor: str) -> str:
+    normalized_actor = actor.strip()
+    if normalized_actor:
+        return normalized_actor
+    if settings.require_trusted_actor:
+        raise HTTPException(status_code=400, detail="Actor is required when trusted actor enforcement is enabled.")
+    return LOCAL_DEV_OPERATOR
 
 
 def configure_spreadsheet_clients(lark_settings: LarkSpreadsheetSettings | None = None) -> None:
@@ -693,11 +703,12 @@ def update_recommended_action_status(
         raise HTTPException(status_code=404, detail=f"Debug report not found for job: {job_id}")
     if action_index < 0 or action_index >= len(report.recommended_actions):
         raise HTTPException(status_code=404, detail=f"Recommended action not found: {action_index}")
+    actor = _resolved_actor(request.actor)
     return job_repository.save_recommended_action_status(
         job_id=job_id,
         action_index=action_index,
         status=request.status,
-        actor=request.actor,
+        actor=actor,
         note=request.note,
     )
 
@@ -719,13 +730,14 @@ def create_recommended_action_verification_job(
         raise HTTPException(status_code=404, detail=f"Debug report not found for job: {job_id}")
     if action_index < 0 or action_index >= len(report.recommended_actions):
         raise HTTPException(status_code=404, detail=f"Recommended action not found: {action_index}")
+    actor = _resolved_actor(request.actor)
     _raise_if_usage_budget_blocks_submission()
     verification_job = job_service.submit_case_debug(job.case_id, baseline_trials=job.baseline_trials)
     verification = job_repository.save_recommended_action_verification(
         job_id=job_id,
         action_index=action_index,
         verification_job_id=verification_job.job_id,
-        actor=request.actor,
+        actor=actor,
         note=request.note,
     )
     return RecommendedActionVerificationResponse(
