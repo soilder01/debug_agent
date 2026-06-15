@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  createFinalAttributionRecoveryJob,
   createFinalAttributionVerificationJob,
   createRecommendedActionVerificationJob,
   createStrategyFollowUpJob,
@@ -387,5 +388,45 @@ describe("api client recommended action status", () => {
       }
     );
     expect(response.follow_up_job_id).toBe("job-final-verify-1");
+  });
+
+  it("creates final attribution recovery jobs with operator context", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          source_job_id: "job-1",
+          stage: "final_attribution_recovery:multimodal:conflict:1",
+          planned_steps: "final_attribution_recovery_probe",
+          follow_up_job_id: "job-final-recovery-1",
+          actor: "recovery-operator",
+          note: "recover unresolved attribution",
+          created_at: "2026-06-15T00:00:03+00:00",
+          follow_up_job: {
+            job_id: "job-final-recovery-1",
+            case_id: "case-1",
+            status: "created"
+          }
+        }),
+        { status: 202, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    const response = await createFinalAttributionRecoveryJob("job-1", "multimodal:conflict:1", {
+      actor: "recovery-operator",
+      note: "recover unresolved attribution"
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/jobs/job-1/final-attribution-recoveries/multimodal%3Aconflict%3A1/debug-jobs",
+      {
+        body: JSON.stringify({
+          actor: "recovery-operator",
+          note: "recover unresolved attribution"
+        }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST"
+      }
+    );
+    expect(response.follow_up_job_id).toBe("job-final-recovery-1");
   });
 });

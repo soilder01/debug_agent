@@ -38,6 +38,7 @@ type DebugReportWorkspaceProps = {
   onCreateStrategyFollowUp?: (stage: string) => void;
   onCreateTargetedProbe?: (targetId: string) => void;
   onCreateFinalAttributionFollowUp?: (targetId: string) => void;
+  onCreateFinalAttributionRecovery?: (targetId: string) => void;
   onOpenStrategyFollowUp?: (jobId: string) => void;
   onOpenTargetedProbe?: (jobId: string) => void;
 };
@@ -62,6 +63,7 @@ export function DebugReportWorkspace({
   onCreateStrategyFollowUp,
   onCreateTargetedProbe,
   onCreateFinalAttributionFollowUp,
+  onCreateFinalAttributionRecovery,
   onOpenStrategyFollowUp,
   onOpenTargetedProbe
 }: DebugReportWorkspaceProps) {
@@ -94,6 +96,7 @@ export function DebugReportWorkspace({
         onCreateStrategyFollowUp={onCreateStrategyFollowUp}
         onCreateTargetedProbe={onCreateTargetedProbe}
         onCreateFinalAttributionFollowUp={onCreateFinalAttributionFollowUp}
+        onCreateFinalAttributionRecovery={onCreateFinalAttributionRecovery}
       />
       {report.job_id ? (
         <SpreadsheetWritebackPanel

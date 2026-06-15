@@ -662,6 +662,25 @@
 - [x] Preserve resolved and pending verification outcomes without unnecessary recovery actions.
 - [x] Keep recovery entries attached to target id, category, result, and verification job lineage.
 
+### Task 41: Executable Final Attribution Recovery
+
+**Files:**
+- Modify: `backend/src/debug_agent/api/routes.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/app/App.tsx`
+- Modify: `frontend/src/reports/DebugReportWorkspace.tsx`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `backend/tests/api/test_recommended_action_status.py`
+- Test: `frontend/src/api/client.test.ts`
+- Test: `frontend/src/app/App.test.tsx`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Add an API endpoint to submit final-attribution recovery jobs from unresolved verification follow-ups.
+- [x] Persist recovery jobs through strategy follow-up lineage with `final_attribution_recovery:<target_id>`.
+- [x] Add frontend client support for final-attribution recovery job submission.
+- [x] Render runnable recovery buttons for `final_attribution_verification_outcome` follow-ups.
+- [x] Wire App submission flow so operators can create and open recovery jobs from reports.
+
 ## Verification Policy
 
 Every task must follow:

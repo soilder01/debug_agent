@@ -766,6 +766,7 @@ describe("ReportPanel", () => {
   it("renders targeted probe guardrail stop condition without runnable action", async () => {
     const onCreateTargetedProbe = vi.fn();
     const onCreateFinalAttributionFollowUp = vi.fn();
+    const onCreateFinalAttributionRecovery = vi.fn();
     const onUpdateHumanHandoffStatus = vi.fn();
     const report: DebugReport = {
       case_id: "case-targeted-guardrail",
@@ -800,6 +801,16 @@ describe("ReportPanel", () => {
           planned_steps: "final_attribution_prompt_verification",
           summary:
             "Final attribution for multimodal:conflict:1 is prompt_issue; run final_attribution_prompt_verification to verify the recommended fix."
+        },
+        {
+          source: "final_attribution_verification_outcome",
+          target_id: "multimodal:conflict:1",
+          category: "prompt_issue",
+          result: "not_resolved",
+          verification_job_id: "job-final-attribution-verify",
+          planned_steps: "final_attribution_recovery_probe",
+          summary:
+            "Final attribution verification for multimodal:conflict:1 is not_resolved; run final_attribution_recovery_probe to reassess the root cause before closure."
         }
       ],
       human_handoff_requests: [
@@ -857,6 +868,7 @@ describe("ReportPanel", () => {
         report={report}
         onCreateTargetedProbe={onCreateTargetedProbe}
         onCreateFinalAttributionFollowUp={onCreateFinalAttributionFollowUp}
+        onCreateFinalAttributionRecovery={onCreateFinalAttributionRecovery}
         onUpdateHumanHandoffStatus={onUpdateHumanHandoffStatus}
       />
     );
@@ -895,6 +907,8 @@ describe("ReportPanel", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Run final attribution follow-up multimodal:conflict:1" }));
     expect(onCreateFinalAttributionFollowUp).toHaveBeenCalledWith("multimodal:conflict:1");
+    await userEvent.click(screen.getByRole("button", { name: "Run final attribution recovery multimodal:conflict:1" }));
+    expect(onCreateFinalAttributionRecovery).toHaveBeenCalledWith("multimodal:conflict:1");
 
     await userEvent.click(screen.getByRole("button", { name: "Resolve handoff multimodal:conflict:1" }));
 

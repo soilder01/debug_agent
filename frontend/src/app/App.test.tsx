@@ -1023,6 +1023,131 @@ describe("App", () => {
     expect(await screen.findByText("Job ID：job-final-verify-1")).toBeInTheDocument();
   });
 
+  it("creates a final attribution recovery job from a persisted report", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jobs: [
+              {
+                job_id: "job-final-recovery-source",
+                case_id: "case-final-recovery",
+                status: "completed",
+                attempt_count: 1,
+                max_attempts: 2,
+                remaining_attempts: 1,
+                will_retry: false,
+                retry_recommendation: "none",
+                retry_recommendation_detail: {
+                  code: "none",
+                  label: "无需重试",
+                  action: "查看报告",
+                  severity: "info"
+                },
+                error_message: null,
+                evidence_ids: [],
+                evidence_error_counts: {
+                  total_evidence: 0,
+                  failed_judgements: 0,
+                  response_parse_errors: 0,
+                  model_call_errors: 0
+                },
+                spreadsheet_writeback_audit: null,
+                created_at: "2026-06-15T00:00:00+00:00",
+                updated_at: "2026-06-15T00:00:01+00:00"
+              }
+            ],
+            total_count: 1
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            job_id: "job-final-recovery-source",
+            case_id: "case-final-recovery",
+            status: "needs_human_review",
+            observed_failure: {
+              type: "cross_modal_alignment_failure",
+              summary: "cross-modal compare failed",
+              affected_box_ids: []
+            },
+            planned_experiments: ["modality_ablation_check"],
+            experiment_summary: null,
+            root_cause: {
+              label: "cross_modal_alignment_failure",
+              confidence: "high",
+              evidence_summary: "cross-modal target failed."
+            },
+            follow_up_experiments: [
+              {
+                source: "final_attribution_verification_outcome",
+                target_id: "multimodal:conflict:1",
+                category: "prompt_issue",
+                result: "not_resolved",
+                verification_job_id: "job-final-verify-1",
+                planned_steps: "final_attribution_recovery_probe",
+                summary:
+                  "Final attribution verification for multimodal:conflict:1 is not_resolved; run final_attribution_recovery_probe to reassess the root cause before closure."
+              }
+            ],
+            suggested_sheet_fields: {
+              "错误原因": "跨模态对齐问题"
+            }
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ follow_ups: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            source_job_id: "job-final-recovery-source",
+            stage: "final_attribution_recovery:multimodal:conflict:1",
+            planned_steps: "final_attribution_recovery_probe",
+            follow_up_job_id: "job-final-recovery-1",
+            actor: "local-dev-operator",
+            note: "",
+            created_at: "2026-06-15T00:00:03+00:00",
+            follow_up_job: {
+              job_id: "job-final-recovery-1",
+              case_id: "case-final-recovery",
+              status: "created"
+            }
+          }),
+          { status: 202, headers: { "Content-Type": "application/json" } }
+        )
+      );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load debug jobs" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Open job job-final-recovery-source" }));
+    await userEvent.click(screen.getByRole("button", { name: "Load persisted report" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Run final attribution recovery multimodal:conflict:1" })
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/jobs/job-final-recovery-source/final-attribution-recoveries/multimodal%3Aconflict%3A1/debug-jobs",
+      {
+        body: JSON.stringify({
+          actor: "local-dev-operator",
+          note: ""
+        }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST"
+      }
+    );
+    expect(await screen.findByText("Job ID：job-final-recovery-1")).toBeInTheDocument();
+  });
+
   it("creates a verification debug job for an applied recommended action", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")

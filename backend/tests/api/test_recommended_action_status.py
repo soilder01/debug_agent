@@ -554,6 +554,64 @@ def test_final_attribution_follow_up_api_creates_traceable_verification_job() ->
     routes.job_repository.mark_failed(body["follow_up_job_id"], "test cleanup")
 
 
+def test_final_attribution_recovery_api_creates_traceable_debug_job() -> None:
+    client = TestClient(app)
+    job_id = _create_job_with_targeted_probe_guardrail()
+    routes.job_repository.save_human_handoff_status(
+        job_id=job_id,
+        target_id="multimodal:conflict:1",
+        status="resolved",
+        actor="human-debugger",
+        note="Final attribution: prompt lacks cross-modal conflict checklist; update prompt before model capability attribution.",
+    )
+    verification_response = client.post(
+        f"/jobs/{job_id}/final-attributions/multimodal:conflict:1/verification-jobs",
+        json={"actor": "final-attribution-operator", "note": "verify prompt attribution fix"},
+    )
+    assert verification_response.status_code == 202
+    verification_job_id = verification_response.json()["follow_up_job_id"]
+    source_job = routes.job_repository.get_job(job_id)
+    assert source_job is not None
+    routes.job_repository.save_evidence(
+        job_id=verification_job_id,
+        case_id=source_job.case_id,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id=f"{verification_job_id}:final-attribution-fail",
+                step_name="final_attribution_prompt_verification",
+                trial=0,
+                raw_output="{\"conflicts\":[]}",
+                judge=JudgeResult(score=0, reasons=["multimodal:conflict:1 conflict_actual_mismatch"]),
+            )
+        ],
+    )
+    routes.job_repository.mark_completed(verification_job_id)
+
+    response = client.post(
+        f"/jobs/{job_id}/final-attribution-recoveries/multimodal:conflict:1/debug-jobs",
+        json={"actor": "recovery-operator", "note": "recover unresolved attribution"},
+    )
+
+    assert response.status_code == 202
+    body = response.json()
+    assert body["source_job_id"] == job_id
+    assert body["stage"] == "final_attribution_recovery:multimodal:conflict:1"
+    assert body["planned_steps"] == "final_attribution_recovery_probe"
+    assert body["actor"] == "recovery-operator"
+    assert body["note"] == "recover unresolved attribution"
+    assert body["follow_up_job_id"] == body["follow_up_job"]["job_id"]
+    assert body["follow_up_job"]["status"] == "created"
+
+    list_response = client.get(f"/jobs/{job_id}/strategy-follow-ups")
+    assert list_response.status_code == 200
+    assert any(
+        follow_up["stage"] == "final_attribution_recovery:multimodal:conflict:1"
+        and follow_up["planned_steps"] == "final_attribution_recovery_probe"
+        for follow_up in list_response.json()["follow_ups"]
+    )
+    routes.job_repository.mark_failed(body["follow_up_job_id"], "test cleanup")
+
+
 def test_recommended_action_status_api_evaluates_resolved_verification_job() -> None:
     client = TestClient(app)
     job_id = _create_job_with_recommended_actions()

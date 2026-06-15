@@ -920,6 +920,31 @@ export async function createFinalAttributionVerificationJob(
   return (await response.json()) as StrategyFollowUpJobResponse;
 }
 
+export async function createFinalAttributionRecoveryJob(
+  jobId: string,
+  targetId: string,
+  request: {
+    actor?: string;
+    note?: string;
+  }
+): Promise<StrategyFollowUpJobResponse> {
+  const response = await fetch(
+    `/api/jobs/${encodeURIComponent(jobId)}/final-attribution-recoveries/${encodeURIComponent(targetId)}/debug-jobs`,
+    {
+      body: JSON.stringify({
+        actor: request.actor ?? "",
+        note: request.note ?? ""
+      }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST"
+    }
+  );
+  if (!response.ok) {
+    throw new Error(`Failed to create final attribution recovery job ${targetId} for ${jobId}: ${response.status}`);
+  }
+  return (await response.json()) as StrategyFollowUpJobResponse;
+}
+
 export async function updateHumanHandoffStatus(
   jobId: string,
   targetId: string,
