@@ -992,6 +992,24 @@ describe("App", () => {
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
+            follow_ups: [
+              {
+                source_job_id: "job-strategy-source",
+                stage: "evidence_audit",
+                planned_steps: "strategy_evidence_audit_probe",
+                follow_up_job_id: "job-existing-strategy-follow-up",
+                actor: "strategy-operator",
+                note: "existing evidence audit",
+                created_at: "2026-06-15T00:00:02+00:00"
+              }
+            ]
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
             source_job_id: "job-strategy-source",
             stage: "ablation_expansion",
             planned_steps: "strategy_ablation_expansion_probe",
@@ -1013,6 +1031,8 @@ describe("App", () => {
     await userEvent.click(screen.getByRole("button", { name: "Load debug jobs" }));
     await userEvent.click(await screen.findByRole("button", { name: "Open job job-strategy-source" }));
     await userEvent.click(screen.getByRole("button", { name: "Load persisted report" }));
+    expect(await screen.findByText("Strategy Follow-Up Job History")).toBeInTheDocument();
+    expect(screen.getByText("任务：job-existing-strategy-follow-up")).toBeInTheDocument();
     await userEvent.click(await screen.findByRole("button", { name: "Run strategy follow-up ablation_expansion" }));
 
     expect(fetchMock).toHaveBeenCalledWith(

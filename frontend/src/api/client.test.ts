@@ -4,6 +4,7 @@ import {
   createRecommendedActionVerificationJob,
   createStrategyFollowUpJob,
   fetchRecommendedActionStatuses,
+  fetchStrategyFollowUpJobs,
   updateRecommendedActionStatus
 } from "./client";
 
@@ -181,5 +182,31 @@ describe("api client recommended action status", () => {
       method: "POST"
     });
     expect(response.follow_up_job.job_id).toBe("job-follow-up-1");
+  });
+
+  it("fetches strategy follow-up job lineage", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          follow_ups: [
+            {
+              source_job_id: "job-1",
+              stage: "ablation_expansion",
+              planned_steps: "strategy_ablation_expansion_probe",
+              follow_up_job_id: "job-follow-up-1",
+              actor: "strategy-operator",
+              note: "run ablation expansion",
+              created_at: "2026-06-15T00:00:02+00:00"
+            }
+          ]
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    const response = await fetchStrategyFollowUpJobs("job-1");
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1/strategy-follow-ups");
+    expect(response.follow_ups[0].follow_up_job_id).toBe("job-follow-up-1");
   });
 });

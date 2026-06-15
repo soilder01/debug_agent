@@ -2,7 +2,13 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import type { DebugReport, ExperimentEvidence, SpreadsheetWritebackAudit, SpreadsheetWritebackResult } from "../api/client";
+import type {
+  DebugReport,
+  ExperimentEvidence,
+  SpreadsheetWritebackAudit,
+  SpreadsheetWritebackResult,
+  StrategyFollowUpJob
+} from "../api/client";
 import { DebugReportWorkspace } from "./DebugReportWorkspace";
 
 function makeReport(overrides: Partial<DebugReport> = {}): DebugReport {
@@ -82,6 +88,18 @@ function makeWritebackAudit(): SpreadsheetWritebackAudit {
     error_message: "",
     created_at: "2026-06-13T00:00:00+00:00",
     updated_at: "2026-06-13T00:00:01+00:00"
+  };
+}
+
+function makeStrategyFollowUp(): StrategyFollowUpJob {
+  return {
+    source_job_id: "job-1",
+    stage: "ablation_expansion",
+    planned_steps: "strategy_ablation_expansion_probe",
+    follow_up_job_id: "job-follow-up-1",
+    actor: "strategy-operator",
+    note: "run ablation expansion",
+    created_at: "2026-06-15T00:00:02+00:00"
   };
 }
 
@@ -289,6 +307,34 @@ describe("DebugReportWorkspace", () => {
     await userEvent.click(screen.getByRole("button", { name: "Verify recommended action 1" }));
 
     expect(onVerifyRecommendedAction).toHaveBeenCalledWith(0);
+  });
+
+  it("renders strategy follow-up job history and delegates opening follow-up jobs", async () => {
+    const onOpenStrategyFollowUp = vi.fn();
+
+    render(
+      <DebugReportWorkspace
+        report={makeReport()}
+        selectedEvidence={null}
+        strategyFollowUps={[makeStrategyFollowUp()]}
+        writebackResult={null}
+        writebackAudit={null}
+        onSelectEvidence={vi.fn()}
+        onWriteReport={vi.fn()}
+        onLoadWritebackAudit={vi.fn()}
+        onOpenStrategyFollowUp={onOpenStrategyFollowUp}
+      />
+    );
+
+    expect(screen.getByRole("heading", { name: "Strategy Follow-Up Job History" })).toBeInTheDocument();
+    expect(screen.getByText("ablation_expansion：strategy_ablation_expansion_probe")).toBeInTheDocument();
+    expect(screen.getByText("任务：job-follow-up-1")).toBeInTheDocument();
+    expect(screen.getByText("操作者：strategy-operator")).toBeInTheDocument();
+    expect(screen.getByText("备注：run ablation expansion")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Open strategy follow-up job-follow-up-1" }));
+
+    expect(onOpenStrategyFollowUp).toHaveBeenCalledWith("job-follow-up-1");
   });
 
   it("renders an explainability workspace narrative across evidence, diagnostics, confidence, actions, and verification", () => {

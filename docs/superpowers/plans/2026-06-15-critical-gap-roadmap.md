@@ -222,6 +222,21 @@
 - [x] Add frontend API/client support and report panel action buttons.
 - [x] Wire strategy follow-up job creation into the main app flow.
 
+### Task 14: Strategy Follow-Up Job History Workspace
+
+**Files:**
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/app/App.tsx`
+- Modify: `frontend/src/reports/DebugReportWorkspace.tsx`
+- Test: `frontend/src/api/client.test.ts`
+- Test: `frontend/src/app/App.test.tsx`
+- Test: `frontend/src/reports/DebugReportWorkspace.test.tsx`
+
+- [x] Add frontend API support for listing strategy follow-up job lineage.
+- [x] Load strategy follow-up history when opening a persisted report with follow-up plans.
+- [x] Render strategy follow-up job history in the report workspace.
+- [x] Allow operators to open persisted strategy follow-up jobs from the history panel.
+
 ## Verification Policy
 
 Every task must follow:

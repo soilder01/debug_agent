@@ -734,6 +734,14 @@ export async function createStrategyFollowUpJob(
   return (await response.json()) as StrategyFollowUpJobResponse;
 }
 
+export async function fetchStrategyFollowUpJobs(jobId: string): Promise<StrategyFollowUpJobListResponse> {
+  const response = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/strategy-follow-ups`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch strategy follow-up jobs for ${jobId}: ${response.status}`);
+  }
+  return (await response.json()) as StrategyFollowUpJobListResponse;
+}
+
 export async function fetchSpreadsheetWritebackAudit(jobId: string): Promise<SpreadsheetWritebackAudit> {
   const response = await fetch(`/api/jobs/${jobId}/spreadsheet-writeback/audit`);
   if (!response.ok) {

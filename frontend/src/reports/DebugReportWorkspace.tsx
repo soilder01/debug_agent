@@ -6,7 +6,8 @@ import type {
   RecommendedActionVerificationResult,
   RecommendedActionStatusValue,
   SpreadsheetWritebackAudit,
-  SpreadsheetWritebackResult
+  SpreadsheetWritebackResult,
+  StrategyFollowUpJob
 } from "../api/client";
 import { CaseDetail } from "../cases/CaseDetail";
 import { EvidenceDetail } from "../evidence/EvidenceDetail";
@@ -20,6 +21,7 @@ type DebugReportWorkspaceProps = {
   recommendedActionStatusEvents?: RecommendedActionStatusEvent[];
   recommendedActionVerifications?: RecommendedActionVerification[];
   recommendedActionVerificationResults?: RecommendedActionVerificationResult[];
+  strategyFollowUps?: StrategyFollowUpJob[];
   writebackResult: SpreadsheetWritebackResult | null;
   writebackAudit: SpreadsheetWritebackAudit | null;
   onSelectEvidence: (evidenceId: string) => void;
@@ -28,6 +30,7 @@ type DebugReportWorkspaceProps = {
   onUpdateRecommendedActionStatus?: (actionIndex: number, status: RecommendedActionStatusValue) => void;
   onVerifyRecommendedAction?: (actionIndex: number) => void;
   onCreateStrategyFollowUp?: (stage: string) => void;
+  onOpenStrategyFollowUp?: (jobId: string) => void;
 };
 
 export function DebugReportWorkspace({
@@ -36,6 +39,7 @@ export function DebugReportWorkspace({
   recommendedActionStatusEvents = [],
   recommendedActionVerifications = [],
   recommendedActionVerificationResults = [],
+  strategyFollowUps = [],
   writebackResult,
   writebackAudit,
   onSelectEvidence,
@@ -43,7 +47,8 @@ export function DebugReportWorkspace({
   onLoadWritebackAudit,
   onUpdateRecommendedActionStatus,
   onVerifyRecommendedAction,
-  onCreateStrategyFollowUp
+  onCreateStrategyFollowUp,
+  onOpenStrategyFollowUp
 }: DebugReportWorkspaceProps) {
   return (
     <>
@@ -59,6 +64,7 @@ export function DebugReportWorkspace({
         recommendedActionVerifications={recommendedActionVerifications}
         report={report}
       />
+      <StrategyFollowUpHistory followUps={strategyFollowUps} onOpenStrategyFollowUp={onOpenStrategyFollowUp} />
       <ReportPanel
         report={report}
         recommendedActionStatusEvents={recommendedActionStatusEvents}
@@ -78,6 +84,41 @@ export function DebugReportWorkspace({
         />
       ) : null}
     </>
+  );
+}
+
+type StrategyFollowUpHistoryProps = {
+  followUps: StrategyFollowUpJob[];
+  onOpenStrategyFollowUp?: (jobId: string) => void;
+};
+
+function StrategyFollowUpHistory({ followUps, onOpenStrategyFollowUp }: StrategyFollowUpHistoryProps) {
+  if (followUps.length === 0) {
+    return null;
+  }
+
+  return (
+    <section aria-label="Strategy follow-up job history">
+      <h2>Strategy Follow-Up Job History</h2>
+      <ul>
+        {followUps.map((followUp) => (
+          <li key={`${followUp.stage}:${followUp.follow_up_job_id}`}>
+            <p>
+              {followUp.stage}：{followUp.planned_steps}
+            </p>
+            <p>任务：{followUp.follow_up_job_id}</p>
+            <p>操作者：{followUp.actor || "unknown"}</p>
+            {followUp.note ? <p>备注：{followUp.note}</p> : null}
+            <p>时间：{followUp.created_at}</p>
+            {onOpenStrategyFollowUp ? (
+              <button type="button" onClick={() => onOpenStrategyFollowUp(followUp.follow_up_job_id)}>
+                Open strategy follow-up {followUp.follow_up_job_id}
+              </button>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
