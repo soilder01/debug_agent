@@ -479,6 +479,23 @@
 - [x] Debounce repeated target escalation by only escalating the latest probe in each target chain.
 - [x] Render targeted probe guardrail stop conditions without runnable probe actions.
 
+### Task 30: Targeted Probe Guardrail Writeback and Observability
+
+**Files:**
+- Modify: `backend/src/debug_agent/api/routes.py`
+- Modify: `backend/src/debug_agent/spreadsheets/writeback.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/observability/ObservabilitySummaryPanel.tsx`
+- Test: `backend/tests/api/test_observability_summary.py`
+- Test: `backend/tests/spreadsheets/test_writeback.py`
+- Test: `frontend/src/observability/ObservabilitySummaryPanel.test.tsx`
+
+- [x] Include targeted probe guardrail stop conditions in spreadsheet `评估问题反馈`.
+- [x] Add max-depth reached counts to targeted probe observability summary.
+- [x] Surface targeted probe guardrails as a degraded health reason.
+- [x] Add operator action guidance for guardrail-triggered human investigation.
+- [x] Render targeted max-depth metrics in the observability panel.
+
 ## Verification Policy
 
 Every task must follow:

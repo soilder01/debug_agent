@@ -64,7 +64,8 @@ function makeSummary(): ObservabilitySummary {
       pending_count: 1,
       target_cleared_count: 2,
       target_still_failing_count: 1,
-      inconclusive_count: 1
+      inconclusive_count: 1,
+      max_depth_reached_count: 1
     },
     health: {
       level: "critical",
@@ -73,14 +74,16 @@ function makeSummary(): ObservabilitySummary {
         "failed spreadsheet writebacks present",
         "model call errors present",
         "strategy follow-ups need escalation",
-        "targeted probes still failing"
+        "targeted probes still failing",
+        "targeted probe guardrails reached"
       ],
       actions: [
         "Inspect failed jobs and open their evidence chain.",
         "Retry failed spreadsheet writebacks after checking Lark permissions and sheet headers.",
         "Check model endpoint health, timeout settings, and retry affected jobs.",
         "Open strategy follow-up history and run escalation probes.",
-        "Open targeted probe history and escalate unresolved targets."
+        "Open targeted probe history and escalate unresolved targets.",
+        "Review targeted probe guardrails and assign human investigation."
       ]
     }
   };
@@ -136,12 +139,14 @@ describe("ObservabilitySummaryPanel", () => {
     expect(screen.getByText("Observed targeted cleared：2")).toBeInTheDocument();
     expect(screen.getByText("Observed targeted still failing：1")).toBeInTheDocument();
     expect(screen.getByText("Observed targeted inconclusive：1")).toBeInTheDocument();
+    expect(screen.getByText("Observed targeted max depth reached：1")).toBeInTheDocument();
     expect(screen.getByText("Observed health：critical")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：failed jobs present")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：failed spreadsheet writebacks present")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：model call errors present")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：strategy follow-ups need escalation")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：targeted probes still failing")).toBeInTheDocument();
+    expect(screen.getByText("Observed health reason：targeted probe guardrails reached")).toBeInTheDocument();
     expect(screen.getByText("Recommended action：Inspect failed jobs and open their evidence chain.")).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -156,6 +161,9 @@ describe("ObservabilitySummaryPanel", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText("Recommended action：Open targeted probe history and escalate unresolved targets.")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Recommended action：Review targeted probe guardrails and assign human investigation.")
     ).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Open failed jobs from observability" }));

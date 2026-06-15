@@ -214,6 +214,34 @@ def test_build_report_writeback_fields_includes_targeted_probe_results() -> None
     ]
 
 
+def test_build_report_writeback_fields_includes_targeted_probe_guardrails() -> None:
+    report = _make_report().model_copy(
+        update={
+            "follow_up_experiments": [
+                {
+                    "source": "targeted_probe_guardrail",
+                    "target_id": "multimodal:conflict:1",
+                    "result": "target_still_failing",
+                    "planned_steps": "",
+                    "summary": (
+                        "Targeted probe chain for multimodal:conflict:1 reached max depth 3; "
+                        "stop automatic escalation and require human review."
+                    ),
+                    "stop_condition": "max_targeted_probe_depth_reached",
+                }
+            ]
+        }
+    )
+
+    fields = build_report_writeback_fields(report, report_url="https://debug-agent.local/reports/job-1")
+
+    assert "Targeted Guardrail：" in fields["评估问题反馈"]
+    assert "multimodal:conflict:1/target_still_failing：Targeted probe chain for multimodal:conflict:1" in fields[
+        "评估问题反馈"
+    ]
+    assert "停止条件：max_targeted_probe_depth_reached" in fields["评估问题反馈"]
+
+
 def test_write_report_to_spreadsheet_row_updates_client_with_payload() -> None:
     client = RecordingWritebackClient()
     report = _make_report()

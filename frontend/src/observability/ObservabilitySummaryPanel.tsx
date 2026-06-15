@@ -24,7 +24,8 @@ export function ObservabilitySummaryPanel({
     pending_count: 0,
     target_cleared_count: 0,
     target_still_failing_count: 0,
-    inconclusive_count: 0
+    inconclusive_count: 0,
+    max_depth_reached_count: 0
   };
   return (
     <section>
@@ -65,6 +66,7 @@ export function ObservabilitySummaryPanel({
       <p>Observed targeted cleared：{targetedProbeFeedback.target_cleared_count}</p>
       <p>Observed targeted still failing：{targetedProbeFeedback.target_still_failing_count}</p>
       <p>Observed targeted inconclusive：{targetedProbeFeedback.inconclusive_count}</p>
+      <p>Observed targeted max depth reached：{targetedProbeFeedback.max_depth_reached_count}</p>
       <p>Observed health：{summary.health.level}</p>
       {summary.health.reasons.map((reason) => (
         <p key={reason}>Observed health reason：{reason}</p>

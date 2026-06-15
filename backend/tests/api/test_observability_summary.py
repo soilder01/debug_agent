@@ -86,33 +86,40 @@ def test_observability_summary_reports_runtime_and_operational_counts() -> None:
         targeted_case = load_fixture_case("handwrite233").model_copy(update={"case_id": "observability-targeted-case"})
         job_repository.save_case(targeted_case)
         job_repository.create_job(job_id="observability-targeted-source", case_id=targeted_case.case_id, baseline_trials=1)
-        job_repository.create_job(
-            job_id="observability-targeted-probe",
-            case_id=targeted_case.case_id,
-            baseline_trials=1,
-        )
-        job_repository.save_evidence(
-            job_id="observability-targeted-probe",
-            case_id=targeted_case.case_id,
-            evidence=[
-                ExperimentEvidence(
-                    evidence_id="observability-targeted-fail",
-                    step_name="targeted_image_region_probe",
-                    trial=0,
-                    raw_output=targeted_case.predictions[0].raw_output,
-                    judge=JudgeResult(score=0, reasons=["image:region:1 region_label_mismatch"]),
-                )
-            ],
-        )
-        job_repository.mark_completed("observability-targeted-probe")
-        job_repository.save_targeted_probe_job(
-            source_job_id="observability-targeted-source",
-            target_id="image:region:1",
-            planned_steps="targeted_image_region_probe",
-            probe_job_id="observability-targeted-probe",
-            actor="targeted-operator",
-            note="observe target failure",
-        )
+        parent_probe_job_id = ""
+        for index in range(3):
+            probe_job_id = f"observability-targeted-probe-{index + 1}"
+            job_repository.create_job(
+                job_id=probe_job_id,
+                case_id=targeted_case.case_id,
+                baseline_trials=1,
+            )
+            job_repository.save_evidence(
+                job_id=probe_job_id,
+                case_id=targeted_case.case_id,
+                evidence=[
+                    ExperimentEvidence(
+                        evidence_id=f"observability-targeted-fail-{index + 1}",
+                        step_name="targeted_image_region_probe",
+                        trial=0,
+                        raw_output=targeted_case.predictions[0].raw_output,
+                        judge=JudgeResult(score=0, reasons=["image:region:1 region_label_mismatch"]),
+                    )
+                ],
+            )
+            job_repository.mark_completed(probe_job_id)
+            job_repository.save_targeted_probe_job(
+                source_job_id="observability-targeted-source",
+                target_id="image:region:1",
+                planned_steps="targeted_image_region_probe",
+                probe_job_id=probe_job_id,
+                source="targeted_probe" if index == 0 else "targeted_probe_outcome",
+                parent_probe_job_id=parent_probe_job_id,
+                trigger_outcome="" if index == 0 else "target_still_failing",
+                actor="targeted-operator",
+                note="observe target failure",
+            )
+            parent_probe_job_id = probe_job_id
         routes.settings = routes.settings.model_copy(update={"enforce_usage_budget": True})
 
         response = client.get("/observability/summary")
@@ -147,6 +154,7 @@ def test_observability_summary_reports_runtime_and_operational_counts() -> None:
         assert body["targeted_probe_feedback"]["pending_count"] >= 0
         assert body["targeted_probe_feedback"]["target_cleared_count"] >= 0
         assert body["targeted_probe_feedback"]["inconclusive_count"] >= 0
+        assert body["targeted_probe_feedback"]["max_depth_reached_count"] >= 1
         assert body["worker"]["running"] is False
         assert body["worker"]["auto_writeback_enabled"] is False
         assert body["worker"]["completion_hook_enabled"] is False
@@ -157,6 +165,7 @@ def test_observability_summary_reports_runtime_and_operational_counts() -> None:
         assert "usage budget exceeded" in body["health"]["reasons"]
         assert "strategy follow-ups need escalation" in body["health"]["reasons"]
         assert "targeted probes still failing" in body["health"]["reasons"]
+        assert "targeted probe guardrails reached" in body["health"]["reasons"]
         assert "Inspect failed jobs and open their evidence chain." in body["health"]["actions"]
         assert "Retry failed spreadsheet writebacks after checking Lark permissions and sheet headers." in body["health"][
             "actions"
@@ -165,6 +174,7 @@ def test_observability_summary_reports_runtime_and_operational_counts() -> None:
         assert "Pause new submissions or raise the usage budget before continuing." in body["health"]["actions"]
         assert "Open strategy follow-up history and run escalation probes." in body["health"]["actions"]
         assert "Open targeted probe history and escalate unresolved targets." in body["health"]["actions"]
+        assert "Review targeted probe guardrails and assign human investigation." in body["health"]["actions"]
 
         job_repository.mark_failed(created["job_id"], "test cleanup")
     finally:

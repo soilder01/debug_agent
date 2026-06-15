@@ -170,6 +170,9 @@ def _evaluation_feedback(report: DebugReport) -> str:
     targeted_results = _targeted_probe_results(report)
     if targeted_results:
         lines.append(f"Targeted Probe：{targeted_results}")
+    targeted_guardrails = _targeted_probe_guardrails(report)
+    if targeted_guardrails:
+        lines.append(f"Targeted Guardrail：{targeted_guardrails}")
     if report.experiment_summary is not None:
         summary = report.experiment_summary
         lines.extend(
@@ -237,4 +240,23 @@ def _targeted_probe_result_line(result: dict[str, object]) -> str:
     line = f"{target_id}/{outcome}：{summary}"
     if escalation:
         line = f"{line}\n升级：{escalation}"
+    return line
+
+
+def _targeted_probe_guardrails(report: DebugReport) -> str:
+    return "\n".join(
+        _targeted_probe_guardrail_line(follow_up)
+        for follow_up in report.follow_up_experiments
+        if follow_up.get("source") == "targeted_probe_guardrail"
+    )
+
+
+def _targeted_probe_guardrail_line(follow_up: dict[str, str]) -> str:
+    target_id = follow_up.get("target_id", "unknown")
+    result = follow_up.get("result", "unknown")
+    summary = follow_up.get("summary", "")
+    stop_condition = follow_up.get("stop_condition", "")
+    line = f"{target_id}/{result}：{summary}"
+    if stop_condition:
+        line = f"{line}\n停止条件：{stop_condition}"
     return line

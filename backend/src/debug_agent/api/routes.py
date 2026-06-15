@@ -18,6 +18,7 @@ from debug_agent.jobs.worker import AsyncJobWorker, AsyncJobWorkerStatus
 from debug_agent.models.fake import FakeModelAdapter
 from debug_agent.reports.generator import DebugReport, generate_initial_report
 from debug_agent.reports.job_report import (
+    MAX_TARGETED_PROBE_DEPTH,
     build_recommended_action_verification_results,
     build_report_for_job,
     build_strategy_follow_up_results,
@@ -356,6 +357,7 @@ class ObservabilityTargetedProbeFeedbackSummary(BaseModel):
     target_cleared_count: int
     target_still_failing_count: int
     inconclusive_count: int
+    max_depth_reached_count: int
 
 
 class ObservabilitySummaryResponse(BaseModel):
@@ -1076,6 +1078,19 @@ def _build_targeted_probe_feedback_summary() -> ObservabilityTargetedProbeFeedba
         target_cleared_count=sum(1 for item in outcomes if item.outcome == "target_cleared"),
         target_still_failing_count=sum(1 for item in outcomes if item.outcome == "target_still_failing"),
         inconclusive_count=sum(1 for item in outcomes if item.outcome == "inconclusive"),
+        max_depth_reached_count=_count_targeted_probe_max_depth_chains(outcomes),
+    )
+
+
+def _count_targeted_probe_max_depth_chains(outcomes: list[TargetedProbeJobWithOutcome]) -> int:
+    by_target: dict[tuple[str, str], list[TargetedProbeJobWithOutcome]] = {}
+    for outcome in outcomes:
+        by_target.setdefault((outcome.source_job_id, outcome.target_id), []).append(outcome)
+    return sum(
+        1
+        for chain in by_target.values()
+        if len(chain) >= MAX_TARGETED_PROBE_DEPTH
+        and any(item.outcome in {"target_still_failing", "inconclusive"} for item in chain)
     )
 
 
@@ -1148,6 +1163,8 @@ def _build_observability_health(
         degraded_reasons.append("strategy follow-ups need escalation")
     if targeted_probe_feedback.target_still_failing_count > 0:
         degraded_reasons.append("targeted probes still failing")
+    if targeted_probe_feedback.max_depth_reached_count > 0:
+        degraded_reasons.append("targeted probe guardrails reached")
     if critical_reasons:
         reasons = critical_reasons + degraded_reasons
         return ObservabilityHealthSummary(level="critical", reasons=reasons, actions=_observability_actions(reasons))
@@ -1175,6 +1192,7 @@ def _observability_actions(reasons: list[str]) -> list[str]:
         "skipped spreadsheet writebacks present": "Check spreadsheet row mappings before retrying writeback.",
         "strategy follow-ups need escalation": "Open strategy follow-up history and run escalation probes.",
         "targeted probes still failing": "Open targeted probe history and escalate unresolved targets.",
+        "targeted probe guardrails reached": "Review targeted probe guardrails and assign human investigation.",
     }
     actions: list[str] = []
     for reason in reasons:

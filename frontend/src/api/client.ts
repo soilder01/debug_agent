@@ -421,6 +421,7 @@ export type ObservabilitySummary = {
     target_cleared_count: number;
     target_still_failing_count: number;
     inconclusive_count: number;
+    max_depth_reached_count: number;
   };
   usage: {
     model_call_count: number;
