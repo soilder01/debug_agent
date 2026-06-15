@@ -80,6 +80,8 @@ def generate_initial_report(
             step_summaries=_build_step_summaries(run_result.evidence),
         )
     observed_failure, root_cause, suggested_sheet_fields = _infer_report_findings(case=case, run_result=run_result)
+    root_cause_trace = _build_root_cause_trace(run_result)
+    citation_context = _citation_context(run_result=run_result, root_cause_trace=root_cause_trace)
     return DebugReport(
         job_id=job_id,
         case_id=case.case_id,
@@ -89,15 +91,20 @@ def generate_initial_report(
         experiment_summary=experiment_summary,
         root_cause=root_cause,
         evidence_citations=_build_evidence_citations(run_result),
-        root_cause_trace=_build_root_cause_trace(run_result),
-        recommended_actions=_build_recommended_actions(root_cause),
+        root_cause_trace=root_cause_trace,
+        recommended_actions=_build_recommended_actions(root_cause, citation_context=citation_context),
         verification_results=verification_results or [],
-        evaluation_asset_diagnostics=_build_evaluation_asset_diagnostics(case=case, run_result=run_result),
+        evaluation_asset_diagnostics=_build_evaluation_asset_diagnostics(
+            case=case,
+            run_result=run_result,
+            citation_context=citation_context,
+        ),
         follow_up_experiments=_build_follow_up_experiments(case, verification_results or []),
         confidence_reasons=_build_confidence_reasons(
             run_result=run_result,
-            root_cause_trace=_build_root_cause_trace(run_result),
+            root_cause_trace=root_cause_trace,
             verification_results=verification_results or [],
+            citation_context=citation_context,
         ),
         suggested_sheet_fields=suggested_sheet_fields,
     )
@@ -237,50 +244,58 @@ def _trace_next_probe(*, target_ids: list[str], modalities: list[str]) -> str:
     return f"围绕 {target_summary} 执行 targeted evidence replay，并补充对照实验。"
 
 
-def _build_recommended_actions(root_cause: RootCause) -> list[dict[str, str]]:
+def _build_recommended_actions(
+    root_cause: RootCause,
+    *,
+    citation_context: dict[str, str],
+) -> list[dict[str, str]]:
     if root_cause.label == "scoring_standard_issue":
-        return [
+        return _with_citations(
             {
                 "category": "evaluation_asset",
                 "priority": "high",
                 "status": "pending",
                 "summary": "补齐评分标准。",
                 "detail": "补充 exact match、可接受别字/格式、box_id 对齐等评分规则，避免 0/1 结论不可审计。",
-            }
-        ]
+            },
+            citation_context,
+        )
     if root_cause.label == "golden_answer_issue":
-        return [
+        return _with_citations(
             {
                 "category": "evaluation_asset",
                 "priority": "high",
                 "status": "pending",
                 "summary": "补齐标答。",
                 "detail": "补充至少一个可评分目标、区域或结构化字段，并确保 golden answer 与样本输入一致。",
-            }
-        ]
+            },
+            citation_context,
+        )
     if root_cause.label == "expected_output_issue":
-        return [
+        return _with_citations(
             {
                 "category": "evaluation_asset",
                 "priority": "high",
                 "status": "pending",
                 "summary": "补齐通用任务 expected_output。",
                 "detail": "补充 task-native expected_output_json，明确分类、检测、视频片段或多模态冲突的期望结构。",
-            }
-        ]
+            },
+            citation_context,
+        )
     if root_cause.label == "prompt_schema_issue":
-        return [
+        return _with_citations(
             {
                 "category": "prompt",
                 "priority": "high",
                 "status": "pending",
                 "summary": "明确结构化输出 schema。",
                 "detail": "要求模型只输出可解析 JSON，并声明关键字段、类型和禁止额外文本。",
-            }
-        ]
+            },
+            citation_context,
+        )
     if root_cause.label == "single_modality_capability_gap":
         modality = _modality_from_root_cause_summary(root_cause.evidence_summary)
-        return [
+        return _with_citations([
             {
                 "category": "prompt",
                 "priority": "high",
@@ -302,9 +317,9 @@ def _build_recommended_actions(root_cause: RootCause) -> list[dict[str, str]]:
                 "summary": f"将 {modality} 感知能力短板纳入模型能力归因。",
                 "detail": f"单模态 ablation 已失败，优先归因 {modality} 感知/定位/grounding 能力，而不是跨模态融合。",
             },
-        ]
+        ], citation_context)
     if root_cause.label == "cross_modal_alignment_failure":
-        return [
+        return _with_citations([
             {
                 "category": "prompt",
                 "priority": "high",
@@ -326,8 +341,16 @@ def _build_recommended_actions(root_cause: RootCause) -> list[dict[str, str]]:
                 "summary": "将跨模态融合短板纳入模型能力归因。",
                 "detail": "单模态通过但跨模态失败，优先检查 fusion/alignment 能力。",
             },
-        ]
+        ], citation_context)
     return []
+
+
+def _with_citations(
+    items: dict[str, str] | list[dict[str, str]],
+    citation_context: dict[str, str],
+) -> list[dict[str, str]]:
+    normalized_items = [items] if isinstance(items, dict) else items
+    return [{**item, **citation_context} for item in normalized_items]
 
 
 def _build_follow_up_experiments(
@@ -362,6 +385,7 @@ def _build_confidence_reasons(
     run_result: ExperimentRunResult | None,
     root_cause_trace: list[dict[str, object]],
     verification_results: list[dict[str, object]],
+    citation_context: dict[str, str],
 ) -> list[dict[str, str]]:
     evidence_count = len(run_result.evidence) if run_result is not None else 0
     evidence_level = "high" if evidence_count >= 3 else "medium" if evidence_count > 0 else "low"
@@ -395,7 +419,7 @@ def _build_confidence_reasons(
         )
     verification_reason = _verification_confidence_reason(verification_results)
     reasons.append(verification_reason)
-    return reasons
+    return _with_citations(reasons, citation_context)
 
 
 def _verification_confidence_reason(verification_results: list[dict[str, object]]) -> dict[str, str]:
@@ -775,12 +799,13 @@ def _build_evaluation_asset_diagnostics(
     *,
     case: DebugCase,
     run_result: ExperimentRunResult | None,
+    citation_context: dict[str, str],
 ) -> list[dict[str, str]]:
-    return [
+    return _with_citations([
         _prompt_diagnostic(case=case, run_result=run_result),
         _golden_or_expected_output_diagnostic(case),
         _scoring_standard_diagnostic(case),
-    ]
+    ], citation_context)
 
 
 def _prompt_diagnostic(
@@ -1042,6 +1067,24 @@ def _citation_artifact_ids(item: ExperimentEvidence) -> list[str]:
     if artifact_ids:
         return artifact_ids
     return [artifact.artifact_id for artifact in item.image_artifacts]
+
+
+def _citation_context(
+    *,
+    run_result: ExperimentRunResult | None,
+    root_cause_trace: list[dict[str, object]],
+) -> dict[str, str]:
+    evidence_ids = [evidence.evidence_id for evidence in run_result.evidence] if run_result is not None else []
+    trace_refs = [
+        f"{trace.get('step_name')}:{trace.get('variant')}"
+        for trace in root_cause_trace
+        if isinstance(trace.get("step_name"), str) and isinstance(trace.get("variant"), str)
+    ]
+    return {
+        "evidence_ids": ", ".join(evidence_ids),
+        "artifact_ids": ", ".join(_artifact_ids_from_run_result(run_result)) if run_result is not None else "",
+        "trace_refs": ", ".join(trace_refs),
+    }
 
 
 def _box_id_from_delta(delta: dict[str, object]) -> int | None:

@@ -427,16 +427,25 @@ def test_generate_report_infers_cross_modal_alignment_from_ablation_results() ->
             "source": "evidence_count",
             "level": "high",
             "summary": "3 条 evidence 支撑当前判断。",
+            "evidence_ids": "e-image-only, e-text-only, e-cross-modal",
+            "artifact_ids": "",
+            "trace_refs": "modality_ablation_check:image_only, modality_ablation_check:text_only, modality_ablation_check:cross_modal_compare",
         },
         {
             "source": "ablation_pattern",
             "level": "high",
             "summary": "root cause trace 包含 cross_modal_compare 变体，支持跨模态归因。",
+            "evidence_ids": "e-image-only, e-text-only, e-cross-modal",
+            "artifact_ids": "",
+            "trace_refs": "modality_ablation_check:image_only, modality_ablation_check:text_only, modality_ablation_check:cross_modal_compare",
         },
         {
             "source": "verification_outcome",
             "level": "neutral",
             "summary": "尚无验证任务结果参与置信度判断。",
+            "evidence_ids": "e-image-only, e-text-only, e-cross-modal",
+            "artifact_ids": "",
+            "trace_refs": "modality_ablation_check:image_only, modality_ablation_check:text_only, modality_ablation_check:cross_modal_compare",
         },
     ]
     assert report.suggested_sheet_fields["错误原因"].startswith("跨模态对齐问题")
@@ -535,6 +544,9 @@ def test_generate_report_infers_single_modality_gap_from_ablation_results() -> N
             "status": "pending",
             "summary": "强化 image 模态定位与证据引用要求。",
             "detail": "在 prompt 中要求模型先列出 image 证据、目标区域或关键帧，再输出最终结构化结论。",
+            "evidence_ids": "e-image-only, e-text-only, e-cross-modal",
+            "artifact_ids": "",
+            "trace_refs": "modality_ablation_check:image_only, modality_ablation_check:text_only, modality_ablation_check:cross_modal_compare",
         },
         {
             "category": "evaluation_asset",
@@ -542,6 +554,9 @@ def test_generate_report_infers_single_modality_gap_from_ablation_results() -> N
             "status": "pending",
             "summary": "补充 image 单模态 golden evidence。",
             "detail": "为失败样本补充 image-only 期望证据、区域/关键帧标注或可接受视觉解释，避免跨模态结论缺少单模态审计依据。",
+            "evidence_ids": "e-image-only, e-text-only, e-cross-modal",
+            "artifact_ids": "",
+            "trace_refs": "modality_ablation_check:image_only, modality_ablation_check:text_only, modality_ablation_check:cross_modal_compare",
         },
         {
             "category": "model_capability",
@@ -549,6 +564,9 @@ def test_generate_report_infers_single_modality_gap_from_ablation_results() -> N
             "status": "pending",
             "summary": "将 image 感知能力短板纳入模型能力归因。",
             "detail": "单模态 ablation 已失败，优先归因 image 感知/定位/grounding 能力，而不是跨模态融合。",
+            "evidence_ids": "e-image-only, e-text-only, e-cross-modal",
+            "artifact_ids": "",
+            "trace_refs": "modality_ablation_check:image_only, modality_ablation_check:text_only, modality_ablation_check:cross_modal_compare",
         },
     ]
 
@@ -693,6 +711,9 @@ def test_generate_report_includes_verification_follow_up_plan_summary() -> None:
         "source": "verification_outcome",
         "level": "low",
         "summary": "验证任务出现 regressed，降低当前推荐操作置信度。",
+        "evidence_ids": "",
+        "artifact_ids": "",
+        "trace_refs": "",
     } in report.confidence_reasons
 
 
@@ -969,6 +990,9 @@ def test_generate_report_flags_missing_scoring_standard_as_evaluation_asset_issu
             "status": "pending",
             "summary": "补齐评分标准。",
             "detail": "补充 exact match、可接受别字/格式、box_id 对齐等评分规则，避免 0/1 结论不可审计。",
+            "evidence_ids": "e-asset-diagnostic",
+            "artifact_ids": "",
+            "trace_refs": "",
         }
     ]
     assert report.evaluation_asset_diagnostics == [
@@ -978,6 +1002,9 @@ def test_generate_report_flags_missing_scoring_standard_as_evaluation_asset_issu
             "severity": "info",
             "summary": "Prompt 已要求结构化 JSON 输出。",
             "recommendation": "保持 prompt 中明确的输出 schema、证据引用和约束条件。",
+            "evidence_ids": "e-asset-diagnostic",
+            "artifact_ids": "",
+            "trace_refs": "",
         },
         {
             "source": "golden_answer",
@@ -985,6 +1012,9 @@ def test_generate_report_flags_missing_scoring_standard_as_evaluation_asset_issu
             "severity": "info",
             "summary": "标答包含 1 个 answer 项。",
             "recommendation": "继续确保 golden answer 覆盖关键目标、区域或结构化字段。",
+            "evidence_ids": "e-asset-diagnostic",
+            "artifact_ids": "",
+            "trace_refs": "",
         },
         {
             "source": "scoring_standard",
@@ -992,6 +1022,9 @@ def test_generate_report_flags_missing_scoring_standard_as_evaluation_asset_issu
             "severity": "high",
             "summary": "评分标准缺失，当前 0/1 结论缺少可审计的判分依据。",
             "recommendation": "补充 exact match、可接受别字/格式、box_id 对齐等评分规则。",
+            "evidence_ids": "e-asset-diagnostic",
+            "artifact_ids": "",
+            "trace_refs": "",
         },
     ]
 
@@ -1040,6 +1073,9 @@ def test_generate_report_flags_prompt_schema_issue_when_parse_errors_repeat() ->
         "severity": "medium",
         "summary": "Prompt 未明确要求 JSON/schema，且 evidence 出现解析失败。",
         "recommendation": "要求模型只输出可解析 JSON，并声明关键字段、类型和禁止额外文本。",
+        "evidence_ids": "e-parse-error",
+        "artifact_ids": "",
+        "trace_refs": "",
     } in report.evaluation_asset_diagnostics
 
 

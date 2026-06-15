@@ -150,6 +150,20 @@
 - [x] Generate recommended actions for evaluation asset root causes.
 - [x] Render evaluation asset diagnostics in the frontend report panel.
 
+### Task 9: Evidence Citation Coverage Governance
+
+**Files:**
+- Modify: `backend/src/debug_agent/reports/generator.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `backend/tests/reports/test_generator.py`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Attach evidence, artifact, and trace references to recommended actions.
+- [x] Attach evidence, artifact, and trace references to confidence reasons.
+- [x] Attach evidence, artifact, and trace references to evaluation asset diagnostics.
+- [x] Render citation coverage in the frontend report panel.
+
 ## Verification Policy
 
 Every task must follow:

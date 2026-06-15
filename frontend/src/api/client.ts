@@ -67,6 +67,9 @@ export type DebugReport = {
     status?: string;
     summary: string;
     detail: string;
+    evidence_ids?: string;
+    artifact_ids?: string;
+    trace_refs?: string;
   }>;
   verification_results?: RecommendedActionVerificationResult[];
   evaluation_asset_diagnostics?: Array<{
@@ -75,11 +78,17 @@ export type DebugReport = {
     severity: string;
     summary: string;
     recommendation: string;
+    evidence_ids?: string;
+    artifact_ids?: string;
+    trace_refs?: string;
   }>;
   confidence_reasons?: Array<{
     source: string;
     level: string;
     summary: string;
+    evidence_ids?: string;
+    artifact_ids?: string;
+    trace_refs?: string;
   }>;
   suggested_sheet_fields: Record<string, string>;
 };

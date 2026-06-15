@@ -85,14 +85,20 @@ describe("ReportPanel", () => {
           status: "pass",
           severity: "info",
           summary: "Prompt 已要求结构化 JSON 输出。",
-          recommendation: "保持 prompt 中明确的输出 schema、证据引用和约束条件。"
+          recommendation: "保持 prompt 中明确的输出 schema、证据引用和约束条件。",
+          evidence_ids: "e-asset-diagnostic",
+          artifact_ids: "asset:prompt-snapshot",
+          trace_refs: "baseline_replay:prompt_check"
         },
         {
           source: "scoring_standard",
           status: "fail",
           severity: "high",
           summary: "评分标准缺失，当前 0/1 结论缺少可审计的判分依据。",
-          recommendation: "补充 exact match、可接受别字/格式、box_id 对齐等评分规则。"
+          recommendation: "补充 exact match、可接受别字/格式、box_id 对齐等评分规则。",
+          evidence_ids: "e-asset-diagnostic",
+          artifact_ids: "",
+          trace_refs: ""
         }
       ],
       suggested_sheet_fields: {
@@ -106,6 +112,9 @@ describe("ReportPanel", () => {
     expect(screen.getByText("prompt/pass/info")).toBeInTheDocument();
     expect(screen.getByText("Prompt 已要求结构化 JSON 输出。")).toBeInTheDocument();
     expect(screen.getByText("建议：保持 prompt 中明确的输出 schema、证据引用和约束条件。")).toBeInTheDocument();
+    expect(screen.getAllByText("引用证据：e-asset-diagnostic").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("引用产物：asset:prompt-snapshot")).toBeInTheDocument();
+    expect(screen.getByText("Trace：baseline_replay:prompt_check")).toBeInTheDocument();
     expect(screen.getByText("scoring_standard/fail/high")).toBeInTheDocument();
     expect(screen.getByText("评分标准缺失，当前 0/1 结论缺少可审计的判分依据。")).toBeInTheDocument();
     expect(screen.getByText("建议：补充 exact match、可接受别字/格式、box_id 对齐等评分规则。")).toBeInTheDocument();

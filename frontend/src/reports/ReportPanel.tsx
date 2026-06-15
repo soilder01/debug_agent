@@ -117,6 +117,11 @@ export function ReportPanel({
                 </p>
                 <p>{diagnostic.summary}</p>
                 <p>建议：{diagnostic.recommendation}</p>
+                <CitationCoverage
+                  artifactIds={diagnostic.artifact_ids}
+                  evidenceIds={diagnostic.evidence_ids}
+                  traceRefs={diagnostic.trace_refs}
+                />
               </li>
             ))}
           </ul>
@@ -163,6 +168,11 @@ export function ReportPanel({
                 </p>
                 <p>状态：{action.status ?? "pending"}</p>
                 <p>{action.detail}</p>
+                <CitationCoverage
+                  artifactIds={action.artifact_ids}
+                  evidenceIds={action.evidence_ids}
+                  traceRefs={action.trace_refs}
+                />
                 {onUpdateRecommendedActionStatus ? (
                   <p>
                     <button
@@ -204,6 +214,11 @@ export function ReportPanel({
             {confidenceReasons.map((reason) => (
               <li key={`${reason.source}:${reason.level}:${reason.summary}`}>
                 {reason.source}/{reason.level}：{reason.summary}
+                <CitationCoverage
+                  artifactIds={reason.artifact_ids}
+                  evidenceIds={reason.evidence_ids}
+                  traceRefs={reason.trace_refs}
+                />
               </li>
             ))}
           </ul>
@@ -319,6 +334,22 @@ function VerificationResultSummary({ result }: VerificationResultSummaryProps) {
         {formatPercent(result.source_success_rate)}
       </p>
       <p>{result.summary}</p>
+    </>
+  );
+}
+
+type CitationCoverageProps = {
+  artifactIds?: string;
+  evidenceIds?: string;
+  traceRefs?: string;
+};
+
+function CitationCoverage({ artifactIds = "", evidenceIds = "", traceRefs = "" }: CitationCoverageProps) {
+  return (
+    <>
+      {evidenceIds ? <p>引用证据：{evidenceIds}</p> : null}
+      {artifactIds ? <p>引用产物：{artifactIds}</p> : null}
+      {traceRefs ? <p>Trace：{traceRefs}</p> : null}
     </>
   );
 }
