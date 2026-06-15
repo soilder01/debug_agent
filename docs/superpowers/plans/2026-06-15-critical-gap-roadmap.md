@@ -514,6 +514,25 @@
 - [x] Include human handoff requests in spreadsheet `评估问题反馈`.
 - [x] Render human handoff requests in the frontend report panel.
 
+### Task 32: Human Handoff Governance
+
+**Files:**
+- Modify: `backend/src/debug_agent/api/routes.py`
+- Modify: `backend/src/debug_agent/storage/models.py`
+- Modify: `backend/src/debug_agent/storage/repository.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/observability/ObservabilitySummaryPanel.tsx`
+- Test: `backend/tests/api/test_recommended_action_status.py`
+- Test: `backend/tests/api/test_observability_summary.py`
+- Test: `frontend/src/api/client.test.ts`
+- Test: `frontend/src/observability/ObservabilitySummaryPanel.test.tsx`
+
+- [x] Add persistent status governance for human handoff requests.
+- [x] Add API endpoints to update and list human handoff status by target id.
+- [x] Reject status updates for targets that are not present in rebuilt report handoff requests.
+- [x] Add human handoff status counts to observability summary and health guidance.
+- [x] Add frontend API support and observability metrics for human handoff queues.
+
 ## Verification Policy
 
 Every task must follow:

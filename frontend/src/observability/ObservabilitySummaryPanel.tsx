@@ -27,6 +27,15 @@ export function ObservabilitySummaryPanel({
     inconclusive_count: 0,
     max_depth_reached_count: 0
   };
+  const humanHandoffFeedback = summary.human_handoff_feedback ?? {
+    total_handoffs: 0,
+    pending_count: 0,
+    acknowledged_count: 0,
+    in_progress_count: 0,
+    resolved_count: 0,
+    wont_fix_count: 0,
+    open_count: 0
+  };
   return (
     <section>
       <h2>Observability</h2>
@@ -67,6 +76,13 @@ export function ObservabilitySummaryPanel({
       <p>Observed targeted still failing：{targetedProbeFeedback.target_still_failing_count}</p>
       <p>Observed targeted inconclusive：{targetedProbeFeedback.inconclusive_count}</p>
       <p>Observed targeted max depth reached：{targetedProbeFeedback.max_depth_reached_count}</p>
+      <p>Observed human handoffs：{humanHandoffFeedback.total_handoffs}</p>
+      <p>Observed handoff pending：{humanHandoffFeedback.pending_count}</p>
+      <p>Observed handoff acknowledged：{humanHandoffFeedback.acknowledged_count}</p>
+      <p>Observed handoff in progress：{humanHandoffFeedback.in_progress_count}</p>
+      <p>Observed handoff resolved：{humanHandoffFeedback.resolved_count}</p>
+      <p>Observed handoff wont fix：{humanHandoffFeedback.wont_fix_count}</p>
+      <p>Observed handoff open：{humanHandoffFeedback.open_count}</p>
       <p>Observed health：{summary.health.level}</p>
       {summary.health.reasons.map((reason) => (
         <p key={reason}>Observed health reason：{reason}</p>

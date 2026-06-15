@@ -4,9 +4,11 @@ import {
   createRecommendedActionVerificationJob,
   createStrategyFollowUpJob,
   createTargetedProbeJob,
+  fetchHumanHandoffStatuses,
   fetchRecommendedActionStatuses,
   fetchStrategyFollowUpJobs,
   fetchTargetedProbeJobs,
+  updateHumanHandoffStatus,
   updateRecommendedActionStatus
 } from "./client";
 
@@ -283,5 +285,66 @@ describe("api client recommended action status", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1/targeted-probes");
     expect(response.probes[0].probe_job_id).toBe("job-targeted-probe-1");
     expect(response.probes[0].outcome).toBe("target_still_failing");
+  });
+
+  it("patches human handoff status with reviewer context", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          job_id: "job-1",
+          target_id: "multimodal:conflict:1",
+          status: "in_progress",
+          actor: "human-debugger",
+          note: "reviewing full probe chain",
+          created_at: "2026-06-15T00:00:00+00:00",
+          updated_at: "2026-06-15T00:00:01+00:00"
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    const status = await updateHumanHandoffStatus("job-1", "multimodal:conflict:1", {
+      status: "in_progress",
+      actor: "human-debugger",
+      note: "reviewing full probe chain"
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1/human-handoffs/multimodal%3Aconflict%3A1/status", {
+      body: JSON.stringify({
+        status: "in_progress",
+        actor: "human-debugger",
+        note: "reviewing full probe chain"
+      }),
+      headers: { "Content-Type": "application/json" },
+      method: "PATCH"
+    });
+    expect(status.status).toBe("in_progress");
+    expect(status.target_id).toBe("multimodal:conflict:1");
+  });
+
+  it("fetches human handoff statuses", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          statuses: [
+            {
+              job_id: "job-1",
+              target_id: "multimodal:conflict:1",
+              status: "resolved",
+              actor: "human-debugger",
+              note: "prompt issue confirmed",
+              created_at: "2026-06-15T00:00:00+00:00",
+              updated_at: "2026-06-15T00:00:01+00:00"
+            }
+          ]
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    const response = await fetchHumanHandoffStatuses("job-1");
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1/human-handoffs/statuses");
+    expect(response.statuses[0].status).toBe("resolved");
   });
 });

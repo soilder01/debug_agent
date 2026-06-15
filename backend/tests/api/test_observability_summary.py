@@ -120,6 +120,13 @@ def test_observability_summary_reports_runtime_and_operational_counts() -> None:
                 note="observe target failure",
             )
             parent_probe_job_id = probe_job_id
+        job_repository.save_human_handoff_status(
+            job_id="observability-targeted-source",
+            target_id="image:region:1",
+            status="in_progress",
+            actor="human-debugger",
+            note="reviewing guarded probe chain",
+        )
         routes.settings = routes.settings.model_copy(update={"enforce_usage_budget": True})
 
         response = client.get("/observability/summary")
@@ -155,6 +162,10 @@ def test_observability_summary_reports_runtime_and_operational_counts() -> None:
         assert body["targeted_probe_feedback"]["target_cleared_count"] >= 0
         assert body["targeted_probe_feedback"]["inconclusive_count"] >= 0
         assert body["targeted_probe_feedback"]["max_depth_reached_count"] >= 1
+        assert body["human_handoff_feedback"]["total_handoffs"] >= 1
+        assert body["human_handoff_feedback"]["pending_count"] >= 0
+        assert body["human_handoff_feedback"]["in_progress_count"] >= 1
+        assert body["human_handoff_feedback"]["resolved_count"] >= 0
         assert body["worker"]["running"] is False
         assert body["worker"]["auto_writeback_enabled"] is False
         assert body["worker"]["completion_hook_enabled"] is False
@@ -166,6 +177,7 @@ def test_observability_summary_reports_runtime_and_operational_counts() -> None:
         assert "strategy follow-ups need escalation" in body["health"]["reasons"]
         assert "targeted probes still failing" in body["health"]["reasons"]
         assert "targeted probe guardrails reached" in body["health"]["reasons"]
+        assert "human handoffs still open" in body["health"]["reasons"]
         assert "Inspect failed jobs and open their evidence chain." in body["health"]["actions"]
         assert "Retry failed spreadsheet writebacks after checking Lark permissions and sheet headers." in body["health"][
             "actions"
@@ -175,6 +187,7 @@ def test_observability_summary_reports_runtime_and_operational_counts() -> None:
         assert "Open strategy follow-up history and run escalation probes." in body["health"]["actions"]
         assert "Open targeted probe history and escalate unresolved targets." in body["health"]["actions"]
         assert "Review targeted probe guardrails and assign human investigation." in body["health"]["actions"]
+        assert "Review human handoff queue and drive open investigations to resolution." in body["health"]["actions"]
 
         job_repository.mark_failed(created["job_id"], "test cleanup")
     finally:

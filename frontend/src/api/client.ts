@@ -208,12 +208,28 @@ export type TargetedProbeJobResponse = TargetedProbeJob & {
   probe_job: SubmittedDebugJob;
 };
 
+export type HumanHandoffStatusValue = "pending" | "acknowledged" | "in_progress" | "resolved" | "wont_fix";
+
+export type HumanHandoffStatus = {
+  job_id: string;
+  target_id: string;
+  status: HumanHandoffStatusValue;
+  actor: string;
+  note: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type StrategyFollowUpJobListResponse = {
   follow_ups: StrategyFollowUpJob[];
 };
 
 export type TargetedProbeJobListResponse = {
   probes: TargetedProbeJob[];
+};
+
+export type HumanHandoffStatusListResponse = {
+  statuses: HumanHandoffStatus[];
 };
 
 export type RecommendedActionVerificationResult = {
@@ -431,6 +447,15 @@ export type ObservabilitySummary = {
     target_still_failing_count: number;
     inconclusive_count: number;
     max_depth_reached_count: number;
+  };
+  human_handoff_feedback?: {
+    total_handoffs: number;
+    pending_count: number;
+    acknowledged_count: number;
+    in_progress_count: number;
+    resolved_count: number;
+    wont_fix_count: number;
+    open_count: number;
   };
   usage: {
     model_call_count: number;
@@ -841,6 +866,41 @@ export async function createTargetedProbeJob(
     throw new Error(`Failed to create targeted probe job ${targetId} for ${jobId}: ${response.status}`);
   }
   return (await response.json()) as TargetedProbeJobResponse;
+}
+
+export async function updateHumanHandoffStatus(
+  jobId: string,
+  targetId: string,
+  request: {
+    status: HumanHandoffStatusValue;
+    actor?: string;
+    note?: string;
+  }
+): Promise<HumanHandoffStatus> {
+  const response = await fetch(
+    `/api/jobs/${encodeURIComponent(jobId)}/human-handoffs/${encodeURIComponent(targetId)}/status`,
+    {
+      body: JSON.stringify({
+        status: request.status,
+        actor: request.actor ?? "",
+        note: request.note ?? ""
+      }),
+      headers: { "Content-Type": "application/json" },
+      method: "PATCH"
+    }
+  );
+  if (!response.ok) {
+    throw new Error(`Failed to update human handoff ${targetId} for job ${jobId}: ${response.status}`);
+  }
+  return (await response.json()) as HumanHandoffStatus;
+}
+
+export async function fetchHumanHandoffStatuses(jobId: string): Promise<HumanHandoffStatusListResponse> {
+  const response = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/human-handoffs/statuses`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch human handoff statuses for ${jobId}: ${response.status}`);
+  }
+  return (await response.json()) as HumanHandoffStatusListResponse;
 }
 
 export async function fetchSpreadsheetWritebackAudit(jobId: string): Promise<SpreadsheetWritebackAudit> {

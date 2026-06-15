@@ -37,6 +37,7 @@ from debug_agent.storage.database import create_sqlite_session_factory, ensure_d
 from debug_agent.storage.models import DebugJobRow
 from debug_agent.storage.repository import (
     DebugJobRepository,
+    HumanHandoffStatus,
     RecommendedActionStatus,
     RecommendedActionStatusEvent,
     RecommendedActionVerification,
@@ -227,6 +228,12 @@ class TargetedProbeJobRequest(BaseModel):
     note: str = ""
 
 
+class HumanHandoffStatusRequest(BaseModel):
+    status: Literal["pending", "acknowledged", "in_progress", "resolved", "wont_fix"]
+    actor: str = ""
+    note: str = ""
+
+
 class RecommendedActionVerificationResponse(RecommendedActionVerification):
     verification_job: SubmittedDebugJob
 
@@ -259,6 +266,10 @@ class StrategyFollowUpJobListResponse(BaseModel):
 
 class TargetedProbeJobListResponse(BaseModel):
     probes: list[TargetedProbeJobWithOutcome] = Field(default_factory=list)
+
+
+class HumanHandoffStatusListResponse(BaseModel):
+    statuses: list[HumanHandoffStatus] = Field(default_factory=list)
 
 
 class RecommendedActionVerificationResult(BaseModel):
@@ -360,6 +371,16 @@ class ObservabilityTargetedProbeFeedbackSummary(BaseModel):
     max_depth_reached_count: int
 
 
+class ObservabilityHumanHandoffFeedbackSummary(BaseModel):
+    total_handoffs: int
+    pending_count: int
+    acknowledged_count: int
+    in_progress_count: int
+    resolved_count: int
+    wont_fix_count: int
+    open_count: int
+
+
 class ObservabilitySummaryResponse(BaseModel):
     jobs: ObservabilityJobSummary
     worker: WorkerRuntimeStatus
@@ -367,6 +388,7 @@ class ObservabilitySummaryResponse(BaseModel):
     evidence: ObservabilityEvidenceSummary
     strategy_feedback: ObservabilityStrategyFeedbackSummary
     targeted_probe_feedback: ObservabilityTargetedProbeFeedbackSummary
+    human_handoff_feedback: ObservabilityHumanHandoffFeedbackSummary
     health: ObservabilityHealthSummary
     usage: ObservabilityUsageSummary
 
@@ -404,6 +426,7 @@ def get_observability_summary() -> ObservabilitySummaryResponse:
     )
     strategy_feedback_summary = _build_strategy_feedback_summary()
     targeted_probe_feedback_summary = _build_targeted_probe_feedback_summary()
+    human_handoff_feedback_summary = _build_human_handoff_feedback_summary()
     job_summary = ObservabilityJobSummary(
         by_status=job_counts,
         total_count=sum(job_counts.values()),
@@ -423,6 +446,7 @@ def get_observability_summary() -> ObservabilitySummaryResponse:
         evidence=evidence_summary,
         strategy_feedback=strategy_feedback_summary,
         targeted_probe_feedback=targeted_probe_feedback_summary,
+        human_handoff_feedback=human_handoff_feedback_summary,
         health=_build_observability_health(
             jobs=job_summary,
             worker=worker_status,
@@ -431,6 +455,7 @@ def get_observability_summary() -> ObservabilitySummaryResponse:
             usage=usage_summary,
             strategy_feedback=strategy_feedback_summary,
             targeted_probe_feedback=targeted_probe_feedback_summary,
+            human_handoff_feedback=human_handoff_feedback_summary,
         ),
         usage=usage_summary,
     )
@@ -920,6 +945,36 @@ def list_targeted_probe_jobs(job_id: str) -> TargetedProbeJobListResponse:
     )
 
 
+@router.patch("/jobs/{job_id}/human-handoffs/{target_id}/status")
+def update_human_handoff_status(
+    job_id: str,
+    target_id: str,
+    request: HumanHandoffStatusRequest,
+) -> HumanHandoffStatus:
+    if job_repository.get_job(job_id) is None:
+        raise HTTPException(status_code=404, detail=f"Debug job not found: {job_id}")
+    report = build_report_for_job(job_repository, job_id)
+    if report is None:
+        raise HTTPException(status_code=404, detail=f"Debug report not found for job: {job_id}")
+    if not any(item.get("target_id") == target_id for item in report.human_handoff_requests):
+        raise HTTPException(status_code=404, detail=f"Human handoff target not found: {target_id}")
+    actor = _resolved_actor(request.actor)
+    return job_repository.save_human_handoff_status(
+        job_id=job_id,
+        target_id=target_id,
+        status=request.status,
+        actor=actor,
+        note=request.note,
+    )
+
+
+@router.get("/jobs/{job_id}/human-handoffs/statuses")
+def list_human_handoff_statuses(job_id: str) -> HumanHandoffStatusListResponse:
+    if job_repository.get_job(job_id) is None:
+        raise HTTPException(status_code=404, detail=f"Debug job not found: {job_id}")
+    return HumanHandoffStatusListResponse(statuses=job_repository.list_human_handoff_statuses(job_id))
+
+
 @router.get("/jobs/{job_id}/recommended-actions/statuses")
 def list_recommended_action_statuses(job_id: str) -> RecommendedActionStatusListResponse:
     if job_repository.get_job(job_id) is None:
@@ -1082,6 +1137,24 @@ def _build_targeted_probe_feedback_summary() -> ObservabilityTargetedProbeFeedba
     )
 
 
+def _build_human_handoff_feedback_summary() -> ObservabilityHumanHandoffFeedbackSummary:
+    statuses = job_repository.list_human_handoff_statuses()
+    pending_count = sum(1 for item in statuses if item.status == "pending")
+    acknowledged_count = sum(1 for item in statuses if item.status == "acknowledged")
+    in_progress_count = sum(1 for item in statuses if item.status == "in_progress")
+    resolved_count = sum(1 for item in statuses if item.status == "resolved")
+    wont_fix_count = sum(1 for item in statuses if item.status == "wont_fix")
+    return ObservabilityHumanHandoffFeedbackSummary(
+        total_handoffs=len(statuses),
+        pending_count=pending_count,
+        acknowledged_count=acknowledged_count,
+        in_progress_count=in_progress_count,
+        resolved_count=resolved_count,
+        wont_fix_count=wont_fix_count,
+        open_count=pending_count + acknowledged_count + in_progress_count,
+    )
+
+
 def _count_targeted_probe_max_depth_chains(outcomes: list[TargetedProbeJobWithOutcome]) -> int:
     by_target: dict[tuple[str, str], list[TargetedProbeJobWithOutcome]] = {}
     for outcome in outcomes:
@@ -1138,6 +1211,7 @@ def _build_observability_health(
     usage: ObservabilityUsageSummary,
     strategy_feedback: ObservabilityStrategyFeedbackSummary,
     targeted_probe_feedback: ObservabilityTargetedProbeFeedbackSummary,
+    human_handoff_feedback: ObservabilityHumanHandoffFeedbackSummary,
 ) -> ObservabilityHealthSummary:
     critical_reasons: list[str] = []
     degraded_reasons: list[str] = []
@@ -1165,6 +1239,8 @@ def _build_observability_health(
         degraded_reasons.append("targeted probes still failing")
     if targeted_probe_feedback.max_depth_reached_count > 0:
         degraded_reasons.append("targeted probe guardrails reached")
+    if human_handoff_feedback.open_count > 0:
+        degraded_reasons.append("human handoffs still open")
     if critical_reasons:
         reasons = critical_reasons + degraded_reasons
         return ObservabilityHealthSummary(level="critical", reasons=reasons, actions=_observability_actions(reasons))
@@ -1193,6 +1269,7 @@ def _observability_actions(reasons: list[str]) -> list[str]:
         "strategy follow-ups need escalation": "Open strategy follow-up history and run escalation probes.",
         "targeted probes still failing": "Open targeted probe history and escalate unresolved targets.",
         "targeted probe guardrails reached": "Review targeted probe guardrails and assign human investigation.",
+        "human handoffs still open": "Review human handoff queue and drive open investigations to resolution.",
     }
     actions: list[str] = []
     for reason in reasons:

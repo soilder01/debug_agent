@@ -482,6 +482,42 @@ def test_targeted_probe_api_stops_escalation_when_guardrail_blocks_target() -> N
     routes.job_repository.mark_failed(parent_probe_job_id, "test cleanup after completed probe")
 
 
+def test_human_handoff_status_api_updates_and_lists_guardrail_handoff() -> None:
+    client = TestClient(app)
+    job_id = _create_job_with_targeted_probe_guardrail()
+
+    response = client.patch(
+        f"/jobs/{job_id}/human-handoffs/multimodal:conflict:1/status",
+        json={"status": "in_progress", "actor": "human-debugger", "note": "reviewing full probe chain"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["job_id"] == job_id
+    assert body["target_id"] == "multimodal:conflict:1"
+    assert body["status"] == "in_progress"
+    assert body["actor"] == "human-debugger"
+    assert body["note"] == "reviewing full probe chain"
+    assert body["updated_at"]
+
+    list_response = client.get(f"/jobs/{job_id}/human-handoffs/statuses")
+    assert list_response.status_code == 200
+    assert list_response.json()["statuses"] == [body]
+
+
+def test_human_handoff_status_api_rejects_unknown_handoff_target() -> None:
+    client = TestClient(app)
+    job_id = _create_job_with_targeted_probe_guardrail()
+
+    response = client.patch(
+        f"/jobs/{job_id}/human-handoffs/multimodal:conflict:missing/status",
+        json={"status": "in_progress", "actor": "human-debugger", "note": "unknown target"},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Human handoff target not found: multimodal:conflict:missing"
+
+
 def test_recommended_action_status_api_evaluates_resolved_verification_job() -> None:
     client = TestClient(app)
     job_id = _create_job_with_recommended_actions()
@@ -712,4 +748,36 @@ def _create_job_with_cross_modal_strategy() -> str:
             ),
         ],
     )
+    return job_id
+
+
+def _create_job_with_targeted_probe_guardrail() -> str:
+    client = TestClient(app)
+    job_id = _create_job_with_cross_modal_strategy()
+    source_job = routes.job_repository.get_job(job_id)
+    assert source_job is not None
+    parent_probe_job_id = ""
+    for index in range(3):
+        response = client.post(
+            f"/jobs/{job_id}/targeted-probes/multimodal:conflict:1/debug-jobs",
+            json={"actor": "targeted-operator", "note": f"probe round {index + 1}"},
+        )
+        assert response.status_code == 202
+        probe_job_id = response.json()["probe_job_id"]
+        routes.job_repository.save_evidence(
+            job_id=probe_job_id,
+            case_id=source_job.case_id,
+            evidence=[
+                ExperimentEvidence(
+                    evidence_id=f"{probe_job_id}:targeted-fail",
+                    step_name="targeted_multimodal_conflict_probe",
+                    trial=0,
+                    raw_output="{\"conflicts\":[]}",
+                    judge=JudgeResult(score=0, reasons=["multimodal:conflict:1 conflict_actual_mismatch"]),
+                )
+            ],
+        )
+        routes.job_repository.mark_completed(probe_job_id)
+        parent_probe_job_id = probe_job_id
+    assert parent_probe_job_id
     return job_id

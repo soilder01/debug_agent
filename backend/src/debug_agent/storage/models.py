@@ -114,6 +114,18 @@ class TargetedProbeJobRow(Base):
     created_at: Mapped[str] = mapped_column(String(40), default="", server_default="", index=True)
 
 
+class HumanHandoffStatusRow(Base):
+    __tablename__ = "human_handoff_statuses"
+
+    job_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    target_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    status: Mapped[str] = mapped_column(String(40), default="pending", server_default="pending", index=True)
+    actor: Mapped[str] = mapped_column(String(120), default="", server_default="")
+    note: Mapped[str] = mapped_column(Text, default="", server_default="")
+    created_at: Mapped[str] = mapped_column(String(40), default="", server_default="", index=True)
+    updated_at: Mapped[str] = mapped_column(String(40), default="", server_default="")
+
+
 class EvidenceRow(Base):
     __tablename__ = "evidence"
 

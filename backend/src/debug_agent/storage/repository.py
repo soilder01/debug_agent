@@ -14,6 +14,7 @@ from debug_agent.storage.models import (
     DebugCaseRow,
     DebugJobRow,
     EvidenceRow,
+    HumanHandoffStatusRow,
     RecommendedActionStatusEventRow,
     RecommendedActionStatusRow,
     RecommendedActionVerificationRow,
@@ -95,6 +96,16 @@ class TargetedProbeJob(BaseModel):
     actor: str
     note: str
     created_at: str
+
+
+class HumanHandoffStatus(BaseModel):
+    job_id: str
+    target_id: str
+    status: str
+    actor: str
+    note: str
+    created_at: str
+    updated_at: str
 
 
 class DebugJobRepository:
@@ -550,6 +561,45 @@ class DebugJobRepository:
                 )
                 return [_targeted_probe_job_from_row(row) for row in rows]
 
+    def save_human_handoff_status(
+        self,
+        *,
+        job_id: str,
+        target_id: str,
+        status: str,
+        actor: str = "",
+        note: str = "",
+    ) -> HumanHandoffStatus:
+        with self._lock:
+            with self._session_factory() as session:
+                now = _utc_now_iso()
+                existing = session.get(HumanHandoffStatusRow, (job_id, target_id))
+                created_at = existing.created_at if existing is not None else now
+                row = HumanHandoffStatusRow(
+                    job_id=job_id,
+                    target_id=target_id,
+                    status=status,
+                    actor=actor,
+                    note=note,
+                    created_at=created_at,
+                    updated_at=now,
+                )
+                session.merge(row)
+                session.commit()
+                return _human_handoff_status_from_row(row)
+
+    def list_human_handoff_statuses(self, job_id: str | None = None) -> list[HumanHandoffStatus]:
+        with self._lock:
+            with self._session_factory() as session:
+                query = select(HumanHandoffStatusRow).order_by(
+                    HumanHandoffStatusRow.created_at,
+                    HumanHandoffStatusRow.job_id,
+                    HumanHandoffStatusRow.target_id,
+                )
+                if job_id is not None:
+                    query = query.where(HumanHandoffStatusRow.job_id == job_id)
+                return [_human_handoff_status_from_row(row) for row in session.scalars(query)]
+
     def list_cases(self, has_regions: bool = False, limit: int | None = None, offset: int = 0) -> list[DebugCase]:
         with self._lock:
             with self._session_factory() as session:
@@ -906,4 +956,16 @@ def _targeted_probe_job_from_row(row: TargetedProbeJobRow) -> TargetedProbeJob:
         actor=row.actor,
         note=row.note,
         created_at=row.created_at,
+    )
+
+
+def _human_handoff_status_from_row(row: HumanHandoffStatusRow) -> HumanHandoffStatus:
+    return HumanHandoffStatus(
+        job_id=row.job_id,
+        target_id=row.target_id,
+        status=row.status,
+        actor=row.actor,
+        note=row.note,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
     )
