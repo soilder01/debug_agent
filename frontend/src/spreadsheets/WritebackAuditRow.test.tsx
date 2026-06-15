@@ -29,6 +29,9 @@ describe("WritebackAuditRow", () => {
 
     render(<WritebackAuditRow audit={audit} onOpenJob={onOpenJob} onRetry={onRetry} />);
 
+    expect(screen.getByRole("listitem")).toHaveClass("writeback-audit-row");
+    expect(screen.getByText("failed")).toHaveClass("status-badge--critical");
+    expect(screen.getByLabelText("Writeback audit row actions")).toHaveClass("action-row");
     expect(screen.getByText("job-failed-writeback-1：failed｜row 7｜permission denied")).toBeInTheDocument();
     expect(screen.getByText("Retry eligibility：available")).toBeInTheDocument();
     expect(screen.getByText("Retry reason：last writeback failed: permission denied")).toBeInTheDocument();

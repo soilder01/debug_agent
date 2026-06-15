@@ -21,7 +21,7 @@ export function WritebackAuditList({
   onLoadMore
 }: WritebackAuditListProps) {
   return (
-    <>
+    <section className="writeback-audit-list" aria-label="Writeback audit list">
       <p>Writeback audits total：{totalCount}</p>
       <p>Writeback audit filter：{activeFilter ?? "all"}</p>
       <ul aria-label="Spreadsheet writeback audits">
@@ -46,6 +46,6 @@ export function WritebackAuditList({
           Load more writeback audits
         </button>
       ) : null}
-    </>
+    </section>
   );
 }

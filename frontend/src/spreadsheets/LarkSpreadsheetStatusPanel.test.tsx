@@ -21,6 +21,7 @@ describe("LarkSpreadsheetStatusPanel", () => {
     render(<LarkSpreadsheetStatusPanel status={makeStatus()} />);
 
     expect(screen.getByText("Lark 配置状态：已配置")).toBeInTheDocument();
+    expect(screen.getByText("ok")).toHaveClass("status-badge--success");
     expect(screen.getByText("Lark 连接状态：ok")).toBeInTheDocument();
     expect(screen.getByText("Lark 表格：spreadsheet-123 / sheet-456")).toBeInTheDocument();
     expect(screen.getByText("Lark CLI 超时：60s")).toBeInTheDocument();

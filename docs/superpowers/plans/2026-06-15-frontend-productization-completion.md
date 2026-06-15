@@ -300,14 +300,14 @@ Commit only after the focused tests and full verification pass.
 - Modify: `frontend/src/spreadsheets/LarkSpreadsheetStatusPanel.test.tsx`
 - Modify: `frontend/src/styles/product.css`
 
-- [ ] Add RED tests for sync status, writeback audit health, retry affordances, and Lark connection state.
-- [ ] Productize spreadsheet controls using surfaces, status badges, audit rows, and action rows.
-- [ ] Ensure failed/skipped/succeeded audit filters remain accessible.
-- [ ] Run:
+- [x] Add RED tests for sync status, writeback audit health, retry affordances, and Lark connection state.
+- [x] Productize spreadsheet controls using surfaces, status badges, audit rows, and action rows.
+- [x] Ensure failed/skipped/succeeded audit filters remain accessible.
+- [x] Run:
   ```powershell
   npx --yes pnpm@9.15.4 --dir frontend test -- --run src/spreadsheets/SpreadsheetSyncPanel.test.tsx src/spreadsheets/SpreadsheetWritebackPanel.test.tsx src/spreadsheets/WritebackAuditSummary.test.tsx src/spreadsheets/WritebackAuditList.test.tsx src/spreadsheets/WritebackAuditRow.test.tsx src/spreadsheets/LarkSpreadsheetStatusPanel.test.tsx
   ```
-- [ ] Commit:
+- [x] Commit:
   ```powershell
   git add frontend/src/spreadsheets frontend/src/styles/product.css
   git commit -m "feat: productize spreadsheet operations"

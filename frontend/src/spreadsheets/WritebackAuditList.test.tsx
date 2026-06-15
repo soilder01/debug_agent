@@ -38,6 +38,7 @@ describe("WritebackAuditList", () => {
     );
 
     expect(screen.getByText("Writeback audits total：2")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Writeback audit list" })).toHaveClass("writeback-audit-list");
     expect(screen.getByText("Writeback audit filter：failed")).toBeInTheDocument();
     expect(screen.getByText("job-failed-writeback-1：failed｜row 7｜permission denied")).toBeInTheDocument();
 

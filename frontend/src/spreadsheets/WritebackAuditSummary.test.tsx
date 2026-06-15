@@ -19,6 +19,8 @@ describe("WritebackAuditSummary", () => {
 
     render(<WritebackAuditSummary summary={summary} onLoadStatus={onLoadStatus} />);
 
+    expect(screen.getByLabelText("Writeback audit health metrics")).toHaveClass("metric-strip");
+    expect(screen.getByLabelText("Writeback audit filters")).toHaveClass("action-row");
     expect(screen.getByText("Writeback audit total：13")).toBeInTheDocument();
     expect(screen.getByText("Writeback audit succeeded：8")).toBeInTheDocument();
     expect(screen.getByText("Writeback audit failed：2")).toBeInTheDocument();

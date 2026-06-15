@@ -92,6 +92,7 @@ describe("SpreadsheetSyncPanel", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Spreadsheet Sync" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Spreadsheet Sync" })).toHaveClass("spreadsheet-operations");
     expect(screen.getByText("Lark 连接状态：ok")).toBeInTheDocument();
     expect(screen.getByText("Spreadsheet 同步样本：1")).toBeInTheDocument();
     expect(screen.getByText("Writeback audit total：6")).toBeInTheDocument();

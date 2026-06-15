@@ -45,6 +45,9 @@ describe("SpreadsheetWritebackPanel", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Spreadsheet Writeback" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Spreadsheet Writeback" })).toHaveClass("writeback-panel");
+    expect(screen.getByLabelText("Spreadsheet writeback actions")).toHaveClass("action-row");
+    expect(screen.getByText("failed")).toHaveClass("status-badge--critical");
     expect(screen.getByText("Spreadsheet writeback row：row-42")).toBeInTheDocument();
     expect(screen.getByText("错误原因：model_weakness")).toBeInTheDocument();
     expect(screen.getByText("分析报告链接：https://debug-agent.local/report")).toBeInTheDocument();

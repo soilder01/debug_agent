@@ -6,6 +6,7 @@ import type {
   SpreadsheetWritebackAuditListResponse,
   SpreadsheetWritebackResult
 } from "../api/client";
+import { ProductSurface } from "../ui/ProductPrimitives";
 import { LarkSpreadsheetStatusPanel } from "./LarkSpreadsheetStatusPanel";
 import { SpreadsheetControlsPanel } from "./SpreadsheetControlsPanel";
 import { SpreadsheetSyncResultPanel } from "./SpreadsheetSyncResultPanel";
@@ -58,8 +59,12 @@ export function SpreadsheetSyncPanel({
   onLoadMoreWritebackAudits
 }: SpreadsheetSyncPanelProps) {
   return (
-    <section>
-      <h2>Spreadsheet Sync</h2>
+    <ProductSurface
+      title="Spreadsheet Sync"
+      eyebrow="Writeback"
+      description="Sync Lark rows, inspect writeback audit health, and retry failed spreadsheet updates."
+      className="spreadsheet-operations"
+    >
       <SpreadsheetControlsPanel
         spreadsheetUrl={spreadsheetUrl}
         spreadsheetId={spreadsheetId}
@@ -89,6 +94,6 @@ export function SpreadsheetSyncPanel({
           onLoadMore={onLoadMoreWritebackAudits}
         />
       ) : null}
-    </section>
+    </ProductSurface>
   );
 }
