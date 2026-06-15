@@ -43,6 +43,7 @@ class DebugReport(BaseModel):
     root_cause_trace: list[dict[str, object]] = Field(default_factory=list)
     recommended_actions: list[dict[str, str]] = Field(default_factory=list)
     follow_up_experiments: list[dict[str, str]] = Field(default_factory=list)
+    confidence_reasons: list[dict[str, str]] = Field(default_factory=list)
     suggested_sheet_fields: dict[str, str]
 
 
@@ -89,6 +90,11 @@ def generate_initial_report(
         root_cause_trace=_build_root_cause_trace(run_result),
         recommended_actions=_build_recommended_actions(root_cause),
         follow_up_experiments=_build_follow_up_experiments(case, verification_results or []),
+        confidence_reasons=_build_confidence_reasons(
+            run_result=run_result,
+            root_cause_trace=_build_root_cause_trace(run_result),
+            verification_results=verification_results or [],
+        ),
         suggested_sheet_fields=suggested_sheet_fields,
     )
 
@@ -256,6 +262,78 @@ def _build_follow_up_experiments(
             }
         )
     return follow_ups
+
+
+def _build_confidence_reasons(
+    *,
+    run_result: ExperimentRunResult | None,
+    root_cause_trace: list[dict[str, object]],
+    verification_results: list[dict[str, object]],
+) -> list[dict[str, str]]:
+    evidence_count = len(run_result.evidence) if run_result is not None else 0
+    evidence_level = "high" if evidence_count >= 3 else "medium" if evidence_count > 0 else "low"
+    reasons = [
+        {
+            "source": "evidence_count",
+            "level": evidence_level,
+            "summary": f"{evidence_count} 条 evidence 支撑当前判断。",
+        }
+    ]
+    trace_variants = {
+        str(trace.get("variant"))
+        for trace in root_cause_trace
+        if isinstance(trace.get("variant"), str) and str(trace.get("variant")).strip()
+    }
+    if "cross_modal_compare" in trace_variants:
+        reasons.append(
+            {
+                "source": "ablation_pattern",
+                "level": "high",
+                "summary": "root cause trace 包含 cross_modal_compare 变体，支持跨模态归因。",
+            }
+        )
+    elif trace_variants:
+        reasons.append(
+            {
+                "source": "ablation_pattern",
+                "level": "medium",
+                "summary": f"root cause trace 包含 {', '.join(sorted(trace_variants))} 变体，支持当前归因。",
+            }
+        )
+    verification_reason = _verification_confidence_reason(verification_results)
+    reasons.append(verification_reason)
+    return reasons
+
+
+def _verification_confidence_reason(verification_results: list[dict[str, object]]) -> dict[str, str]:
+    result_values = {
+        str(result.get("result"))
+        for result in verification_results
+        if isinstance(result.get("result"), str) and str(result.get("result")).strip()
+    }
+    if "regressed" in result_values:
+        return {
+            "source": "verification_outcome",
+            "level": "low",
+            "summary": "验证任务出现 regressed，降低当前推荐操作置信度。",
+        }
+    if "resolved" in result_values:
+        return {
+            "source": "verification_outcome",
+            "level": "high",
+            "summary": "验证任务出现 resolved，提升当前推荐操作置信度。",
+        }
+    if result_values:
+        return {
+            "source": "verification_outcome",
+            "level": "medium",
+            "summary": f"验证任务结果包含 {', '.join(sorted(result_values))}，需要结合证据继续判断。",
+        }
+    return {
+        "source": "verification_outcome",
+        "level": "neutral",
+        "summary": "尚无验证任务结果参与置信度判断。",
+    }
 
 
 def _modality_from_root_cause_summary(summary: str) -> str:

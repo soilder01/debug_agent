@@ -93,9 +93,9 @@
 - Test: `backend/tests/reports/test_generator.py`
 - Test: `frontend/src/reports/ReportPanel.test.tsx`
 
-- [ ] Add structured confidence reasons to `DebugReport`.
-- [ ] Include evidence counts, ablation patterns, and verification outcomes as confidence inputs.
-- [ ] Render confidence reasons in the report panel.
+- [x] Add structured confidence reasons to `DebugReport`.
+- [x] Include evidence counts, ablation patterns, and verification outcomes as confidence inputs.
+- [x] Render confidence reasons in the report panel.
 
 ### Task 5: Production Governance Baseline
 

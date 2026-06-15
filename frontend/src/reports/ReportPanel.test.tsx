@@ -444,6 +444,23 @@ describe("ReportPanel", () => {
           detail: "单模态通过但跨模态失败，优先检查 fusion/alignment 能力。"
         }
       ],
+      confidence_reasons: [
+        {
+          source: "evidence_count",
+          level: "high",
+          summary: "3 条 evidence 支撑当前判断。"
+        },
+        {
+          source: "ablation_pattern",
+          level: "high",
+          summary: "root cause trace 包含 cross_modal_compare 变体，支持跨模态归因。"
+        },
+        {
+          source: "verification_outcome",
+          level: "neutral",
+          summary: "尚无验证任务结果参与置信度判断。"
+        }
+      ],
       suggested_sheet_fields: {
         错误原因: "跨模态对齐问题：单模态可通过，但跨模态比较失败。",
         Ablation结论: "单模态变体 image_only, text_only 可通过，但跨模态变体 cross_modal_compare 失败。"
@@ -469,6 +486,12 @@ describe("ReportPanel", () => {
     expect(screen.getAllByText("状态：pending")[0]).toBeInTheDocument();
     expect(screen.getByText("要求模型先分别列出 image/text 证据，再输出冲突结论。")).toBeInTheDocument();
     expect(screen.getByText("model_capability/high：将跨模态融合短板纳入模型能力归因。")).toBeInTheDocument();
+    expect(screen.getByText("Confidence Reasons")).toBeInTheDocument();
+    expect(screen.getByText("evidence_count/high：3 条 evidence 支撑当前判断。")).toBeInTheDocument();
+    expect(
+      screen.getByText("ablation_pattern/high：root cause trace 包含 cross_modal_compare 变体，支持跨模态归因。")
+    ).toBeInTheDocument();
+    expect(screen.getByText("verification_outcome/neutral：尚无验证任务结果参与置信度判断。")).toBeInTheDocument();
   });
 
   it("delegates recommended action status updates", async () => {

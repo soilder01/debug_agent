@@ -422,6 +422,23 @@ def test_generate_report_infers_cross_modal_alignment_from_ablation_results() ->
     assert report.root_cause.confidence == "high"
     assert "image_only, text_only" in report.root_cause.evidence_summary
     assert "cross_modal_compare" in report.root_cause.evidence_summary
+    assert report.confidence_reasons == [
+        {
+            "source": "evidence_count",
+            "level": "high",
+            "summary": "3 条 evidence 支撑当前判断。",
+        },
+        {
+            "source": "ablation_pattern",
+            "level": "high",
+            "summary": "root cause trace 包含 cross_modal_compare 变体，支持跨模态归因。",
+        },
+        {
+            "source": "verification_outcome",
+            "level": "neutral",
+            "summary": "尚无验证任务结果参与置信度判断。",
+        },
+    ]
     assert report.suggested_sheet_fields["错误原因"].startswith("跨模态对齐问题")
     assert report.suggested_sheet_fields["Ablation结论"] == (
         "单模态变体 image_only, text_only 可通过，但跨模态变体 cross_modal_compare 失败。"
@@ -657,6 +674,11 @@ def test_generate_report_includes_verification_follow_up_plan_summary() -> None:
             "summary": "验证任务 job-verify-video 结果为 regressed，建议执行 4 个后续 probing 步骤。",
         }
     ]
+    assert {
+        "source": "verification_outcome",
+        "level": "low",
+        "summary": "验证任务出现 regressed，降低当前推荐操作置信度。",
+    } in report.confidence_reasons
 
 
 def test_generate_report_uses_generic_output_mismatch_for_non_ocr_structured_deltas() -> None:

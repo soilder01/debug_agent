@@ -64,6 +64,11 @@ export type DebugReport = {
     summary: string;
     detail: string;
   }>;
+  confidence_reasons?: Array<{
+    source: string;
+    level: string;
+    summary: string;
+  }>;
   suggested_sheet_fields: Record<string, string>;
 };
 

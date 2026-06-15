@@ -38,6 +38,7 @@ export function ReportPanel({
   const ablationConclusion = report.suggested_sheet_fields["Ablation结论"];
   const rootCauseTrace = report.root_cause_trace ?? [];
   const recommendedActions = report.recommended_actions ?? [];
+  const confidenceReasons = report.confidence_reasons ?? [];
   const verificationResultByJobId = new Map(
     recommendedActionVerificationResults.map((result) => [result.verification_job_id, result])
   );
@@ -170,6 +171,18 @@ export function ReportPanel({
                     </button>
                   </p>
                 ) : null}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {confidenceReasons.length > 0 ? (
+        <>
+          <h3>Confidence Reasons</h3>
+          <ul aria-label="Confidence reasons">
+            {confidenceReasons.map((reason) => (
+              <li key={`${reason.source}:${reason.level}:${reason.summary}`}>
+                {reason.source}/{reason.level}：{reason.summary}
               </li>
             ))}
           </ul>
