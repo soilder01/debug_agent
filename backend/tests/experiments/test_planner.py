@@ -4,6 +4,7 @@ from pathlib import Path
 from debug_agent.cases.models import DebugCase
 from debug_agent.experiments.planner import (
     plan_experiments,
+    plan_strategy_escalation_follow_up_experiments,
     plan_strategy_follow_up_experiments,
     plan_verification_follow_up_experiments,
 )
@@ -442,4 +443,55 @@ def test_plan_strategy_follow_up_experiments_adds_debug_strategy_probes() -> Non
     )
     assert plan.steps[-1].description == (
         "Run strategy stage verification_gate: 将 applied 推荐操作提交 verification job，并比较 source/verification success rate。"
+    )
+
+
+def test_plan_strategy_escalation_follow_up_experiments_adds_escalation_probe() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "multimodal-strategy-escalation",
+            "task_type": "multimodal_detection",
+            "image_uri": "file:///tmp/multimodal-input.mp4",
+            "prompt": "Compare the image and caption, then return cross-modal conflict JSON.",
+            "golden_answer": {"answers": []},
+            "expected_output": {
+                "conflicts": [
+                    {
+                        "target_id": "multimodal:conflict:1",
+                        "conflict_type": "visual_text_conflict",
+                        "modalities": ["image", "text"],
+                        "expected": "caption matches the visual subject",
+                        "actual": "image and caption both describe a cat",
+                    }
+                ]
+            },
+            "scoring_standard": "cross-modal claims must agree.",
+            "predictions": [{"trial": 0, "raw_output": "{\"conflicts\":[]}", "score": 0}],
+            "avg_score": 0.0,
+        }
+    )
+
+    plan = plan_strategy_escalation_follow_up_experiments(
+        case,
+        [
+            {
+                "stage": "ablation_expansion",
+                "outcome": "needs_escalation",
+                "follow_up_job_id": "job-strategy-follow-up",
+                "escalation": "Run single-modality capability probes before keeping cross-modal attribution.",
+            }
+        ],
+        baseline_trials=1,
+    )
+
+    assert [step.name for step in plan.steps] == [
+        "baseline_replay",
+        "cross_modal_schema_check",
+        "modality_ablation_check",
+        "conflict_grounding_check",
+        "strategy_escalation_single_modality_probe",
+    ]
+    assert plan.steps[-1].description == (
+        "Escalate strategy stage ablation_expansion from follow-up job job-strategy-follow-up: "
+        "Run single-modality capability probes before keeping cross-modal attribution."
     )

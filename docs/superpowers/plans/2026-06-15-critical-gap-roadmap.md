@@ -269,6 +269,19 @@
 - [x] Include strategy follow-up outcome and escalation summaries in spreadsheet `评估问题反馈`.
 - [x] Keep strategy outcome writeback derived from current job/evidence state instead of stale persisted fields.
 
+### Task 17: Escalation-Aware Next Probe Planning
+
+**Files:**
+- Modify: `backend/src/debug_agent/experiments/planner.py`
+- Modify: `backend/src/debug_agent/reports/job_report.py`
+- Test: `backend/tests/experiments/test_planner.py`
+- Test: `backend/tests/reports/test_job_report.py`
+
+- [x] Convert `needs_escalation` strategy outcomes into executable next probing steps.
+- [x] Add a single-modality escalation probe for failed `ablation_expansion` follow-up outcomes.
+- [x] Append escalation-driven follow-up experiments to rebuilt reports.
+- [x] Preserve base recipe routing while adding escalation probes only when stop conditions fail.
+
 ## Verification Policy
 
 Every task must follow:

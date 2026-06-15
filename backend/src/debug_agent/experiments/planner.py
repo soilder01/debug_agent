@@ -88,5 +88,42 @@ def plan_strategy_follow_up_experiments(
     )
 
 
+def plan_strategy_escalation_follow_up_experiments(
+    case: DebugCase,
+    strategy_follow_up_results: list[dict[str, object]],
+    baseline_trials: int | None = None,
+) -> ExperimentPlan:
+    base_plan = plan_experiments(case, baseline_trials=baseline_trials)
+    escalation_steps = [
+        ExperimentStep(
+            name=_strategy_escalation_probe_name(stage),
+            description=f"Escalate strategy stage {stage} from follow-up job {follow_up_job_id}: {escalation}",
+            trials=1,
+        )
+        for item in strategy_follow_up_results
+        if item.get("outcome") == "needs_escalation"
+        and (stage := item.get("stage"))
+        and isinstance(stage, str)
+        and (follow_up_job_id := item.get("follow_up_job_id"))
+        and isinstance(follow_up_job_id, str)
+        and (escalation := item.get("escalation"))
+        and isinstance(escalation, str)
+        and escalation.strip()
+    ]
+    if not escalation_steps:
+        return base_plan
+    return ExperimentPlan(
+        case_id=base_plan.case_id,
+        max_model_calls=base_plan.max_model_calls,
+        steps=[*base_plan.steps, *escalation_steps],
+    )
+
+
+def _strategy_escalation_probe_name(stage: str) -> str:
+    if stage == "ablation_expansion":
+        return "strategy_escalation_single_modality_probe"
+    return f"strategy_escalation_{_safe_strategy_stage(stage)}_probe"
+
+
 def _safe_strategy_stage(stage: str) -> str:
     return "".join(character if character.isalnum() else "_" for character in stage.strip().lower()).strip("_")

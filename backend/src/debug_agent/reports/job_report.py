@@ -1,6 +1,7 @@
 from typing import Literal
 
-from debug_agent.experiments.planner import plan_experiments
+from debug_agent.cases.models import DebugCase
+from debug_agent.experiments.planner import plan_experiments, plan_strategy_escalation_follow_up_experiments
 from debug_agent.experiments.runner import ExperimentRunResult
 from debug_agent.reports.generator import DebugReport, generate_initial_report
 from debug_agent.storage.repository import DebugJobRepository, RecommendedActionVerification, StrategyFollowUpJob
@@ -19,6 +20,16 @@ def build_report_for_job(repository: DebugJobRepository, job_id: str) -> DebugRe
     if report is None:
         return None
     report.strategy_follow_up_results = build_strategy_follow_up_results(repository, job_id)
+    job = repository.get_job(job_id)
+    case = repository.get_case(job.case_id) if job is not None else None
+    if case is not None:
+        report.follow_up_experiments = [
+            *report.follow_up_experiments,
+            *_build_strategy_escalation_follow_up_experiments(
+                case=case,
+                strategy_follow_up_results=report.strategy_follow_up_results,
+            ),
+        ]
     return _merge_recommended_action_statuses(repository, job_id, report)
 
 
@@ -115,6 +126,33 @@ def _strategy_escalation(stage: str) -> str:
     if stage == "verification_gate":
         return "Create another verification job after updating the recommended action."
     return "Collect additional targeted replay evidence before finalizing the root cause."
+
+
+def _build_strategy_escalation_follow_up_experiments(
+    *,
+    case: DebugCase,
+    strategy_follow_up_results: list[dict[str, object]],
+) -> list[dict[str, str]]:
+    base_step_names = {step.name for step in plan_experiments(case).steps}
+    escalation_plan = plan_strategy_escalation_follow_up_experiments(case, strategy_follow_up_results)
+    escalation_steps = [step for step in escalation_plan.steps if step.name not in base_step_names]
+    return [
+        {
+            "source": "strategy_outcome",
+            "stage": str(result.get("stage", "unknown")),
+            "result": str(result.get("outcome", "unknown")),
+            "planned_steps": step.name,
+            "summary": (
+                f"策略阶段 {result.get('stage')} 的 follow-up job {result.get('follow_up_job_id')} 未满足停止条件，"
+                f"已生成升级 probing：{step.name}。"
+            ),
+        }
+        for result, step in zip(
+            [item for item in strategy_follow_up_results if item.get("outcome") == "needs_escalation"],
+            escalation_steps,
+            strict=False,
+        )
+    ]
 
 
 def _recommended_action_verification_result(
