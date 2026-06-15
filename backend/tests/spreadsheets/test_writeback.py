@@ -183,6 +183,37 @@ def test_build_report_writeback_fields_includes_strategy_follow_up_results() -> 
     assert "升级：Run single-modality capability probes before keeping cross-modal attribution." in fields["评估问题反馈"]
 
 
+def test_build_report_writeback_fields_includes_targeted_probe_results() -> None:
+    report = _make_report().model_copy(
+        update={
+            "targeted_probe_results": [
+                {
+                    "source_job_id": "job-1",
+                    "target_id": "multimodal:conflict:1",
+                    "planned_steps": "targeted_multimodal_conflict_probe",
+                    "probe_job_id": "job-targeted-probe-1",
+                    "actor": "targeted-operator",
+                    "note": "probe conflict target",
+                    "created_at": "2026-06-15T00:00:02+00:00",
+                    "outcome": "target_still_failing",
+                    "success_rate": 0.0,
+                    "summary": "Targeted probe still failed on multimodal:conflict:1; escalation is recommended.",
+                    "escalation": "Run deeper localized replay or modality-specific probes for multimodal:conflict:1.",
+                }
+            ]
+        }
+    )
+
+    fields = build_report_writeback_fields(report, report_url="https://debug-agent.local/reports/job-1")
+
+    assert "Targeted Probe：" in fields["评估问题反馈"]
+    assert "multimodal:conflict:1/target_still_failing" in fields["评估问题反馈"]
+    assert "Targeted probe still failed on multimodal:conflict:1; escalation is recommended." in fields["评估问题反馈"]
+    assert "升级：Run deeper localized replay or modality-specific probes for multimodal:conflict:1." in fields[
+        "评估问题反馈"
+    ]
+
+
 def test_write_report_to_spreadsheet_row_updates_client_with_payload() -> None:
     client = RecordingWritebackClient()
     report = _make_report()
@@ -366,6 +397,76 @@ def test_completion_hook_writes_source_report_when_strategy_follow_up_completes(
     assert client.fields["分析报告链接"] == "https://debug-agent.local/jobs/job-source/report"
     assert "策略 Follow-up：" in client.fields["评估问题反馈"]
     assert "evidence_audit/passed_stop_condition" in client.fields["评估问题反馈"]
+    audit = repository.get_spreadsheet_writeback_audit("job-source")
+    assert audit is not None
+    assert audit.status == "succeeded"
+    assert audit.row_id == "source-row"
+    assert audit.report_url == "https://debug-agent.local/jobs/job-source/report"
+
+
+def test_completion_hook_writes_source_report_when_targeted_probe_completes() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    case = load_fixture_case("handwrite233").model_copy(update={"case_id": "auto-writeback-targeted-case"})
+    repository.save_case(case)
+    repository.create_job(job_id="job-source", case_id=case.case_id, baseline_trials=1)
+    repository.save_evidence(
+        job_id="job-source",
+        case_id=case.case_id,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="auto-writeback-targeted-case:baseline:0",
+                step_name="baseline_replay",
+                trial=0,
+                raw_output=case.predictions[0].raw_output,
+                judge=JudgeResult(score=0, reasons=["box:1 student_answer_mismatch"]),
+            )
+        ],
+    )
+    repository.create_job(job_id="job-targeted-probe", case_id=case.case_id, baseline_trials=1)
+    repository.save_evidence(
+        job_id="job-targeted-probe",
+        case_id=case.case_id,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="job-targeted-probe:still-fail",
+                step_name="targeted_image_region_probe",
+                trial=0,
+                raw_output=case.predictions[0].raw_output,
+                judge=JudgeResult(score=0, reasons=["image:region:1 region_label_mismatch"]),
+            )
+        ],
+    )
+    repository.mark_completed("job-targeted-probe")
+    repository.save_targeted_probe_job(
+        source_job_id="job-source",
+        target_id="image:region:1",
+        planned_steps="targeted_image_region_probe",
+        probe_job_id="job-targeted-probe",
+        actor="targeted-operator",
+        note="probe image region",
+    )
+    repository.save_spreadsheet_row_mapping(
+        spreadsheet_id="spreadsheet-1",
+        sheet_id="sheet-1",
+        row_id="source-row",
+        case_id=case.case_id,
+        job_id="job-source",
+    )
+    client = RecordingWritebackClient()
+    hook = make_spreadsheet_writeback_completion_hook(
+        repository=repository,
+        client=client,
+        report_base_url="https://debug-agent.local",
+    )
+
+    hook(SubmittedDebugJob(job_id="job-targeted-probe", case_id=case.case_id, status="completed"))
+
+    assert client.row_id == "source-row"
+    assert client.fields["分析报告链接"] == "https://debug-agent.local/jobs/job-source/report"
+    assert "Targeted Probe：" in client.fields["评估问题反馈"]
+    assert "image:region:1/target_still_failing" in client.fields["评估问题反馈"]
     audit = repository.get_spreadsheet_writeback_audit("job-source")
     assert audit is not None
     assert audit.status == "succeeded"

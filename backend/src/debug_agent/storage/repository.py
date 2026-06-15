@@ -516,6 +516,19 @@ class DebugJobRepository:
                 )
                 return [_targeted_probe_job_from_row(row) for row in rows]
 
+    def list_targeted_probe_sources(self, probe_job_id: str) -> list[TargetedProbeJob]:
+        with self._lock:
+            with self._session_factory() as session:
+                rows = session.scalars(
+                    select(TargetedProbeJobRow)
+                    .where(TargetedProbeJobRow.probe_job_id == probe_job_id)
+                    .order_by(
+                        TargetedProbeJobRow.created_at,
+                        TargetedProbeJobRow.source_job_id,
+                    )
+                )
+                return [_targeted_probe_job_from_row(row) for row in rows]
+
     def list_cases(self, has_regions: bool = False, limit: int | None = None, offset: int = 0) -> list[DebugCase]:
         with self._lock:
             with self._session_factory() as session:

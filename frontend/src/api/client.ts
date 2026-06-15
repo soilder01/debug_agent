@@ -72,6 +72,19 @@ export type DebugReport = {
     trace_refs?: string;
   }>;
   verification_results?: RecommendedActionVerificationResult[];
+  targeted_probe_results?: Array<{
+    source_job_id: string;
+    target_id: string;
+    planned_steps: string;
+    probe_job_id: string;
+    actor: string;
+    note: string;
+    created_at: string;
+    outcome: string;
+    success_rate: number;
+    summary: string;
+    escalation: string;
+  }>;
   evaluation_asset_diagnostics?: Array<{
     source: string;
     status: string;

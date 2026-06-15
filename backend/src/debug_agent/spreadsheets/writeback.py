@@ -92,6 +92,9 @@ def _writeback_target_job_ids(repository: DebugJobRepository, completed_job_id: 
     sources = repository.list_strategy_follow_up_sources(completed_job_id)
     if sources:
         return [source.source_job_id for source in sources]
+    targeted_sources = repository.list_targeted_probe_sources(completed_job_id)
+    if targeted_sources:
+        return [source.source_job_id for source in targeted_sources]
     return [completed_job_id]
 
 
@@ -164,6 +167,9 @@ def _evaluation_feedback(report: DebugReport) -> str:
     strategy_results = _strategy_follow_up_results(report)
     if strategy_results:
         lines.append(f"策略 Follow-up：{strategy_results}")
+    targeted_results = _targeted_probe_results(report)
+    if targeted_results:
+        lines.append(f"Targeted Probe：{targeted_results}")
     if report.experiment_summary is not None:
         summary = report.experiment_summary
         lines.extend(
@@ -211,6 +217,24 @@ def _strategy_follow_up_result_line(result: dict[str, object]) -> str:
     summary = str(result.get("summary", ""))
     escalation = str(result.get("escalation", ""))
     line = f"{stage}/{outcome}：{summary}"
+    if escalation:
+        line = f"{line}\n升级：{escalation}"
+    return line
+
+
+def _targeted_probe_results(report: DebugReport) -> str:
+    return "\n".join(
+        _targeted_probe_result_line(result)
+        for result in report.targeted_probe_results
+    )
+
+
+def _targeted_probe_result_line(result: dict[str, object]) -> str:
+    target_id = str(result.get("target_id", "unknown"))
+    outcome = str(result.get("outcome", "unknown"))
+    summary = str(result.get("summary", ""))
+    escalation = str(result.get("escalation", ""))
+    line = f"{target_id}/{outcome}：{summary}"
     if escalation:
         line = f"{line}\n升级：{escalation}"
     return line

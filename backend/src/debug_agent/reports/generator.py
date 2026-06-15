@@ -52,6 +52,7 @@ class DebugReport(BaseModel):
     evaluation_asset_diagnostics: list[dict[str, str]] = Field(default_factory=list)
     follow_up_experiments: list[dict[str, str]] = Field(default_factory=list)
     strategy_follow_up_results: list[dict[str, object]] = Field(default_factory=list)
+    targeted_probe_results: list[dict[str, object]] = Field(default_factory=list)
     confidence_reasons: list[dict[str, str]] = Field(default_factory=list)
     debug_strategy: list[dict[str, str]] = Field(default_factory=list)
     suggested_sheet_fields: dict[str, str]

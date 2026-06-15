@@ -376,6 +376,25 @@
 - [x] Add frontend API/client support for targeted probe history.
 - [x] Render targeted probe job history in the report workspace and allow opening probe jobs.
 
+### Task 24: Targeted Probe Outcome Writeback Trace
+
+**Files:**
+- Modify: `backend/src/debug_agent/api/routes.py`
+- Modify: `backend/src/debug_agent/reports/generator.py`
+- Modify: `backend/src/debug_agent/reports/job_report.py`
+- Modify: `backend/src/debug_agent/spreadsheets/writeback.py`
+- Modify: `backend/src/debug_agent/storage/repository.py`
+- Modify: `frontend/src/api/client.ts`
+- Test: `backend/tests/api/test_recommended_action_status.py`
+- Test: `backend/tests/reports/test_job_report.py`
+- Test: `backend/tests/spreadsheets/test_writeback.py`
+
+- [x] Promote targeted probe outcomes into rebuilt `DebugReport`.
+- [x] Reuse one backend targeted probe outcome builder across report and API responses.
+- [x] Include targeted probe outcome and escalation summaries in spreadsheet `评估问题反馈`.
+- [x] Automatically rebuild and write back the source job report when a targeted probe job completes.
+- [x] Keep strategy follow-up writeback behavior unchanged.
+
 ## Verification Policy
 
 Every task must follow:

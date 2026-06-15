@@ -4,7 +4,12 @@ from debug_agent.cases.models import DebugCase
 from debug_agent.experiments.planner import plan_experiments, plan_strategy_escalation_follow_up_experiments
 from debug_agent.experiments.runner import ExperimentRunResult
 from debug_agent.reports.generator import DebugReport, generate_initial_report
-from debug_agent.storage.repository import DebugJobRepository, RecommendedActionVerification, StrategyFollowUpJob
+from debug_agent.storage.repository import (
+    DebugJobRepository,
+    RecommendedActionVerification,
+    StrategyFollowUpJob,
+    TargetedProbeJob,
+)
 
 
 def build_report_for_job(repository: DebugJobRepository, job_id: str) -> DebugReport | None:
@@ -20,6 +25,7 @@ def build_report_for_job(repository: DebugJobRepository, job_id: str) -> DebugRe
     if report is None:
         return None
     report.strategy_follow_up_results = build_strategy_follow_up_results(repository, job_id)
+    report.targeted_probe_results = build_targeted_probe_results(repository, job_id)
     job = repository.get_job(job_id)
     case = repository.get_case(job.case_id) if job is not None else None
     if case is not None:
@@ -83,6 +89,54 @@ def build_strategy_follow_up_results(repository: DebugJobRepository, job_id: str
         _strategy_follow_up_result(repository=repository, follow_up=follow_up)
         for follow_up in repository.list_strategy_follow_up_jobs(job_id)
     ]
+
+
+def build_targeted_probe_results(repository: DebugJobRepository, job_id: str) -> list[dict[str, object]]:
+    return [
+        _targeted_probe_result(repository=repository, probe=probe)
+        for probe in repository.list_targeted_probe_jobs(job_id)
+    ]
+
+
+def _targeted_probe_result(
+    *,
+    repository: DebugJobRepository,
+    probe: TargetedProbeJob,
+) -> dict[str, object]:
+    job = repository.get_job(probe.probe_job_id)
+    if job is None or job.status != "completed":
+        return {
+            **probe.model_dump(),
+            "outcome": "pending",
+            "success_rate": 0.0,
+            "summary": "Targeted probe job is not completed yet.",
+            "escalation": "",
+        }
+    evidence = repository.list_evidence(probe.probe_job_id)
+    if not evidence:
+        return {
+            **probe.model_dump(),
+            "outcome": "inconclusive",
+            "success_rate": 0.0,
+            "summary": f"Targeted probe completed without evidence for {probe.target_id}.",
+            "escalation": f"Re-run targeted probe with evidence capture enabled for {probe.target_id}.",
+        }
+    success_rate = sum(1 for item in evidence if item.judge.score == 1) / len(evidence)
+    if success_rate >= 1.0:
+        return {
+            **probe.model_dump(),
+            "outcome": "target_cleared",
+            "success_rate": success_rate,
+            "summary": f"Targeted probe passed for {probe.target_id}; localized failure did not reproduce.",
+            "escalation": "",
+        }
+    return {
+        **probe.model_dump(),
+        "outcome": "target_still_failing",
+        "success_rate": success_rate,
+        "summary": f"Targeted probe still failed on {probe.target_id}; escalation is recommended.",
+        "escalation": f"Run deeper localized replay or modality-specific probes for {probe.target_id}.",
+    }
 
 
 def _strategy_follow_up_result(
