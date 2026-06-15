@@ -585,6 +585,18 @@
 - [x] Include final attribution summaries in spreadsheet `评估问题反馈`.
 - [x] Render final attribution summaries in the report panel.
 
+### Task 36: Attribution-Driven Follow-Up Actions
+
+**Files:**
+- Modify: `backend/src/debug_agent/reports/job_report.py`
+- Test: `backend/tests/reports/test_job_report.py`
+
+- [x] Convert final attribution entries into actionable recommended actions.
+- [x] Map prompt issues to prompt patch recommendations.
+- [x] Map evaluation asset, data, model capability, and human-confirmed categories to targeted action categories.
+- [x] Generate final-attribution follow-up verification entries with category-specific planned steps.
+- [x] Preserve existing recommended actions and follow-up experiments while appending attribution-driven entries.
+
 ## Verification Policy
 
 Every task must follow:

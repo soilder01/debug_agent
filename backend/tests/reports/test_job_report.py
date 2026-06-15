@@ -577,6 +577,23 @@ def test_build_report_for_job_stops_targeted_escalation_at_max_depth() -> None:
             "recommended_action": "Update prompt instructions and rerun verification before assigning model capability blame.",
         }
     ]
+    assert {
+        "category": "prompt_patch",
+        "priority": "high",
+        "status": "pending",
+        "summary": "Apply final attribution fix for multimodal:conflict:1.",
+        "detail": "Update prompt instructions and rerun verification before assigning model capability blame.",
+    } in report.recommended_actions
+    assert {
+        "source": "final_attribution",
+        "target_id": "multimodal:conflict:1",
+        "category": "prompt_issue",
+        "planned_steps": "final_attribution_prompt_verification",
+        "summary": (
+            "Final attribution for multimodal:conflict:1 is prompt_issue; "
+            "run final_attribution_prompt_verification to verify the recommended fix."
+        ),
+    } in report.follow_up_experiments
 
 
 def test_build_report_for_job_adds_escalation_follow_up_for_failed_strategy_outcome() -> None:

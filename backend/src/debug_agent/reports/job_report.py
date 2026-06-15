@@ -52,6 +52,14 @@ def build_report_for_job(repository: DebugJobRepository, job_id: str) -> DebugRe
             for status in repository.list_human_handoff_statuses(job_id)
         ]
         report.final_attributions = _build_final_attributions(report.human_handoff_statuses)
+        report.recommended_actions = [
+            *report.recommended_actions,
+            *_build_final_attribution_recommended_actions(report.final_attributions),
+        ]
+        report.follow_up_experiments = [
+            *report.follow_up_experiments,
+            *_build_final_attribution_follow_up_experiments(report.final_attributions),
+        ]
     return _merge_recommended_action_statuses(repository, job_id, report)
 
 
@@ -372,6 +380,62 @@ def _final_attribution_recommended_action(note: str) -> str:
     if category == "model_capability_gap":
         return "Keep model capability attribution and add targeted regression coverage."
     return "Record the confirmed root cause and rerun verification if the case remains business-critical."
+
+
+def _build_final_attribution_recommended_actions(final_attributions: list[dict[str, str]]) -> list[dict[str, str]]:
+    return [
+        {
+            "category": _recommended_action_category_for_attribution(attribution.get("category", "")),
+            "priority": "high",
+            "status": "pending",
+            "summary": f"Apply final attribution fix for {attribution.get('target_id', 'unknown')}.",
+            "detail": attribution.get("recommended_action", ""),
+        }
+        for attribution in final_attributions
+        if attribution.get("recommended_action", "").strip()
+    ]
+
+
+def _recommended_action_category_for_attribution(category: str) -> str:
+    if category == "prompt_issue":
+        return "prompt_patch"
+    if category == "evaluation_asset_issue":
+        return "evaluation_asset_fix"
+    if category == "data_issue":
+        return "data_repair"
+    if category == "model_capability_gap":
+        return "regression_set"
+    return "human_confirmed_action"
+
+
+def _build_final_attribution_follow_up_experiments(final_attributions: list[dict[str, str]]) -> list[dict[str, str]]:
+    return [
+        {
+            "source": "final_attribution",
+            "target_id": attribution.get("target_id", "unknown"),
+            "category": attribution.get("category", "unknown"),
+            "planned_steps": _final_attribution_verification_step(attribution.get("category", "")),
+            "summary": (
+                f"Final attribution for {attribution.get('target_id', 'unknown')} is "
+                f"{attribution.get('category', 'unknown')}; run "
+                f"{_final_attribution_verification_step(attribution.get('category', ''))} "
+                "to verify the recommended fix."
+            ),
+        }
+        for attribution in final_attributions
+    ]
+
+
+def _final_attribution_verification_step(category: str) -> str:
+    if category == "prompt_issue":
+        return "final_attribution_prompt_verification"
+    if category == "evaluation_asset_issue":
+        return "final_attribution_asset_verification"
+    if category == "data_issue":
+        return "final_attribution_data_verification"
+    if category == "model_capability_gap":
+        return "final_attribution_regression_set"
+    return "final_attribution_human_confirmed_verification"
 
 
 def _recommended_action_verification_result(
