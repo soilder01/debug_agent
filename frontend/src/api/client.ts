@@ -98,6 +98,14 @@ export type DebugReport = {
     stop_condition: string;
     escalation: string;
   }>;
+  follow_up_experiments?: Array<{
+    source: string;
+    stage?: string;
+    verification_job_id?: string;
+    result?: string;
+    planned_steps: string;
+    summary: string;
+  }>;
   suggested_sheet_fields: Record<string, string>;
 };
 

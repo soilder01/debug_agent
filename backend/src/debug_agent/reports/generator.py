@@ -1,7 +1,12 @@
 from pydantic import BaseModel, Field
 
 from debug_agent.cases.models import DebugCase
-from debug_agent.experiments.planner import ExperimentPlan, plan_verification_follow_up_experiments
+from debug_agent.experiments.planner import (
+    ExperimentPlan,
+    plan_experiments,
+    plan_strategy_follow_up_experiments,
+    plan_verification_follow_up_experiments,
+)
 from debug_agent.experiments.runner import ExperimentEvidence, ExperimentRunResult
 from debug_agent.reports.taxonomy import taxonomy_for_task_type
 
@@ -83,6 +88,7 @@ def generate_initial_report(
     observed_failure, root_cause, suggested_sheet_fields = _infer_report_findings(case=case, run_result=run_result)
     root_cause_trace = _build_root_cause_trace(run_result)
     citation_context = _citation_context(run_result=run_result, root_cause_trace=root_cause_trace)
+    debug_strategy = _build_debug_strategy(root_cause=root_cause, citation_context=citation_context)
     return DebugReport(
         job_id=job_id,
         case_id=case.case_id,
@@ -100,17 +106,17 @@ def generate_initial_report(
             run_result=run_result,
             citation_context=citation_context,
         ),
-        follow_up_experiments=_build_follow_up_experiments(case, verification_results or []),
+        follow_up_experiments=[
+            *_build_follow_up_experiments(case, verification_results or []),
+            *_build_strategy_follow_up_experiments(case=case, debug_strategy=debug_strategy),
+        ],
         confidence_reasons=_build_confidence_reasons(
             run_result=run_result,
             root_cause_trace=root_cause_trace,
             verification_results=verification_results or [],
             citation_context=citation_context,
         ),
-        debug_strategy=_build_debug_strategy(
-            root_cause=root_cause,
-            citation_context=citation_context,
-        ),
+        debug_strategy=debug_strategy,
         suggested_sheet_fields=suggested_sheet_fields,
     )
 
@@ -431,6 +437,26 @@ def _build_follow_up_experiments(
             }
         )
     return follow_ups
+
+
+def _build_strategy_follow_up_experiments(
+    *,
+    case: DebugCase,
+    debug_strategy: list[dict[str, str]],
+) -> list[dict[str, str]]:
+    base_step_names = {step.name for step in plan_experiments(case).steps}
+    strategy_plan = plan_strategy_follow_up_experiments(case, debug_strategy)
+    follow_up_steps = [step for step in strategy_plan.steps if step.name not in base_step_names]
+    return [
+        {
+            "source": "debug_strategy",
+            "stage": stage,
+            "planned_steps": step.name,
+            "summary": f"策略阶段 {stage} 已转为 follow-up experiment：{step.name}。",
+        }
+        for step in follow_up_steps
+        if (stage := step.name.removeprefix("strategy_").removesuffix("_probe"))
+    ]
 
 
 def _build_confidence_reasons(

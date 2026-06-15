@@ -187,6 +187,21 @@
 - [x] Include objective, trigger, planned probe, stop condition, and escalation for each strategy stage.
 - [x] Render debug strategy stages in the frontend report panel.
 
+### Task 12: Strategy-Aware Follow-Up Experiment Generation
+
+**Files:**
+- Modify: `backend/src/debug_agent/experiments/planner.py`
+- Modify: `backend/src/debug_agent/reports/generator.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `backend/tests/experiments/test_planner.py`
+- Test: `backend/tests/reports/test_generator.py`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Convert debug strategy stages into executable follow-up experiment steps.
+- [x] Include strategy-driven follow-up experiments in `DebugReport`.
+- [x] Render strategy-driven follow-up experiments in the frontend report panel.
+
 ## Verification Policy
 
 Every task must follow:

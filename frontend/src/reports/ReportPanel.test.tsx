@@ -516,6 +516,14 @@ describe("ReportPanel", () => {
           escalation: "如果单模态也失败，切换到 single_modality_capability_gap 策略。"
         }
       ],
+      follow_up_experiments: [
+        {
+          source: "debug_strategy",
+          stage: "ablation_expansion",
+          planned_steps: "strategy_ablation_expansion_probe",
+          summary: "策略阶段 ablation_expansion 已转为 follow-up experiment：strategy_ablation_expansion_probe。"
+        }
+      ],
       confidence_reasons: [
         {
           source: "evidence_count",
@@ -570,6 +578,9 @@ describe("ReportPanel", () => {
     expect(screen.getByText("探测：对比 image/text 单模态结果与 cross_modal_compare 结果。")).toBeInTheDocument();
     expect(screen.getByText("停止条件：单模态通过且 cross-modal probe 失败时，确认跨模态对齐/融合链路为主因。")).toBeInTheDocument();
     expect(screen.getByText("升级：如果单模态也失败，切换到 single_modality_capability_gap 策略。")).toBeInTheDocument();
+    expect(screen.getByText("Follow-up Experiments")).toBeInTheDocument();
+    expect(screen.getByText("debug_strategy/ablation_expansion：strategy_ablation_expansion_probe")).toBeInTheDocument();
+    expect(screen.getByText("策略阶段 ablation_expansion 已转为 follow-up experiment：strategy_ablation_expansion_probe。")).toBeInTheDocument();
     expect(screen.getByText("Confidence Reasons")).toBeInTheDocument();
     expect(screen.getByText("evidence_count/high：3 条 evidence 支撑当前判断。")).toBeInTheDocument();
     expect(

@@ -57,3 +57,36 @@ def plan_verification_follow_up_experiments(
             ),
         ],
     )
+
+
+def plan_strategy_follow_up_experiments(
+    case: DebugCase,
+    debug_strategy: list[dict[str, str]],
+    baseline_trials: int | None = None,
+) -> ExperimentPlan:
+    base_plan = plan_experiments(case, baseline_trials=baseline_trials)
+    strategy_steps = [
+        ExperimentStep(
+            name=f"strategy_{_safe_strategy_stage(stage)}_probe",
+            description=f"Run strategy stage {stage}: {planned_probe}",
+            trials=1,
+        )
+        for item in debug_strategy
+        if (stage := item.get("stage"))
+        and isinstance(stage, str)
+        and stage.strip()
+        and (planned_probe := item.get("planned_probe"))
+        and isinstance(planned_probe, str)
+        and planned_probe.strip()
+    ]
+    if not strategy_steps:
+        return base_plan
+    return ExperimentPlan(
+        case_id=base_plan.case_id,
+        max_model_calls=base_plan.max_model_calls,
+        steps=[*base_plan.steps, *strategy_steps],
+    )
+
+
+def _safe_strategy_stage(stage: str) -> str:
+    return "".join(character if character.isalnum() else "_" for character in stage.strip().lower()).strip("_")

@@ -478,6 +478,26 @@ def test_generate_report_infers_cross_modal_alignment_from_ablation_results() ->
             "escalation": "若 verification 为 not_resolved/regressed，自动生成 follow-up probing plan。",
         },
     ]
+    assert report.follow_up_experiments == [
+        {
+            "source": "debug_strategy",
+            "stage": "evidence_audit",
+            "planned_steps": "strategy_evidence_audit_probe",
+            "summary": "策略阶段 evidence_audit 已转为 follow-up experiment：strategy_evidence_audit_probe。",
+        },
+        {
+            "source": "debug_strategy",
+            "stage": "ablation_expansion",
+            "planned_steps": "strategy_ablation_expansion_probe",
+            "summary": "策略阶段 ablation_expansion 已转为 follow-up experiment：strategy_ablation_expansion_probe。",
+        },
+        {
+            "source": "debug_strategy",
+            "stage": "verification_gate",
+            "planned_steps": "strategy_verification_gate_probe",
+            "summary": "策略阶段 verification_gate 已转为 follow-up experiment：strategy_verification_gate_probe。",
+        },
+    ]
 
 
 def test_generate_report_infers_single_modality_gap_from_ablation_results() -> None:

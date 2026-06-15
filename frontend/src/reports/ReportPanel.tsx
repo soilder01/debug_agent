@@ -41,6 +41,7 @@ export function ReportPanel({
   const evaluationAssetDiagnostics = report.evaluation_asset_diagnostics ?? [];
   const confidenceReasons = report.confidence_reasons ?? [];
   const debugStrategy = report.debug_strategy ?? [];
+  const followUpExperiments = report.follow_up_experiments ?? [];
   const verificationResultByJobId = new Map(
     recommendedActionVerificationResults.map((result) => [result.verification_job_id, result])
   );
@@ -221,6 +222,21 @@ export function ReportPanel({
                 <p>探测：{strategy.planned_probe}</p>
                 <p>停止条件：{strategy.stop_condition}</p>
                 <p>升级：{strategy.escalation}</p>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {followUpExperiments.length > 0 ? (
+        <>
+          <h3>Follow-up Experiments</h3>
+          <ul aria-label="Follow-up experiments">
+            {followUpExperiments.map((followUp) => (
+              <li key={`${followUp.source}:${followUp.stage ?? followUp.verification_job_id ?? followUp.planned_steps}`}>
+                <p>
+                  {followUp.source}/{followUp.stage ?? followUp.result ?? "unknown"}：{followUp.planned_steps}
+                </p>
+                <p>{followUp.summary}</p>
               </li>
             ))}
           </ul>

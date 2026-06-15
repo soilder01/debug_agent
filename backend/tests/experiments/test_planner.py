@@ -2,7 +2,11 @@ import json
 from pathlib import Path
 
 from debug_agent.cases.models import DebugCase
-from debug_agent.experiments.planner import plan_experiments, plan_verification_follow_up_experiments
+from debug_agent.experiments.planner import (
+    plan_experiments,
+    plan_strategy_follow_up_experiments,
+    plan_verification_follow_up_experiments,
+)
 from debug_agent.recipes.classification import ClassificationRecipe
 from debug_agent.recipes.handwriting_ocr import HandwritingOcrRecipe
 from debug_agent.recipes.image_detection import ImageDetectionRecipe
@@ -374,4 +378,68 @@ def test_plan_verification_follow_up_experiments_for_regressed_video_result() ->
     ]
     assert plan.steps[-1].description == (
         "Probe regressed verification job job-verify-video with a targeted follow-up experiment."
+    )
+
+
+def test_plan_strategy_follow_up_experiments_adds_debug_strategy_probes() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "multimodal-strategy-follow-up",
+            "task_type": "multimodal_detection",
+            "image_uri": "file:///tmp/multimodal-input.mp4",
+            "prompt": "Compare the image and caption, then return cross-modal conflict JSON.",
+            "golden_answer": {"answers": []},
+            "expected_output": {
+                "conflicts": [
+                    {
+                        "target_id": "multimodal:conflict:1",
+                        "conflict_type": "visual_text_conflict",
+                        "modalities": ["image", "text"],
+                        "expected": "caption matches the visual subject",
+                        "actual": "image and caption both describe a cat",
+                    }
+                ]
+            },
+            "scoring_standard": "cross-modal claims must agree.",
+            "predictions": [{"trial": 0, "raw_output": "{\"conflicts\":[]}", "score": 0}],
+            "avg_score": 0.0,
+        }
+    )
+
+    plan = plan_strategy_follow_up_experiments(
+        case,
+        [
+            {
+                "stage": "evidence_audit",
+                "planned_probe": "复查 e-image-only, e-text-only, e-cross-modal 和关联产物，确认失败目标与 delta 是否一致。",
+            },
+            {
+                "stage": "ablation_expansion",
+                "planned_probe": "对比 image/text 单模态结果与 cross_modal_compare 结果，必要时加入 conflict_grounding_check。",
+            },
+            {
+                "stage": "verification_gate",
+                "planned_probe": "将 applied 推荐操作提交 verification job，并比较 source/verification success rate。",
+            },
+        ],
+        baseline_trials=1,
+    )
+
+    assert [step.name for step in plan.steps] == [
+        "baseline_replay",
+        "cross_modal_schema_check",
+        "modality_ablation_check",
+        "conflict_grounding_check",
+        "strategy_evidence_audit_probe",
+        "strategy_ablation_expansion_probe",
+        "strategy_verification_gate_probe",
+    ]
+    assert plan.steps[-3].description == (
+        "Run strategy stage evidence_audit: 复查 e-image-only, e-text-only, e-cross-modal 和关联产物，确认失败目标与 delta 是否一致。"
+    )
+    assert plan.steps[-2].description == (
+        "Run strategy stage ablation_expansion: 对比 image/text 单模态结果与 cross_modal_compare 结果，必要时加入 conflict_grounding_check。"
+    )
+    assert plan.steps[-1].description == (
+        "Run strategy stage verification_gate: 将 applied 推荐操作提交 verification job，并比较 source/verification success rate。"
     )
