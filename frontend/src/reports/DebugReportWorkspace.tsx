@@ -52,6 +52,11 @@ export function DebugReportWorkspace({
         onSelectEvidence={onSelectEvidence}
       />
       <EvidenceDetail evidence={selectedEvidence} />
+      <ExplainabilityWorkspace
+        recommendedActionVerificationResults={recommendedActionVerificationResults}
+        recommendedActionVerifications={recommendedActionVerifications}
+        report={report}
+      />
       <ReportPanel
         report={report}
         recommendedActionStatusEvents={recommendedActionStatusEvents}
@@ -70,5 +75,65 @@ export function DebugReportWorkspace({
         />
       ) : null}
     </>
+  );
+}
+
+type ExplainabilityWorkspaceProps = {
+  report: DebugReport;
+  recommendedActionVerifications: RecommendedActionVerification[];
+  recommendedActionVerificationResults: RecommendedActionVerificationResult[];
+};
+
+function ExplainabilityWorkspace({
+  report,
+  recommendedActionVerifications,
+  recommendedActionVerificationResults
+}: ExplainabilityWorkspaceProps) {
+  const firstTrace = report.root_cause_trace?.[0];
+  const firstDiagnostic = report.evaluation_asset_diagnostics?.[0];
+  const firstConfidenceReason = report.confidence_reasons?.[0];
+  const firstAction = report.recommended_actions?.[0];
+  const verificationResultByJobId = new Map(
+    recommendedActionVerificationResults.map((result) => [result.verification_job_id, result])
+  );
+  const firstVerification = recommendedActionVerifications[0];
+  const firstVerificationResult = firstVerification
+    ? verificationResultByJobId.get(firstVerification.verification_job_id)
+    : undefined;
+
+  if (!firstTrace && !firstDiagnostic && !firstConfidenceReason && !firstAction && !firstVerificationResult) {
+    return null;
+  }
+
+  return (
+    <section aria-label="Explainability workspace">
+      <h2>Explainability Workspace</h2>
+      {firstTrace ? (
+        <>
+          <p>Evidence spine：{firstTrace.evidence_id}</p>
+          {firstTrace.next_probe ? <p>Next probe：{firstTrace.next_probe}</p> : null}
+        </>
+      ) : null}
+      {firstDiagnostic ? (
+        <p>
+          Diagnostic coverage：{firstDiagnostic.source}/{firstDiagnostic.status}/{firstDiagnostic.severity}
+        </p>
+      ) : null}
+      {firstConfidenceReason ? (
+        <p>
+          Confidence coverage：{firstConfidenceReason.source}/{firstConfidenceReason.level}
+        </p>
+      ) : null}
+      {firstAction ? (
+        <p>
+          Action coverage：{firstAction.category}/{firstAction.priority}/{firstAction.status ?? "pending"}
+        </p>
+      ) : null}
+      {firstVerification && firstVerificationResult ? (
+        <p>
+          Verification coverage：{firstVerification.verification_job_id}/{firstVerificationResult.result}
+        </p>
+      ) : null}
+    </section>
   );
 }

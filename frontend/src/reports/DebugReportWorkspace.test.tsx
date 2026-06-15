@@ -290,4 +290,102 @@ describe("DebugReportWorkspace", () => {
 
     expect(onVerifyRecommendedAction).toHaveBeenCalledWith(0);
   });
+
+  it("renders an explainability workspace narrative across evidence, diagnostics, confidence, actions, and verification", () => {
+    const report = makeReport({
+      root_cause_trace: [
+        {
+          step_name: "modality_ablation_check",
+          variant: "cross_modal_compare",
+          modalities: ["image", "text"],
+          evidence_id: "trace-evidence",
+          judge_score: 0,
+          delta_reasons: ["conflict_actual_mismatch"],
+          target_ids: ["multimodal:conflict:1"],
+          artifact_ids: ["trace:delta"],
+          hypothesis: "检查 cross_modal_compare 是否暴露跨模态对齐或融合问题。",
+          observation: "cross_modal_compare judge_score=0。",
+          conclusion: "cross_modal_compare 失败，支持跨模态归因。",
+          next_probe: "围绕 multimodal:conflict:1 执行 targeted evidence replay。"
+        }
+      ],
+      evaluation_asset_diagnostics: [
+        {
+          source: "scoring_standard",
+          status: "fail",
+          severity: "high",
+          summary: "评分标准缺失，当前 0/1 结论缺少可审计的判分依据。",
+          recommendation: "补充 exact match、可接受别字/格式、box_id 对齐等评分规则。",
+          evidence_ids: "trace-evidence",
+          artifact_ids: "trace:delta",
+          trace_refs: "modality_ablation_check:cross_modal_compare"
+        }
+      ],
+      confidence_reasons: [
+        {
+          source: "ablation_pattern",
+          level: "high",
+          summary: "root cause trace 包含 cross_modal_compare 变体，支持跨模态归因。",
+          evidence_ids: "trace-evidence",
+          artifact_ids: "trace:delta",
+          trace_refs: "modality_ablation_check:cross_modal_compare"
+        }
+      ],
+      recommended_actions: [
+        {
+          category: "prompt",
+          priority: "high",
+          status: "applied",
+          summary: "强化跨模态对比步骤。",
+          detail: "要求模型先分别列出 image/text 证据，再输出冲突结论。",
+          evidence_ids: "trace-evidence",
+          artifact_ids: "trace:delta",
+          trace_refs: "modality_ablation_check:cross_modal_compare"
+        }
+      ]
+    });
+
+    render(
+      <DebugReportWorkspace
+        report={report}
+        selectedEvidence={null}
+        recommendedActionVerifications={[
+          {
+            job_id: "job-1",
+            action_index: 0,
+            verification_job_id: "job-verify-1",
+            actor: "local-dev-operator",
+            note: "verify action",
+            created_at: "2026-06-15T00:00:00+00:00"
+          }
+        ]}
+        recommendedActionVerificationResults={[
+          {
+            job_id: "job-1",
+            action_index: 0,
+            verification_job_id: "job-verify-1",
+            result: "resolved",
+            source_success_rate: 0.4,
+            verification_success_rate: 1,
+            source_root_cause: "cross_modal_alignment_failure",
+            verification_root_cause: "output_mismatch",
+            summary: "验证任务通过率 100%，高于原任务 40%，推荐操作可能已修复该问题。"
+          }
+        ]}
+        writebackResult={null}
+        writebackAudit={null}
+        onSelectEvidence={vi.fn()}
+        onWriteReport={vi.fn()}
+        onLoadWritebackAudit={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole("heading", { name: "Explainability Workspace" })).toBeInTheDocument();
+    expect(screen.getByText("Evidence spine：trace-evidence")).toBeInTheDocument();
+    expect(screen.getByText("Diagnostic coverage：scoring_standard/fail/high")).toBeInTheDocument();
+    expect(screen.getByText("Confidence coverage：ablation_pattern/high")).toBeInTheDocument();
+    expect(screen.getByText("Action coverage：prompt/high/applied")).toBeInTheDocument();
+    expect(screen.getByText("Verification coverage：job-verify-1/resolved")).toBeInTheDocument();
+    expect(screen.getByText("Next probe：围绕 multimodal:conflict:1 执行 targeted evidence replay。")).toBeInTheDocument();
+  });
 });

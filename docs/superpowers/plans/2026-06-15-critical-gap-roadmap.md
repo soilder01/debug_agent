@@ -164,6 +164,16 @@
 - [x] Attach evidence, artifact, and trace references to evaluation asset diagnostics.
 - [x] Render citation coverage in the frontend report panel.
 
+### Task 10: Debug Report Explainability Workspace
+
+**Files:**
+- Modify: `frontend/src/reports/DebugReportWorkspace.tsx`
+- Test: `frontend/src/reports/DebugReportWorkspace.test.tsx`
+
+- [x] Add a top-level explainability workspace narrative.
+- [x] Summarize evidence spine, diagnostics, confidence, recommended action, verification result, and next probe.
+- [x] Preserve the detailed report panel as the drill-down view.
+
 ## Verification Policy
 
 Every task must follow:
