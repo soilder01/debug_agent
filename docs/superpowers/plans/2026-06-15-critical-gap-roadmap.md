@@ -450,6 +450,18 @@
 - [x] Prefer targeted outcome follow-up entries when creating another probe for an already-failed target.
 - [x] Keep frontend targeted probe history and report loading compatible with escalation follow-up sources.
 
+### Task 28: Targeted Probe Escalation Observability Drilldown
+
+**Files:**
+- Modify: `frontend/src/reports/DebugReportWorkspace.tsx`
+- Test: `frontend/src/reports/DebugReportWorkspace.test.tsx`
+
+- [x] Add a targeted probe escalation chain drilldown in the report workspace.
+- [x] Group targeted probe jobs by target id and order parent/child probe lineage.
+- [x] Render chain depth for repeated target-level probing.
+- [x] Render parent probe job id and trigger outcome for escalation probes.
+- [x] Keep the existing flat targeted probe history available for detailed job actions.
+
 ## Verification Policy
 
 Every task must follow:

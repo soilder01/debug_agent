@@ -148,6 +148,7 @@ function TargetedProbeHistory({ probes, onOpenTargetedProbe }: TargetedProbeHist
   return (
     <section aria-label="Targeted probe job history">
       <h2>Targeted Probe Job History</h2>
+      <TargetedProbeEscalationChain probes={probes} />
       <ul>
         {probes.map((probe) => (
           <li key={`${probe.target_id}:${probe.probe_job_id}`}>
@@ -172,6 +173,73 @@ function TargetedProbeHistory({ probes, onOpenTargetedProbe }: TargetedProbeHist
       </ul>
     </section>
   );
+}
+
+type TargetedProbeEscalationChainProps = {
+  probes: TargetedProbeJob[];
+};
+
+function TargetedProbeEscalationChain({ probes }: TargetedProbeEscalationChainProps) {
+  const chains = buildTargetedProbeChains(probes);
+  if (chains.length === 0) {
+    return null;
+  }
+
+  return (
+    <section aria-label="Targeted probe escalation chain">
+      <h2>Targeted Probe Escalation Chain</h2>
+      {chains.map((chain) => (
+        <div key={`${chain[0].target_id}:${chain.map((probe) => probe.probe_job_id).join(":")}`}>
+          <p>
+            Chain target {chain[0].target_id} depth：{chain.length}
+          </p>
+          {chain.map((probe, index) => (
+            <div key={probe.probe_job_id}>
+              <p>
+                Chain step {index + 1}：{probe.source}/{probe.probe_job_id}
+              </p>
+              {probe.parent_probe_job_id ? <p>Parent probe：{probe.parent_probe_job_id}</p> : null}
+              {probe.trigger_outcome ? <p>Trigger outcome：{probe.trigger_outcome}</p> : null}
+            </div>
+          ))}
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function buildTargetedProbeChains(probes: TargetedProbeJob[]) {
+  const byTarget = new Map<string, TargetedProbeJob[]>();
+  for (const probe of probes) {
+    byTarget.set(probe.target_id, [...(byTarget.get(probe.target_id) ?? []), probe]);
+  }
+
+  return [...byTarget.values()]
+    .map((items) => orderProbeChain(items))
+    .filter((items) => items.length > 1 || items.some((probe) => probe.parent_probe_job_id));
+}
+
+function orderProbeChain(probes: TargetedProbeJob[]) {
+  const byParent = new Map<string, TargetedProbeJob[]>();
+  for (const probe of probes) {
+    byParent.set(probe.parent_probe_job_id, [...(byParent.get(probe.parent_probe_job_id) ?? []), probe]);
+  }
+  const ordered: TargetedProbeJob[] = [];
+  const visit = (probe: TargetedProbeJob) => {
+    ordered.push(probe);
+    for (const child of byParent.get(probe.probe_job_id) ?? []) {
+      visit(child);
+    }
+  };
+  for (const root of byParent.get("") ?? []) {
+    visit(root);
+  }
+  for (const probe of probes) {
+    if (!ordered.includes(probe)) {
+      visit(probe);
+    }
+  }
+  return ordered;
 }
 
 function formatPercent(value: number) {

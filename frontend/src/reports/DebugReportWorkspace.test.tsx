@@ -397,6 +397,44 @@ describe("DebugReportWorkspace", () => {
     expect(onOpenTargetedProbe).toHaveBeenCalledWith("job-targeted-probe-1");
   });
 
+  it("renders targeted probe escalation chain drilldown", () => {
+    const firstProbe = makeTargetedProbe();
+    const escalationProbe: TargetedProbeJob = {
+      ...firstProbe,
+      source: "targeted_probe_outcome",
+      planned_steps: "targeted_escalation_multimodal_conflict_probe",
+      probe_job_id: "job-targeted-probe-2",
+      parent_probe_job_id: "job-targeted-probe-1",
+      trigger_outcome: "target_still_failing",
+      note: "escalate conflict target",
+      created_at: "2026-06-15T00:00:03+00:00",
+      outcome: "inconclusive",
+      success_rate: 0,
+      summary: "Targeted probe completed without enough evidence for multimodal:conflict:1.",
+      escalation: "Re-run targeted probe with evidence capture enabled for multimodal:conflict:1."
+    };
+
+    render(
+      <DebugReportWorkspace
+        report={makeReport()}
+        selectedEvidence={null}
+        targetedProbes={[firstProbe, escalationProbe]}
+        writebackResult={null}
+        writebackAudit={null}
+        onSelectEvidence={vi.fn()}
+        onWriteReport={vi.fn()}
+        onLoadWritebackAudit={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole("heading", { name: "Targeted Probe Escalation Chain" })).toBeInTheDocument();
+    expect(screen.getByText("Chain target multimodal:conflict:1 depth：2")).toBeInTheDocument();
+    expect(screen.getByText("Chain step 1：targeted_probe/job-targeted-probe-1")).toBeInTheDocument();
+    expect(screen.getByText("Chain step 2：targeted_probe_outcome/job-targeted-probe-2")).toBeInTheDocument();
+    expect(screen.getByText("Parent probe：job-targeted-probe-1")).toBeInTheDocument();
+    expect(screen.getByText("Trigger outcome：target_still_failing")).toBeInTheDocument();
+  });
+
   it("renders an explainability workspace narrative across evidence, diagnostics, confidence, actions, and verification", () => {
     const report = makeReport({
       root_cause_trace: [
