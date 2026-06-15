@@ -51,6 +51,7 @@ def build_report_for_job(repository: DebugJobRepository, job_id: str) -> DebugRe
             status.model_dump()
             for status in repository.list_human_handoff_statuses(job_id)
         ]
+        report.final_attributions = _build_final_attributions(report.human_handoff_statuses)
     return _merge_recommended_action_statuses(repository, job_id, report)
 
 
@@ -329,6 +330,48 @@ def _build_human_handoff_requests(follow_up_experiments: list[dict[str, str]]) -
         for follow_up in follow_up_experiments
         if follow_up.get("source") == "targeted_probe_guardrail"
     ]
+
+
+def _build_final_attributions(human_handoff_statuses: list[dict[str, str]]) -> list[dict[str, str]]:
+    return [
+        {
+            "source": "human_handoff",
+            "target_id": status.get("target_id", "unknown"),
+            "category": _final_attribution_category(status.get("note", "")),
+            "status": status.get("status", "unknown"),
+            "actor": status.get("actor", ""),
+            "summary": status.get("note", ""),
+            "recommended_action": _final_attribution_recommended_action(status.get("note", "")),
+        }
+        for status in human_handoff_statuses
+        if status.get("status") in {"resolved", "wont_fix"} and status.get("note", "").strip()
+    ]
+
+
+def _final_attribution_category(note: str) -> str:
+    normalized = note.lower()
+    if "prompt" in normalized:
+        return "prompt_issue"
+    if any(token in normalized for token in ["scoring", "golden", "expected", "evaluation asset"]):
+        return "evaluation_asset_issue"
+    if "data" in normalized or "sample" in normalized:
+        return "data_issue"
+    if "model" in normalized or "capability" in normalized:
+        return "model_capability_gap"
+    return "human_confirmed_root_cause"
+
+
+def _final_attribution_recommended_action(note: str) -> str:
+    category = _final_attribution_category(note)
+    if category == "prompt_issue":
+        return "Update prompt instructions and rerun verification before assigning model capability blame."
+    if category == "evaluation_asset_issue":
+        return "Fix evaluation assets and rerun the case before keeping model attribution."
+    if category == "data_issue":
+        return "Repair or quarantine the sample, then rerun debug verification."
+    if category == "model_capability_gap":
+        return "Keep model capability attribution and add targeted regression coverage."
+    return "Record the confirmed root cause and rerun verification if the case remains business-critical."
 
 
 def _recommended_action_verification_result(

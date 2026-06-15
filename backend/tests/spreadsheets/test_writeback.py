@@ -252,6 +252,17 @@ def test_build_report_writeback_fields_includes_targeted_probe_guardrails() -> N
                     "updated_at": "2026-06-15T00:00:01+00:00",
                 }
             ],
+            "final_attributions": [
+                {
+                    "source": "human_handoff",
+                    "target_id": "multimodal:conflict:1",
+                    "category": "prompt_issue",
+                    "status": "resolved",
+                    "actor": "human-debugger",
+                    "summary": "Final attribution: prompt lacks cross-modal conflict checklist; update prompt before model capability attribution.",
+                    "recommended_action": "Update prompt instructions and rerun verification before assigning model capability blame.",
+                }
+            ],
         }
     )
 
@@ -269,6 +280,11 @@ def test_build_report_writeback_fields_includes_targeted_probe_guardrails() -> N
     assert "multimodal:conflict:1/resolved" in fields["评估问题反馈"]
     assert "处理人：human-debugger" in fields["评估问题反馈"]
     assert "结论：Final attribution: prompt lacks cross-modal conflict checklist" in fields["评估问题反馈"]
+    assert "最终归因：" in fields["评估问题反馈"]
+    assert "multimodal:conflict:1/prompt_issue/resolved" in fields["评估问题反馈"]
+    assert "建议：Update prompt instructions and rerun verification before assigning model capability blame." in fields[
+        "评估问题反馈"
+    ]
 
 
 def test_write_report_to_spreadsheet_row_updates_client_with_payload() -> None:

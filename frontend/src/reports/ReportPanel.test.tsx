@@ -816,6 +816,17 @@ describe("ReportPanel", () => {
           updated_at: "2026-06-15T00:00:01+00:00"
         }
       ],
+      final_attributions: [
+        {
+          source: "human_handoff",
+          target_id: "multimodal:conflict:1",
+          category: "prompt_issue",
+          status: "resolved",
+          actor: "human-debugger",
+          summary: "Final attribution: prompt lacks cross-modal conflict checklist; update prompt before model capability attribution.",
+          recommended_action: "Update prompt instructions and rerun verification before assigning model capability blame."
+        }
+      ],
       suggested_sheet_fields: {
         错误原因: "跨模态对齐问题"
       }
@@ -838,6 +849,16 @@ describe("ReportPanel", () => {
     expect(screen.getByText("Handoff status：in_progress")).toBeInTheDocument();
     expect(screen.getByText("Handoff actor：human-debugger")).toBeInTheDocument();
     expect(screen.getByText("Handoff note：reviewing full probe chain")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Final Attributions" })).toBeInTheDocument();
+    expect(screen.getByText("Attribution target：multimodal:conflict:1")).toBeInTheDocument();
+    expect(screen.getByText("Attribution category：prompt_issue")).toBeInTheDocument();
+    expect(screen.getByText("Attribution status：resolved")).toBeInTheDocument();
+    expect(screen.getByText("Attribution actor：human-debugger")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Attribution recommendation：Update prompt instructions and rerun verification before assigning model capability blame."
+      )
+    ).toBeInTheDocument();
     expect(screen.getByText("Handoff owner：human-debugger")).toBeInTheDocument();
     expect(
       screen.getByText(

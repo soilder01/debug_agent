@@ -567,6 +567,24 @@
 - [x] Keep report panel compatible with status data embedded directly in report payloads.
 - [x] Preserve external handoff status props as the live UI override path.
 
+### Task 35: Final Attribution Summary
+
+**Files:**
+- Modify: `backend/src/debug_agent/reports/generator.py`
+- Modify: `backend/src/debug_agent/reports/job_report.py`
+- Modify: `backend/src/debug_agent/spreadsheets/writeback.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `backend/tests/reports/test_job_report.py`
+- Test: `backend/tests/spreadsheets/test_writeback.py`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Derive final attribution entries from resolved or closed human handoff conclusions.
+- [x] Classify final attribution into prompt, evaluation asset, data, model capability, or human-confirmed root cause categories.
+- [x] Attach target id, status, actor, summary, and recommended next action to final attribution entries.
+- [x] Include final attribution summaries in spreadsheet `评估问题反馈`.
+- [x] Render final attribution summaries in the report panel.
+
 ## Verification Policy
 
 Every task must follow:

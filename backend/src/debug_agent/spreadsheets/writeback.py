@@ -179,6 +179,9 @@ def _evaluation_feedback(report: DebugReport) -> str:
     human_handoff_statuses = _human_handoff_statuses(report)
     if human_handoff_statuses:
         lines.append(f"人工接管状态：{human_handoff_statuses}")
+    final_attributions = _final_attributions(report)
+    if final_attributions:
+        lines.append(f"最终归因：{final_attributions}")
     if report.experiment_summary is not None:
         summary = report.experiment_summary
         lines.extend(
@@ -306,4 +309,23 @@ def _human_handoff_status_line(status: dict[str, str]) -> str:
         line = f"{line}\n处理人：{actor}"
     if note:
         line = f"{line}\n结论：{note}"
+    return line
+
+
+def _final_attributions(report: DebugReport) -> str:
+    return "\n".join(
+        _final_attribution_line(attribution)
+        for attribution in report.final_attributions
+    )
+
+
+def _final_attribution_line(attribution: dict[str, str]) -> str:
+    target_id = attribution.get("target_id", "unknown")
+    category = attribution.get("category", "unknown")
+    status = attribution.get("status", "unknown")
+    summary = attribution.get("summary", "")
+    recommended_action = attribution.get("recommended_action", "")
+    line = f"{target_id}/{category}/{status}：{summary}"
+    if recommended_action:
+        line = f"{line}\n建议：{recommended_action}"
     return line

@@ -95,6 +95,15 @@ export type DebugReport = {
     next_action: string;
   }>;
   human_handoff_statuses?: HumanHandoffStatus[];
+  final_attributions?: Array<{
+    source: string;
+    target_id: string;
+    category: string;
+    status: string;
+    actor: string;
+    summary: string;
+    recommended_action: string;
+  }>;
   evaluation_asset_diagnostics?: Array<{
     source: string;
     status: string;

@@ -566,6 +566,17 @@ def test_build_report_for_job_stops_targeted_escalation_at_max_depth() -> None:
             "updated_at": report.human_handoff_statuses[0]["updated_at"],
         }
     ]
+    assert report.final_attributions == [
+        {
+            "source": "human_handoff",
+            "target_id": "multimodal:conflict:1",
+            "category": "prompt_issue",
+            "status": "resolved",
+            "actor": "human-debugger",
+            "summary": "Final attribution: prompt lacks cross-modal conflict checklist; update prompt before model capability attribution.",
+            "recommended_action": "Update prompt instructions and rerun verification before assigning model capability blame.",
+        }
+    ]
 
 
 def test_build_report_for_job_adds_escalation_follow_up_for_failed_strategy_outcome() -> None:

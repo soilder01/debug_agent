@@ -53,6 +53,7 @@ export function ReportPanel({
   const debugStrategy = report.debug_strategy ?? [];
   const followUpExperiments = report.follow_up_experiments ?? [];
   const humanHandoffRequests = report.human_handoff_requests ?? [];
+  const finalAttributions = report.final_attributions ?? [];
   const verificationResultByJobId = new Map(
     recommendedActionVerificationResults.map((result) => [result.verification_job_id, result])
   );
@@ -298,6 +299,23 @@ export function ReportPanel({
                     </button>
                   </p>
                 ) : null}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {finalAttributions.length > 0 ? (
+        <>
+          <h3>Final Attributions</h3>
+          <ul aria-label="Final attributions">
+            {finalAttributions.map((attribution) => (
+              <li key={`${attribution.source}:${attribution.target_id}:${attribution.category}`}>
+                <p>Attribution target：{attribution.target_id}</p>
+                <p>Attribution category：{attribution.category}</p>
+                <p>Attribution status：{attribution.status}</p>
+                <p>Attribution actor：{attribution.actor || "unknown"}</p>
+                <p>{attribution.summary}</p>
+                <p>Attribution recommendation：{attribution.recommended_action}</p>
               </li>
             ))}
           </ul>
