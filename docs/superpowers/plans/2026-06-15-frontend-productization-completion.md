@@ -106,7 +106,7 @@ Commit only after the focused tests and full verification pass.
   ```powershell
   npx --yes pnpm@9.15.4 --dir frontend typecheck
   ```
-- [ ] Commit:
+- [x] Commit:
   ```powershell
   git add frontend/src/ui/ProductPrimitives.tsx frontend/src/ui/ProductPrimitives.test.tsx frontend/src/styles/product.css
   git commit -m "feat: add frontend product primitives"
@@ -119,20 +119,20 @@ Commit only after the focused tests and full verification pass.
 - Modify: `frontend/src/app/App.test.tsx`
 - Modify: `frontend/src/styles/product.css`
 
-- [ ] Add RED tests that assert the console has navigation links for `Operations`, `Intake`, `Workspace`, `Observability`, and `Writeback`.
-- [ ] Add accessible IDs to the main regions:
+- [x] Add RED tests that assert the console has navigation links for `Operations`, `Intake`, `Workspace`, `Observability`, and `Writeback`.
+- [x] Add accessible IDs to the main regions:
   - `operations`
   - `case-intake`
   - `investigation-workspace`
   - `observability`
   - `writeback`
-- [ ] Add a compact top navigation inside the shell hero.
-- [ ] Add CSS for `agent-shell__nav` and active-like hover/focus states.
-- [ ] Run:
+- [x] Add a compact top navigation inside the shell hero.
+- [x] Add CSS for `agent-shell__nav` and active-like hover/focus states.
+- [x] Run:
   ```powershell
   npx --yes pnpm@9.15.4 --dir frontend test -- --run src/app/App.test.tsx -t "console navigation"
   ```
-- [ ] Run full App tests:
+- [x] Run full App tests:
   ```powershell
   npx --yes pnpm@9.15.4 --dir frontend test -- --run src/app/App.test.tsx
   ```

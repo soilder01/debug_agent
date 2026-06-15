@@ -67,6 +67,14 @@ a {
   color: #2f54eb;
 }
 
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(201, 255, 106, 0.9);
+  outline-offset: 3px;
+}
+
 .agent-shell {
   width: min(1600px, 100%);
   margin: 0 auto;
@@ -129,6 +137,31 @@ a {
   font-weight: 800;
 }
 
+.agent-shell__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 1.2rem;
+}
+
+.agent-shell__nav a {
+  border-radius: 999px;
+  padding: 0.42rem 0.72rem;
+  color: rgba(248, 251, 255, 0.84);
+  background: rgba(255, 255, 255, 0.1);
+  text-decoration: none;
+  transition:
+    background 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.agent-shell__nav a:hover {
+  color: #101827;
+  background: #c9ff6a;
+  transform: translateY(-1px);
+}
+
 .agent-shell__grid {
   display: grid;
   grid-template-columns: minmax(17rem, 0.78fr) minmax(22rem, 1fr) minmax(28rem, 1.45fr);
@@ -147,6 +180,14 @@ a {
 .agent-shell__rail {
   position: sticky;
   top: 1rem;
+  scroll-margin-top: 1rem;
+}
+
+#case-intake,
+#investigation-workspace,
+#observability,
+#writeback {
+  scroll-margin-top: 1rem;
 }
 
 .agent-shell section,

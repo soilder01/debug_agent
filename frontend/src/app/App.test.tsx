@@ -31,6 +31,23 @@ describe("App", () => {
     expect(screen.getAllByTestId("motion-panel").length).toBeGreaterThanOrEqual(4);
   });
 
+  it("renders console navigation anchors for core work areas", () => {
+    render(<App />);
+
+    const navigation = screen.getByRole("navigation", { name: "Console navigation" });
+    expect(navigation).toHaveClass("agent-shell__nav");
+    expect(screen.getByRole("link", { name: "Operations" })).toHaveAttribute("href", "#operations");
+    expect(screen.getByRole("link", { name: "Intake" })).toHaveAttribute("href", "#case-intake");
+    expect(screen.getByRole("link", { name: "Workspace" })).toHaveAttribute("href", "#investigation-workspace");
+    expect(screen.getByRole("link", { name: "Observability" })).toHaveAttribute("href", "#observability");
+    expect(screen.getByRole("link", { name: "Writeback" })).toHaveAttribute("href", "#writeback");
+    expect(screen.getByLabelText("Operations rail")).toHaveAttribute("id", "operations");
+    expect(screen.getByLabelText("Case intake")).toHaveAttribute("id", "case-intake");
+    expect(screen.getByLabelText("Investigation workspace")).toHaveAttribute("id", "investigation-workspace");
+    expect(screen.getByLabelText("Operational monitoring region")).toHaveAttribute("id", "observability");
+    expect(screen.getByLabelText("Writeback operations")).toHaveAttribute("id", "writeback");
+  });
+
   it("renders the logical agent topology", () => {
     render(<App />);
 

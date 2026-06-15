@@ -810,15 +810,28 @@ export function App() {
         <p className="agent-shell__eyebrow">Harness Debug Console</p>
         <h1>Debug Detection Agent</h1>
         <p className="agent-shell__summary">Evidence-first operations for model badcase triage.</p>
+        <nav className="agent-shell__nav" aria-label="Console navigation">
+          <a href="#operations">Operations</a>
+          <a href="#case-intake">Intake</a>
+          <a href="#investigation-workspace">Workspace</a>
+          <a href="#observability">Observability</a>
+          <a href="#writeback">Writeback</a>
+        </nav>
         <button className="agent-shell__primary-action" type="button" onClick={submitJob}>
           Submit debug job
         </button>
       </header>
 
       <div className="agent-shell__grid">
-        <aside className="agent-shell__rail" aria-label="Operations rail" data-testid="motion-panel" data-anime-flow>
+        <aside
+          id="operations"
+          className="agent-shell__rail"
+          aria-label="Operations rail"
+          data-testid="motion-panel"
+          data-anime-flow
+        >
           <WorkerControlsPanel status={workerStatus} onStart={startWorkerLoop} onStop={stopWorkerLoop} />
-          <section>
+          <section id="observability" aria-label="Operational monitoring region">
             <h2>Operational Monitoring</h2>
             <button type="button" onClick={() => void loadObservabilitySummary()}>
               Load observability summary
@@ -827,7 +840,13 @@ export function App() {
           <AgentTopologyPanel />
         </aside>
 
-        <section className="agent-shell__intake" aria-label="Case intake" data-testid="motion-panel" data-anime-flow>
+        <section
+          id="case-intake"
+          className="agent-shell__intake"
+          aria-label="Case intake"
+          data-testid="motion-panel"
+          data-anime-flow
+        >
           <ImportWorkspace
             jsonlCases={jsonlCases}
             jsonlImportResult={jsonlImportResult}
@@ -842,28 +861,30 @@ export function App() {
             onImportCsv={importCsv}
             onImportSpreadsheetRowsJson={importSpreadsheetRowsJson}
           />
-          <SpreadsheetSyncPanel
-            spreadsheetUrl={spreadsheetUrl}
-            spreadsheetId={spreadsheetId}
-            sheetId={sheetId}
-            larkSpreadsheetStatus={larkSpreadsheetStatus}
-            syncResult={spreadsheetSyncResult}
-            writebackAuditSummary={spreadsheetWritebackAuditSummary}
-            writebackAuditList={spreadsheetWritebackAuditList}
-            activeWritebackAuditStatus={activeWritebackAuditStatus ?? null}
-            writebackResult={spreadsheetWritebackResult}
-            onSpreadsheetUrlChange={setSpreadsheetUrl}
-            onSpreadsheetIdChange={setSpreadsheetId}
-            onSheetIdChange={setSheetId}
-            onUseSpreadsheetUrl={useSpreadsheetUrl}
-            onCheckLarkStatus={() => void checkLarkStatus()}
-            onSyncSpreadsheet={() => void syncSpreadsheet()}
-            onLoadWritebackAuditSummary={() => void loadWritebackAuditSummary()}
-            onLoadWritebackAudits={(status) => void loadWritebackAudits(status)}
-            onOpenAuditJob={(jobId) => void openWritebackAuditJob(jobId)}
-            onRetryAudit={(auditToRetry) => void retryWritebackAudit(auditToRetry)}
-            onLoadMoreWritebackAudits={() => void loadMoreWritebackAudits()}
-          />
+          <section id="writeback" aria-label="Writeback operations" className="agent-shell__writeback">
+            <SpreadsheetSyncPanel
+              spreadsheetUrl={spreadsheetUrl}
+              spreadsheetId={spreadsheetId}
+              sheetId={sheetId}
+              larkSpreadsheetStatus={larkSpreadsheetStatus}
+              syncResult={spreadsheetSyncResult}
+              writebackAuditSummary={spreadsheetWritebackAuditSummary}
+              writebackAuditList={spreadsheetWritebackAuditList}
+              activeWritebackAuditStatus={activeWritebackAuditStatus ?? null}
+              writebackResult={spreadsheetWritebackResult}
+              onSpreadsheetUrlChange={setSpreadsheetUrl}
+              onSpreadsheetIdChange={setSpreadsheetId}
+              onSheetIdChange={setSheetId}
+              onUseSpreadsheetUrl={useSpreadsheetUrl}
+              onCheckLarkStatus={() => void checkLarkStatus()}
+              onSyncSpreadsheet={() => void syncSpreadsheet()}
+              onLoadWritebackAuditSummary={() => void loadWritebackAuditSummary()}
+              onLoadWritebackAudits={(status) => void loadWritebackAudits(status)}
+              onOpenAuditJob={(jobId) => void openWritebackAuditJob(jobId)}
+              onRetryAudit={(auditToRetry) => void retryWritebackAudit(auditToRetry)}
+              onLoadMoreWritebackAudits={() => void loadMoreWritebackAudits()}
+            />
+          </section>
           <ImportedCasesPanel
             cases={visibleImportedCases}
             totalCount={importedCaseTotalCount}
@@ -881,6 +902,7 @@ export function App() {
         </section>
 
         <section
+          id="investigation-workspace"
           className="agent-shell__workspace"
           aria-label="Investigation workspace"
           data-testid="motion-panel"
