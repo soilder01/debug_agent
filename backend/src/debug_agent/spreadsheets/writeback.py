@@ -138,6 +138,9 @@ def _evaluation_feedback(report: DebugReport) -> str:
     verification_results = _verification_results(report)
     if verification_results:
         lines.append(f"推荐操作验证：{verification_results}")
+    strategy_results = _strategy_follow_up_results(report)
+    if strategy_results:
+        lines.append(f"策略 Follow-up：{strategy_results}")
     if report.experiment_summary is not None:
         summary = report.experiment_summary
         lines.extend(
@@ -170,3 +173,21 @@ def _verification_result_line(result: dict[str, object]) -> str:
     status = str(result.get("result", "unknown"))
     summary = str(result.get("summary", ""))
     return f"操作 {action_number}/{status}：{summary}"
+
+
+def _strategy_follow_up_results(report: DebugReport) -> str:
+    return "\n".join(
+        _strategy_follow_up_result_line(result)
+        for result in report.strategy_follow_up_results
+    )
+
+
+def _strategy_follow_up_result_line(result: dict[str, object]) -> str:
+    stage = str(result.get("stage", "unknown"))
+    outcome = str(result.get("outcome", "unknown"))
+    summary = str(result.get("summary", ""))
+    escalation = str(result.get("escalation", ""))
+    line = f"{stage}/{outcome}：{summary}"
+    if escalation:
+        line = f"{line}\n升级：{escalation}"
+    return line

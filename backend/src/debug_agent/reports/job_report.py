@@ -3,7 +3,7 @@ from typing import Literal
 from debug_agent.experiments.planner import plan_experiments
 from debug_agent.experiments.runner import ExperimentRunResult
 from debug_agent.reports.generator import DebugReport, generate_initial_report
-from debug_agent.storage.repository import DebugJobRepository, RecommendedActionVerification
+from debug_agent.storage.repository import DebugJobRepository, RecommendedActionVerification, StrategyFollowUpJob
 
 
 def build_report_for_job(repository: DebugJobRepository, job_id: str) -> DebugReport | None:
@@ -18,6 +18,7 @@ def build_report_for_job(repository: DebugJobRepository, job_id: str) -> DebugRe
     report = _build_base_report_for_job(repository, job_id, verification_results=verification_results)
     if report is None:
         return None
+    report.strategy_follow_up_results = build_strategy_follow_up_results(repository, job_id)
     return _merge_recommended_action_statuses(repository, job_id, report)
 
 
@@ -64,6 +65,56 @@ def build_recommended_action_verification_results(
         )
         for verification in repository.list_recommended_action_verifications(job_id)
     ]
+
+
+def build_strategy_follow_up_results(repository: DebugJobRepository, job_id: str) -> list[dict[str, object]]:
+    return [
+        _strategy_follow_up_result(repository=repository, follow_up=follow_up)
+        for follow_up in repository.list_strategy_follow_up_jobs(job_id)
+    ]
+
+
+def _strategy_follow_up_result(
+    *,
+    repository: DebugJobRepository,
+    follow_up: StrategyFollowUpJob,
+) -> dict[str, object]:
+    job = repository.get_job(follow_up.follow_up_job_id)
+    if job is None or job.status != "completed":
+        return {
+            **follow_up.model_dump(),
+            "outcome": "pending",
+            "success_rate": 0.0,
+            "summary": "Strategy follow-up job is not completed yet.",
+            "escalation": "",
+        }
+    evidence = repository.list_evidence(follow_up.follow_up_job_id)
+    success_rate = 0.0
+    if evidence:
+        success_rate = sum(1 for item in evidence if item.judge.score == 1) / len(evidence)
+    if success_rate >= 1.0:
+        return {
+            **follow_up.model_dump(),
+            "outcome": "passed_stop_condition",
+            "success_rate": success_rate,
+            "summary": "Strategy follow-up job passed all probes; stop condition is likely satisfied.",
+            "escalation": "",
+        }
+    return {
+        **follow_up.model_dump(),
+        "outcome": "needs_escalation",
+        "success_rate": success_rate,
+        "summary": "Strategy follow-up job still failed; escalation is recommended.",
+        "escalation": _strategy_escalation(follow_up.stage),
+    }
+
+
+def _strategy_escalation(stage: str) -> str:
+    if stage == "ablation_expansion":
+        return "Run single-modality capability probes before keeping cross-modal attribution."
+    if stage == "verification_gate":
+        return "Create another verification job after updating the recommended action."
+    return "Collect additional targeted replay evidence before finalizing the root cause."
 
 
 def _recommended_action_verification_result(

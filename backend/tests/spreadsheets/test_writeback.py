@@ -136,6 +136,53 @@ def test_build_report_writeback_fields_includes_recommended_action_verification_
     assert "操作 2/regressed：验证任务通过率 20%，低于原任务 40%，推荐操作可能引入回归。" in fields["评估问题反馈"]
 
 
+def test_build_report_writeback_fields_includes_strategy_follow_up_results() -> None:
+    report = _make_report().model_copy(
+        update={
+            "strategy_follow_up_results": [
+                {
+                    "source_job_id": "job-1",
+                    "stage": "evidence_audit",
+                    "planned_steps": "strategy_evidence_audit_probe",
+                    "follow_up_job_id": "job-strategy-follow-up-1",
+                    "actor": "strategy-operator",
+                    "note": "audit evidence chain",
+                    "created_at": "2026-06-15T00:00:02+00:00",
+                    "outcome": "passed_stop_condition",
+                    "success_rate": 1.0,
+                    "summary": "Strategy follow-up job passed all probes; stop condition is likely satisfied.",
+                    "escalation": "",
+                },
+                {
+                    "source_job_id": "job-1",
+                    "stage": "ablation_expansion",
+                    "planned_steps": "strategy_ablation_expansion_probe",
+                    "follow_up_job_id": "job-strategy-follow-up-2",
+                    "actor": "strategy-operator",
+                    "note": "expand ablation",
+                    "created_at": "2026-06-15T00:00:03+00:00",
+                    "outcome": "needs_escalation",
+                    "success_rate": 0.0,
+                    "summary": "Strategy follow-up job still failed; escalation is recommended.",
+                    "escalation": "Run single-modality capability probes before keeping cross-modal attribution.",
+                },
+            ]
+        }
+    )
+
+    fields = build_report_writeback_fields(report, report_url="https://debug-agent.local/reports/job-1")
+
+    assert "策略 Follow-up：" in fields["评估问题反馈"]
+    assert (
+        "evidence_audit/passed_stop_condition：Strategy follow-up job passed all probes; stop condition is likely satisfied."
+        in fields["评估问题反馈"]
+    )
+    assert "ablation_expansion/needs_escalation：Strategy follow-up job still failed; escalation is recommended." in fields[
+        "评估问题反馈"
+    ]
+    assert "升级：Run single-modality capability probes before keeping cross-modal attribution." in fields["评估问题反馈"]
+
+
 def test_write_report_to_spreadsheet_row_updates_client_with_payload() -> None:
     client = RecordingWritebackClient()
     report = _make_report()

@@ -253,6 +253,22 @@
 - [x] Return outcome summary, success rate, and escalation recommendation in follow-up history.
 - [x] Render strategy outcome evaluation in the report workspace.
 
+### Task 16: Strategy Outcome Writeback Trace
+
+**Files:**
+- Modify: `backend/src/debug_agent/api/routes.py`
+- Modify: `backend/src/debug_agent/reports/generator.py`
+- Modify: `backend/src/debug_agent/reports/job_report.py`
+- Modify: `backend/src/debug_agent/spreadsheets/writeback.py`
+- Test: `backend/tests/api/test_recommended_action_status.py`
+- Test: `backend/tests/reports/test_job_report.py`
+- Test: `backend/tests/spreadsheets/test_writeback.py`
+
+- [x] Promote strategy follow-up outcomes into rebuilt `DebugReport`.
+- [x] Reuse one backend strategy outcome builder across report and API responses.
+- [x] Include strategy follow-up outcome and escalation summaries in spreadsheet `评估问题反馈`.
+- [x] Keep strategy outcome writeback derived from current job/evidence state instead of stale persisted fields.
+
 ## Verification Policy
 
 Every task must follow:

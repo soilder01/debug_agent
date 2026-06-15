@@ -204,3 +204,67 @@ def test_build_report_for_job_includes_recommended_action_verification_results()
     assert report.verification_results[0]["source_success_rate"] == 0.5
     assert report.verification_results[0]["verification_success_rate"] == 1.0
     assert report.verification_results[0]["summary"] == "验证任务通过率 100%，高于原任务 50%，推荐操作可能已修复该问题。"
+
+
+def test_build_report_for_job_includes_strategy_follow_up_results() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    case = load_fixture_case("handwrite233").model_copy(update={"case_id": "job-report-strategy-case"})
+    repository.save_case(case)
+    repository.create_job(job_id="job-source", case_id=case.case_id, baseline_trials=1)
+    repository.save_evidence(
+        job_id="job-source",
+        case_id=case.case_id,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="job-source:baseline:0",
+                step_name="baseline_replay",
+                trial=0,
+                raw_output=case.predictions[0].raw_output,
+                judge=JudgeResult(score=0, reasons=["student_answer_mismatch"]),
+            )
+        ],
+    )
+    repository.create_job(job_id="job-strategy-follow-up", case_id=case.case_id, baseline_trials=1)
+    repository.save_evidence(
+        job_id="job-strategy-follow-up",
+        case_id=case.case_id,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="job-strategy-follow-up:strategy-pass",
+                step_name="strategy_evidence_audit_probe",
+                trial=0,
+                raw_output=case.predictions[0].raw_output,
+                judge=JudgeResult(score=1, reasons=[]),
+            )
+        ],
+    )
+    repository.mark_completed("job-strategy-follow-up")
+    repository.save_strategy_follow_up_job(
+        source_job_id="job-source",
+        stage="evidence_audit",
+        planned_steps="strategy_evidence_audit_probe",
+        follow_up_job_id="job-strategy-follow-up",
+        actor="strategy-operator",
+        note="audit evidence chain",
+    )
+
+    report = build_report_for_job(repository, "job-source")
+
+    assert report is not None
+    assert report.strategy_follow_up_results == [
+        {
+            "source_job_id": "job-source",
+            "stage": "evidence_audit",
+            "planned_steps": "strategy_evidence_audit_probe",
+            "follow_up_job_id": "job-strategy-follow-up",
+            "actor": "strategy-operator",
+            "note": "audit evidence chain",
+            "created_at": report.strategy_follow_up_results[0]["created_at"],
+            "outcome": "passed_stop_condition",
+            "success_rate": 1.0,
+            "summary": "Strategy follow-up job passed all probes; stop condition is likely satisfied.",
+            "escalation": "",
+        }
+    ]

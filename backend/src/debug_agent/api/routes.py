@@ -17,7 +17,11 @@ from debug_agent.jobs.service import DebugJobService, RetryRecommendationDetail,
 from debug_agent.jobs.worker import AsyncJobWorker, AsyncJobWorkerStatus
 from debug_agent.models.fake import FakeModelAdapter
 from debug_agent.reports.generator import DebugReport, generate_initial_report
-from debug_agent.reports.job_report import build_recommended_action_verification_results, build_report_for_job
+from debug_agent.reports.job_report import (
+    build_recommended_action_verification_results,
+    build_report_for_job,
+    build_strategy_follow_up_results,
+)
 from debug_agent.settings import DebugAgentSettings, LarkSpreadsheetSettings
 from debug_agent.spreadsheets.lark import LarkCliError, LarkCliSheetsTransport, LarkSpreadsheetClient
 from debug_agent.spreadsheets.writeback import (
@@ -808,8 +812,8 @@ def list_strategy_follow_up_jobs(job_id: str) -> StrategyFollowUpJobListResponse
         raise HTTPException(status_code=404, detail=f"Debug job not found: {job_id}")
     return StrategyFollowUpJobListResponse(
         follow_ups=[
-            StrategyFollowUpJobWithOutcome.model_validate(_strategy_follow_up_with_outcome(follow_up))
-            for follow_up in job_repository.list_strategy_follow_up_jobs(job_id)
+            StrategyFollowUpJobWithOutcome.model_validate(follow_up)
+            for follow_up in build_strategy_follow_up_results(job_repository, job_id)
         ]
     )
 
@@ -957,45 +961,6 @@ def _strategy_follow_up_from_report(report: DebugReport, stage: str) -> dict[str
         if follow_up.get("source") == "debug_strategy" and follow_up.get("stage") == stage:
             return follow_up
     return None
-
-
-def _strategy_follow_up_with_outcome(follow_up: StrategyFollowUpJob) -> dict[str, object]:
-    job = job_repository.get_job(follow_up.follow_up_job_id)
-    if job is None or job.status != "completed":
-        return {
-            **follow_up.model_dump(),
-            "outcome": "pending",
-            "success_rate": 0.0,
-            "summary": "Strategy follow-up job is not completed yet.",
-            "escalation": "",
-        }
-    evidence = job_repository.list_evidence(follow_up.follow_up_job_id)
-    success_rate = 0.0
-    if evidence:
-        success_rate = sum(1 for item in evidence if item.judge.score == 1) / len(evidence)
-    if success_rate >= 1.0:
-        return {
-            **follow_up.model_dump(),
-            "outcome": "passed_stop_condition",
-            "success_rate": success_rate,
-            "summary": "Strategy follow-up job passed all probes; stop condition is likely satisfied.",
-            "escalation": "",
-        }
-    return {
-        **follow_up.model_dump(),
-        "outcome": "needs_escalation",
-        "success_rate": success_rate,
-        "summary": "Strategy follow-up job still failed; escalation is recommended.",
-        "escalation": _strategy_escalation(follow_up.stage),
-    }
-
-
-def _strategy_escalation(stage: str) -> str:
-    if stage == "ablation_expansion":
-        return "Run single-modality capability probes before keeping cross-modal attribution."
-    if stage == "verification_gate":
-        return "Create another verification job after updating the recommended action."
-    return "Collect additional targeted replay evidence before finalizing the root cause."
 
 
 def _build_observability_health(
