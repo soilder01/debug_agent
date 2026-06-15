@@ -109,6 +109,21 @@
 - [x] Reject empty actor values once trusted actor source is configured.
 - [x] Keep local development fallback actor explicit and auditable.
 
+### Task 6: Verification Result Writeback Trace
+
+**Files:**
+- Modify: `backend/src/debug_agent/reports/generator.py`
+- Modify: `backend/src/debug_agent/reports/job_report.py`
+- Modify: `backend/src/debug_agent/spreadsheets/writeback.py`
+- Modify: `frontend/src/api/client.ts`
+- Test: `backend/tests/reports/test_generator.py`
+- Test: `backend/tests/reports/test_job_report.py`
+- Test: `backend/tests/spreadsheets/test_writeback.py`
+
+- [x] Persist recommended action verification results on `DebugReport`.
+- [x] Rebuild verification result summaries from saved verification lineage.
+- [x] Include verification result summaries in spreadsheet `评估问题反馈`.
+
 ## Verification Policy
 
 Every task must follow:

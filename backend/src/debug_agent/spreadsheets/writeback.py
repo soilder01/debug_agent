@@ -135,6 +135,9 @@ def _evaluation_feedback(report: DebugReport) -> str:
     recommended_actions = _recommended_actions(report)
     if recommended_actions:
         lines.append(f"推荐操作：{recommended_actions}")
+    verification_results = _verification_results(report)
+    if verification_results:
+        lines.append(f"推荐操作验证：{verification_results}")
     if report.experiment_summary is not None:
         summary = report.experiment_summary
         lines.extend(
@@ -152,3 +155,18 @@ def _recommended_actions(report: DebugReport) -> str:
         f"{action['category']}/{action['priority']}：{action['summary']} - {action['detail']}"
         for action in report.recommended_actions
     )
+
+
+def _verification_results(report: DebugReport) -> str:
+    return "\n".join(
+        _verification_result_line(result)
+        for result in report.verification_results
+    )
+
+
+def _verification_result_line(result: dict[str, object]) -> str:
+    action_index = result.get("action_index")
+    action_number = action_index + 1 if isinstance(action_index, int) else "未知"
+    status = str(result.get("result", "unknown"))
+    summary = str(result.get("summary", ""))
+    return f"操作 {action_number}/{status}：{summary}"

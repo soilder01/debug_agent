@@ -42,6 +42,7 @@ class DebugReport(BaseModel):
     evidence_citations: list[dict[str, object]] = Field(default_factory=list)
     root_cause_trace: list[dict[str, object]] = Field(default_factory=list)
     recommended_actions: list[dict[str, str]] = Field(default_factory=list)
+    verification_results: list[dict[str, object]] = Field(default_factory=list)
     follow_up_experiments: list[dict[str, str]] = Field(default_factory=list)
     confidence_reasons: list[dict[str, str]] = Field(default_factory=list)
     suggested_sheet_fields: dict[str, str]
@@ -89,6 +90,7 @@ def generate_initial_report(
         evidence_citations=_build_evidence_citations(run_result),
         root_cause_trace=_build_root_cause_trace(run_result),
         recommended_actions=_build_recommended_actions(root_cause),
+        verification_results=verification_results or [],
         follow_up_experiments=_build_follow_up_experiments(case, verification_results or []),
         confidence_reasons=_build_confidence_reasons(
             run_result=run_result,

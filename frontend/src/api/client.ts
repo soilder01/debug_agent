@@ -64,6 +64,7 @@ export type DebugReport = {
     summary: string;
     detail: string;
   }>;
+  verification_results?: RecommendedActionVerificationResult[];
   confidence_reasons?: Array<{
     source: string;
     level: string;

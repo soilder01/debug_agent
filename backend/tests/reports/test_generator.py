@@ -659,10 +659,18 @@ def test_generate_report_includes_verification_follow_up_plan_summary() -> None:
             {
                 "verification_job_id": "job-verify-video",
                 "result": "regressed",
+                "summary": "验证任务通过率 0%，低于原任务 50%，推荐操作可能引入回归。",
             }
         ],
     )
 
+    assert report.verification_results == [
+        {
+            "verification_job_id": "job-verify-video",
+            "result": "regressed",
+            "summary": "验证任务通过率 0%，低于原任务 50%，推荐操作可能引入回归。",
+        }
+    ]
     assert report.follow_up_experiments == [
         {
             "source": "verification_result",

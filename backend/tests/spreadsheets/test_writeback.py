@@ -105,6 +105,37 @@ def test_build_report_writeback_fields_includes_recommended_actions() -> None:
     assert "prompt/high：强化跨模态对比步骤。" in fields["评估问题反馈"]
 
 
+def test_build_report_writeback_fields_includes_recommended_action_verification_results() -> None:
+    report = _make_report().model_copy(
+        update={
+            "verification_results": [
+                {
+                    "action_index": 0,
+                    "verification_job_id": "job-verify-1",
+                    "result": "resolved",
+                    "source_success_rate": 0.4,
+                    "verification_success_rate": 1.0,
+                    "summary": "验证任务通过率 100%，高于原任务 40%，推荐操作可能已修复该问题。",
+                },
+                {
+                    "action_index": 1,
+                    "verification_job_id": "job-verify-2",
+                    "result": "regressed",
+                    "source_success_rate": 0.4,
+                    "verification_success_rate": 0.2,
+                    "summary": "验证任务通过率 20%，低于原任务 40%，推荐操作可能引入回归。",
+                },
+            ]
+        }
+    )
+
+    fields = build_report_writeback_fields(report, report_url="https://debug-agent.local/reports/job-1")
+
+    assert "推荐操作验证：" in fields["评估问题反馈"]
+    assert "操作 1/resolved：验证任务通过率 100%，高于原任务 40%，推荐操作可能已修复该问题。" in fields["评估问题反馈"]
+    assert "操作 2/regressed：验证任务通过率 20%，低于原任务 40%，推荐操作可能引入回归。" in fields["评估问题反馈"]
+
+
 def test_write_report_to_spreadsheet_row_updates_client_with_payload() -> None:
     client = RecordingWritebackClient()
     report = _make_report()
