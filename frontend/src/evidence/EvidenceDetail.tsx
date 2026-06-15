@@ -157,6 +157,7 @@ function VideoSegmentAudit({ artifact }: VideoSegmentAuditProps) {
   const auditSegment = actualSegment ?? expectedSegment;
   const manifestType = stringValue(artifact.metadata.manifest_type) || "video_segment_delta";
   const manifestUrl = manifestArtifactUrl(artifact.derived_uri);
+  const keyframeThumbnails = keyframeThumbnailValues(artifact.metadata.keyframe_thumbnails);
 
   return (
     <section aria-label="Video segment audit">
@@ -169,6 +170,21 @@ function VideoSegmentAudit({ artifact }: VideoSegmentAuditProps) {
           打开视频片段 manifest {artifact.artifact_id}
         </a>
       </p>
+      {keyframeThumbnails.length > 0 ? (
+        <section aria-label="Keyframe thumbnails">
+          <h6>Keyframe Thumbnails</h6>
+          <ul>
+            {keyframeThumbnails.map((thumbnail) => (
+              <li key={`${artifact.artifact_id}:${thumbnail.timestamp_ms}`}>
+                <p>关键帧：{thumbnail.timestamp_ms}ms</p>
+                <a href={thumbnail.preview_url} target="_blank" rel="noreferrer">
+                  打开关键帧 thumbnail {artifact.artifact_id} {thumbnail.timestamp_ms}ms
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </section>
   );
 }
@@ -257,6 +273,11 @@ type SegmentMetadata = {
   label: string;
 };
 
+type KeyframeThumbnailMetadata = {
+  timestamp_ms: number;
+  preview_url: string;
+};
+
 function regionValue(value: unknown): RegionMetadata | null {
   if (!isRecord(value)) {
     return null;
@@ -292,6 +313,23 @@ function segmentValue(value: unknown): SegmentMetadata | null {
     end_ms: endMs,
     label: stringValue(value.label) || "无"
   };
+}
+
+function keyframeThumbnailValues(value: unknown): KeyframeThumbnailMetadata[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.flatMap((item) => {
+    if (!isRecord(item)) {
+      return [];
+    }
+    const timestampMs = numberValue(item.timestamp_ms);
+    const previewUrl = stringValue(item.preview_url);
+    if (timestampMs === null || !previewUrl) {
+      return [];
+    }
+    return [{ timestamp_ms: timestampMs, preview_url: previewUrl }];
+  });
 }
 
 function formatRegion(region: RegionMetadata): string {

@@ -11,6 +11,19 @@ def materialize_video_segment_manifest(
 ) -> str:
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / video_segment_manifest_filename(artifact_id)
+    keyframe_thumbnails = video_keyframe_thumbnails(artifact_id=artifact_id, metadata=metadata)
+    for thumbnail in keyframe_thumbnails:
+        timestamp_ms = thumbnail.get("timestamp_ms", 0)
+        if not isinstance(timestamp_ms, int):
+            continue
+        keyframe_path = output_dir / video_keyframe_manifest_filename(artifact_id, timestamp_ms)
+        keyframe_manifest = _video_keyframe_manifest(
+            artifact_id=artifact_id,
+            source_uri=source_uri,
+            metadata=metadata,
+            timestamp_ms=timestamp_ms,
+        )
+        keyframe_path.write_text(json.dumps(keyframe_manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     manifest = _video_segment_manifest(
         artifact_id=artifact_id,
         source_uri=source_uri,
@@ -42,12 +55,33 @@ def video_segment_manifest_filename(artifact_id: str) -> str:
     return f"{_safe_artifact_filename(artifact_id)}.json"
 
 
+def video_keyframe_manifest_filename(artifact_id: str, timestamp_ms: int) -> str:
+    return f"{_safe_artifact_filename(artifact_id)}_keyframe_{timestamp_ms}.json"
+
+
 def multimodal_conflict_manifest_filename(artifact_id: str) -> str:
     return f"{_safe_artifact_filename(artifact_id)}.json"
 
 
 def manifest_artifact_url(artifact_id: str) -> str:
     return f"/api/artifacts/manifests/{_safe_artifact_filename(artifact_id)}.json"
+
+
+def video_keyframe_manifest_url(artifact_id: str, timestamp_ms: int) -> str:
+    return f"/api/artifacts/manifests/{_safe_artifact_filename(artifact_id)}_keyframe_{timestamp_ms}.json"
+
+
+def video_keyframe_thumbnails(*, artifact_id: str, metadata: dict[str, object]) -> list[dict[str, object]]:
+    segment = _segment_payload(metadata)
+    timestamp_ms = segment.get("start_ms", 0)
+    if not isinstance(timestamp_ms, int):
+        timestamp_ms = 0
+    return [
+        {
+            "timestamp_ms": timestamp_ms,
+            "preview_url": video_keyframe_manifest_url(artifact_id, timestamp_ms),
+        }
+    ]
 
 
 def _video_segment_manifest(
@@ -69,6 +103,23 @@ def _video_segment_manifest(
         "actual_label": metadata.get("actual"),
         "expected_segment": metadata.get("expected_segment"),
         "actual_segment": metadata.get("actual_segment"),
+        "keyframe_thumbnails": video_keyframe_thumbnails(artifact_id=artifact_id, metadata=metadata),
+    }
+
+
+def _video_keyframe_manifest(
+    *,
+    artifact_id: str,
+    source_uri: str,
+    metadata: dict[str, object],
+    timestamp_ms: int,
+) -> dict[str, object]:
+    return {
+        "artifact_id": artifact_id,
+        "manifest_type": "video_keyframe_thumbnail",
+        "source_uri": source_uri,
+        "timestamp_ms": timestamp_ms,
+        "target_id": metadata.get("target_id", ""),
     }
 
 

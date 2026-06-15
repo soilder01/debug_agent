@@ -12,7 +12,11 @@ from debug_agent.artifacts.images import (
     image_artifact_preview_url,
     materialize_image_crop,
 )
-from debug_agent.artifacts.videos import materialize_multimodal_conflict_manifest, materialize_video_segment_manifest
+from debug_agent.artifacts.videos import (
+    materialize_multimodal_conflict_manifest,
+    materialize_video_segment_manifest,
+    video_keyframe_thumbnails,
+)
 from debug_agent.cases.comparator import (
     compare_answer_sets,
     parse_classification_output,
@@ -388,6 +392,7 @@ def _build_native_delta_artifacts(
                 derived_uri = ""
                 preview_url = ""
         if image_artifact_dir is not None and artifact_type == "video_segment":
+            metadata["keyframe_thumbnails"] = video_keyframe_thumbnails(artifact_id=artifact_id, metadata=metadata)
             derived_uri = materialize_video_segment_manifest(
                 artifact_id=artifact_id,
                 source_uri=source_image_uri,

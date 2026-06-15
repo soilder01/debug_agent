@@ -819,7 +819,29 @@ async def test_run_experiments_materializes_video_segment_delta_manifest() -> No
         assert manifest["end_ms"] == 2500
         assert manifest["expected_label"] == "person_enters"
         assert manifest["actual_label"] == "person_leaves"
+        assert manifest["keyframe_thumbnails"] == [
+            {
+                "timestamp_ms": 1000,
+                "preview_url": (
+                    "/api/artifacts/manifests/"
+                    "video-detection-manifest_baseline_replay_0_video_segment_1_delta_keyframe_1000.json"
+                ),
+            }
+        ]
+        keyframe_manifest_path = (
+            artifact_dir / "video-detection-manifest_baseline_replay_0_video_segment_1_delta_keyframe_1000.json"
+        )
+        assert keyframe_manifest_path.exists()
+        keyframe_manifest = json.loads(keyframe_manifest_path.read_text(encoding="utf-8"))
+        assert keyframe_manifest == {
+            "artifact_id": native_artifact.artifact_id,
+            "manifest_type": "video_keyframe_thumbnail",
+            "source_uri": video_path.as_uri(),
+            "timestamp_ms": 1000,
+            "target_id": "video:segment:1",
+        }
         assert native_artifact.metadata["manifest_type"] == "video_segment_delta"
+        assert native_artifact.metadata["keyframe_thumbnails"] == manifest["keyframe_thumbnails"]
 
 
 @pytest.mark.asyncio

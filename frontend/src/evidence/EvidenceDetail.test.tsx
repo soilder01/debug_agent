@@ -389,7 +389,13 @@ describe("EvidenceDetail", () => {
             reason: "segment_label_mismatch",
             manifest_type: "video_segment_delta",
             expected_segment: { start_ms: 1000, end_ms: 2500, label: "person_enters" },
-            actual_segment: { start_ms: 1000, end_ms: 2500, label: "person_leaves" }
+            actual_segment: { start_ms: 1000, end_ms: 2500, label: "person_leaves" },
+            keyframe_thumbnails: [
+              {
+                timestamp_ms: 1000,
+                preview_url: "/api/artifacts/manifests/video-case_baseline_0_video_segment_1_delta_keyframe_1000.json"
+              }
+            ]
           }
         }
       ],
@@ -407,6 +413,14 @@ describe("EvidenceDetail", () => {
     expect(screen.getByText("Manifest 类型：video_segment_delta")).toBeInTheDocument();
     expect(screen.getByText("审计片段：1000ms → 2500ms")).toBeInTheDocument();
     expect(screen.getByText("审计标签：person_enters → person_leaves")).toBeInTheDocument();
+    expect(screen.getByText("Keyframe Thumbnails")).toBeInTheDocument();
+    expect(screen.getByText("关键帧：1000ms")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "打开关键帧 thumbnail video-case:baseline:0:video_segment_1:delta 1000ms" })
+    ).toHaveAttribute(
+      "href",
+      "/api/artifacts/manifests/video-case_baseline_0_video_segment_1_delta_keyframe_1000.json"
+    );
     expect(
       screen.getByRole("link", { name: "打开视频片段 manifest video-case:baseline:0:video_segment_1:delta" })
     ).toHaveAttribute("href", "/api/artifacts/manifests/video-case_baseline_0_video_segment_1_delta.json");

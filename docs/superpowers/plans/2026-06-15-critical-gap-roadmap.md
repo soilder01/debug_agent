@@ -67,10 +67,10 @@
 - Test: `backend/tests/experiments/test_runner.py`
 - Test: `frontend/src/evidence/EvidenceDetail.test.tsx`
 
-- [ ] Add deterministic keyframe thumbnail artifact metadata for video segment deltas.
-- [ ] Expose keyframe artifact URLs alongside video segment manifests.
-- [ ] Render keyframe artifact links in Evidence Detail.
-- [ ] Keep video artifact generation hermetic without requiring ffmpeg in tests.
+- [x] Add deterministic keyframe thumbnail artifact metadata for video segment deltas.
+- [x] Expose keyframe artifact URLs alongside video segment manifests.
+- [x] Render keyframe artifact links in Evidence Detail.
+- [x] Keep video artifact generation hermetic without requiring ffmpeg in tests.
 
 ### Task 3: Verification-Aware Experiment Planning
 
