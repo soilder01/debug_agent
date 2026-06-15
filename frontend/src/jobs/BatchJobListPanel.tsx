@@ -1,4 +1,5 @@
 import type { DebugJobStatus, SubmittedDebugJob } from "../api/client";
+import { ActionRow, MetricStrip, StatusBadge } from "../ui/ProductPrimitives";
 
 type BatchJob = DebugJobStatus | SubmittedDebugJob;
 
@@ -27,8 +28,22 @@ export function BatchJobListPanel({
   onOpenJob,
   onSelectEvidence
 }: BatchJobListPanelProps) {
+  const failedCount = jobs.filter((job) => job.status === "failed").length;
+  const pendingCount = jobs.filter((job) => job.status === "pending").length;
+
   return (
     <>
+      <MetricStrip
+        label="Batch job queue metrics"
+        metrics={[
+          { label: "Loaded", value: jobs.length, helper: summaryLabel },
+          { label: "Total", value: totalCount, helper: "Known debug jobs" },
+          { label: "Completed", value: completedCount, helper: "Ready for report review" },
+          { label: "Failed", value: failedCount, helper: "Needs retry or handoff" },
+          { label: "Pending", value: pendingCount, helper: "Waiting for worker" },
+          { label: "Unloaded", value: unloadedCount, helper: "Available for pagination" }
+        ]}
+      />
       <p>{summaryLabel}：{jobs.length}</p>
       <p>总任务：{totalCount}</p>
       <p>未加载：{unloadedCount}</p>
@@ -36,19 +51,22 @@ export function BatchJobListPanel({
       <p>
         批量进度：{completedCount}/{jobs.length}
       </p>
-      <button type="button" onClick={onStartWorker}>
-        Start worker for batch
-      </button>
-      {unloadedCount > 0 ? (
-        <button type="button" onClick={onLoadMore}>
-          Load more debug jobs
+      <ActionRow label="Batch queue actions">
+        <button type="button" onClick={onStartWorker}>
+          Start worker for batch
         </button>
-      ) : null}
+        {unloadedCount > 0 ? (
+          <button type="button" onClick={onLoadMore}>
+            Load more debug jobs
+          </button>
+        ) : null}
+      </ActionRow>
       {jobs.length > 0 ? (
         <ul aria-label="Batch job statuses">
           {jobs.map((job) => (
             <li key={job.job_id}>
               <span>{job.job_id}：{job.status}</span>
+              <StatusBadge tone={statusTone(job.status)}>{job.status}</StatusBadge>
               {job.created_at ? (
                 <span title={job.created_at}>
                   {" "}
@@ -66,6 +84,9 @@ export function BatchJobListPanel({
                 <>
                   <span> {job.job_id} 建议：{job.retry_recommendation_detail.label}</span>
                   <span> {job.job_id} 级别：{job.retry_recommendation_detail.severity}</span>
+                  <StatusBadge tone={severityTone(job.retry_recommendation_detail.severity)}>
+                    {job.retry_recommendation_detail.severity}
+                  </StatusBadge>
                 </>
               ) : null}
               <button type="button" onClick={() => onOpenJob(job)}>
@@ -82,6 +103,32 @@ export function BatchJobListPanel({
       ) : null}
     </>
   );
+}
+
+function statusTone(status: string): "critical" | "warning" | "success" | "neutral" {
+  if (status === "failed") {
+    return "critical";
+  }
+  if (status === "completed") {
+    return "success";
+  }
+  if (status === "pending" || status === "running") {
+    return "warning";
+  }
+  return "neutral";
+}
+
+function severityTone(severity: string): "critical" | "warning" | "success" | "neutral" {
+  if (severity === "critical") {
+    return "critical";
+  }
+  if (severity === "warning") {
+    return "warning";
+  }
+  if (severity === "info") {
+    return "success";
+  }
+  return "neutral";
 }
 
 function formatJobTimestamp(timestamp: string): string {

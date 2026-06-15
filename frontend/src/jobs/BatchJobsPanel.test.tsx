@@ -68,6 +68,7 @@ describe("BatchJobsPanel", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Batch Jobs" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Batch Jobs" })).toHaveClass("batch-jobs-panel");
     expect(screen.queryByLabelText("Batch job statuses")).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Submit batch jobs" }));
@@ -100,6 +101,7 @@ describe("BatchJobsPanel", () => {
     );
 
     expect(screen.getByText("批量创建：1")).toBeInTheDocument();
+    expect(screen.getByLabelText("Batch job queue metrics")).toBeInTheDocument();
     expect(screen.getByText("批量进度：1/1")).toBeInTheDocument();
     expect(screen.getByText("job-1：completed")).toBeInTheDocument();
   });

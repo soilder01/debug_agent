@@ -364,6 +364,26 @@ textarea:focus-visible {
   margin: 0;
 }
 
+.worker-panel,
+.batch-jobs-panel,
+.current-job-panel {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.batch-jobs-panel ul,
+.current-job-panel ul {
+  margin: 0;
+}
+
+.batch-jobs-panel li,
+.current-job-panel li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+}
+
 @media (max-width: 1180px) {
   .agent-shell__grid {
     grid-template-columns: 1fr 1fr;

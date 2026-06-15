@@ -1,4 +1,5 @@
 import type { BatchDebugJobResponse, DebugJobStatus, SubmittedDebugJob } from "../api/client";
+import { ProductSurface } from "../ui/ProductPrimitives";
 import { BatchJobControlsPanel } from "./BatchJobControlsPanel";
 import { BatchJobListPanel } from "./BatchJobListPanel";
 
@@ -38,12 +39,18 @@ export function BatchJobsPanel({
   onSelectEvidence
 }: BatchJobsPanelProps) {
   return (
-    <section>
+    <ProductSurface
+      title="Batch Jobs"
+      eyebrow="Queue"
+      description="Submit case batches, inspect queued jobs, and start background processing."
+      className="batch-jobs-panel"
+    >
       <BatchJobControlsPanel
         caseIds={caseIds}
         onCaseIdsChange={onCaseIdsChange}
         onSubmit={onSubmit}
         onLoadJobs={onLoadJobs}
+        showHeading={false}
       />
       {batchResult ? (
         <BatchJobListPanel
@@ -59,6 +66,6 @@ export function BatchJobsPanel({
           onSelectEvidence={onSelectEvidence}
         />
       ) : null}
-    </section>
+    </ProductSurface>
   );
 }

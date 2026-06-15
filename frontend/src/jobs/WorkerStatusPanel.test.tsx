@@ -22,6 +22,8 @@ describe("WorkerStatusPanel", () => {
     render(<WorkerStatusPanel status={makeStatus()} />);
 
     expect(screen.getByText("Worker running：true")).toBeInTheDocument();
+    expect(screen.getByText("Running")).toHaveClass("status-badge--success");
+    expect(screen.getByLabelText("Worker runtime metrics")).toHaveClass("metric-strip");
     expect(screen.getByText("Worker processed：3")).toBeInTheDocument();
     expect(screen.getByText("Worker errors：1")).toBeInTheDocument();
     expect(screen.getByText("Worker auto writeback setting：disabled")).toBeInTheDocument();

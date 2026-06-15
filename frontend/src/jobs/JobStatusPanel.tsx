@@ -1,4 +1,5 @@
 import type { DebugJobStatus, SubmittedDebugJob } from "../api/client";
+import { ActionRow, MetricStrip, StatusBadge } from "../ui/ProductPrimitives";
 
 type JobStatusPanelProps = {
   job: DebugJobStatus | SubmittedDebugJob;
@@ -26,18 +27,33 @@ export function JobStatusPanel({ job, onSelectEvidence, onLoadReport }: JobStatu
       <p>Job ID：{job.job_id}</p>
       <p>样本 ID：{job.case_id}</p>
       <p>状态：{job.status}</p>
+      <StatusBadge tone={statusTone(job.status)}>{job.status}</StatusBadge>
       {job.created_at ? <p title={job.created_at}>创建时间：{formatJobTimestamp(job.created_at)}</p> : null}
       {job.updated_at ? <p title={job.updated_at}>更新时间：{formatJobTimestamp(job.updated_at)}</p> : null}
+      <MetricStrip
+        label="Job attempt metrics"
+        metrics={[
+          { label: "Attempts", value: attemptCount, helper: "Executed tries" },
+          { label: "Max", value: maxAttempts, helper: "Retry budget" },
+          { label: "Remaining", value: remainingAttempts, helper: "Retries left" },
+          { label: "Evidence", value: evidenceCount, helper: "Captured artifacts" }
+        ]}
+      />
       <p>尝试次数：{attemptCount}</p>
       <p>最大尝试：{maxAttempts}</p>
       <p>剩余尝试：{remainingAttempts}</p>
       <p>将会重试：{String(willRetry)}</p>
       <p>重试建议：{retryRecommendationDetail?.label ?? retryRecommendation}</p>
+      {retryRecommendationDetail ? (
+        <StatusBadge tone={severityTone(retryRecommendationDetail.severity)}>{retryRecommendationDetail.severity}</StatusBadge>
+      ) : null}
       {retryRecommendationDetail ? <p>建议动作：{retryRecommendationDetail.action}</p> : null}
       {onLoadReport ? (
-        <button type="button" onClick={onLoadReport}>
-          Load persisted report
-        </button>
+        <ActionRow label="Job status actions">
+          <button type="button" onClick={onLoadReport}>
+            Load persisted report
+          </button>
+        </ActionRow>
       ) : null}
       <p>证据数：{evidenceCount}</p>
       {evidenceErrorCounts ? (
@@ -70,6 +86,32 @@ export function JobStatusPanel({ job, onSelectEvidence, onLoadReport }: JobStatu
       {errorMessage ? <p role="alert">错误：{errorMessage}</p> : null}
     </section>
   );
+}
+
+function statusTone(status: string): "critical" | "warning" | "success" | "neutral" {
+  if (status === "failed") {
+    return "critical";
+  }
+  if (status === "completed") {
+    return "success";
+  }
+  if (status === "pending" || status === "running") {
+    return "warning";
+  }
+  return "neutral";
+}
+
+function severityTone(severity: string): "critical" | "warning" | "success" | "neutral" {
+  if (severity === "critical") {
+    return "critical";
+  }
+  if (severity === "warning") {
+    return "warning";
+  }
+  if (severity === "info") {
+    return "success";
+  }
+  return "neutral";
 }
 
 function formatJobTimestamp(timestamp: string): string {

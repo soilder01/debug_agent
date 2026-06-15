@@ -26,6 +26,8 @@ describe("WorkerControlsPanel", () => {
     render(<WorkerControlsPanel status={makeStatus()} onStart={onStart} onStop={onStop} />);
 
     expect(screen.getByRole("heading", { name: "Worker" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Worker" })).toHaveClass("worker-panel");
+    expect(screen.getByLabelText("Worker actions")).toHaveClass("action-row");
     expect(screen.getByText("Worker running：true")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Start worker" }));

@@ -60,6 +60,12 @@ describe("BatchJobListPanel", () => {
     );
 
     expect(screen.getByText("队列任务：1")).toBeInTheDocument();
+    expect(screen.getByLabelText("Batch job queue metrics")).toHaveClass("metric-strip");
+    expect(screen.getByText("Failed")).toBeInTheDocument();
+    expect(screen.getByText("Pending")).toBeInTheDocument();
+    expect(screen.getByLabelText("Batch queue actions")).toHaveClass("action-row");
+    expect(screen.getByText("failed")).toHaveClass("status-badge--critical");
+    expect(screen.getByText("warning")).toHaveClass("status-badge--warning");
     expect(screen.getByText("总任务：3")).toBeInTheDocument();
     expect(screen.getByText("未加载：2")).toBeInTheDocument();
     expect(screen.getByText("拒绝：missing-case")).toBeInTheDocument();

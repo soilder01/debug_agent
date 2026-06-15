@@ -3,12 +3,19 @@ type BatchJobControlsPanelProps = {
   onCaseIdsChange: (value: string) => void;
   onSubmit: () => void;
   onLoadJobs: (status?: string, sort?: string) => void;
+  showHeading?: boolean;
 };
 
-export function BatchJobControlsPanel({ caseIds, onCaseIdsChange, onSubmit, onLoadJobs }: BatchJobControlsPanelProps) {
+export function BatchJobControlsPanel({
+  caseIds,
+  onCaseIdsChange,
+  onSubmit,
+  onLoadJobs,
+  showHeading = true
+}: BatchJobControlsPanelProps) {
   return (
     <>
-      <h2>Batch Jobs</h2>
+      {showHeading ? <h2>Batch Jobs</h2> : null}
       <label htmlFor="batch-case-ids">Batch case ids</label>
       <textarea id="batch-case-ids" value={caseIds} onChange={(event) => onCaseIdsChange(event.target.value)} />
       <button type="button" onClick={onSubmit}>

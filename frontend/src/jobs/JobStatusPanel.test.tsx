@@ -41,6 +41,9 @@ describe("JobStatusPanel", () => {
 
     render(<JobStatusPanel job={job} />);
 
+    expect(screen.getByText("failed")).toHaveClass("status-badge--critical");
+    expect(screen.getByText("critical")).toHaveClass("status-badge--critical");
+    expect(screen.getByLabelText("Job attempt metrics")).toHaveClass("metric-strip");
     expect(screen.getByText("创建时间：2026-06-11 10:00:01")).toHaveAttribute("title", "2026-06-11T10:00:01");
     expect(screen.getByText("更新时间：2026-06-11 10:00:02")).toHaveAttribute("title", "2026-06-11T10:00:02");
   });

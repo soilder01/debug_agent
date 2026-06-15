@@ -186,15 +186,15 @@ Commit only after the focused tests and full verification pass.
 - Modify: `frontend/src/jobs/JobStatusPanel.test.tsx`
 - Modify: `frontend/src/styles/product.css`
 
-- [ ] Add RED tests for worker health status badges and queue summary metrics.
-- [ ] Use `StatusBadge` for job status, retry severity, worker running state, and failed job state.
-- [ ] Add queue metric strip: total, completed, failed, pending, unloaded.
-- [ ] Productize current job panel with a persistent action row for load report and evidence.
-- [ ] Run focused tests:
+- [x] Add RED tests for worker health status badges and queue summary metrics.
+- [x] Use `StatusBadge` for job status, retry severity, worker running state, and failed job state.
+- [x] Add queue metric strip: total, completed, failed, pending, unloaded.
+- [x] Productize current job panel with a persistent action row for load report and evidence.
+- [x] Run focused tests:
   ```powershell
   npx --yes pnpm@9.15.4 --dir frontend test -- --run src/jobs/WorkerControlsPanel.test.tsx src/jobs/WorkerStatusPanel.test.tsx src/jobs/BatchJobsPanel.test.tsx src/jobs/BatchJobListPanel.test.tsx src/jobs/CurrentJobPanel.test.tsx src/jobs/JobStatusPanel.test.tsx
   ```
-- [ ] Commit:
+- [x] Commit:
   ```powershell
   git add frontend/src/jobs frontend/src/styles/product.css
   git commit -m "feat: productize job operations"

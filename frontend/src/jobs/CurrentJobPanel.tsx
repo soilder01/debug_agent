@@ -11,9 +11,9 @@ type CurrentJobPanelProps = {
 
 export function CurrentJobPanel({ job, selectedEvidence, onSelectEvidence, onLoadReport }: CurrentJobPanelProps) {
   return (
-    <>
+    <section aria-label="Current job workspace" className="current-job-panel">
       <JobStatusPanel job={job} onSelectEvidence={onSelectEvidence} onLoadReport={onLoadReport} />
       <EvidenceDetail evidence={selectedEvidence} />
-    </>
+    </section>
   );
 }

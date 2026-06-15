@@ -75,7 +75,9 @@ describe("CurrentJobPanel", () => {
       />
     );
 
+    expect(screen.getByRole("region", { name: "Current job workspace" })).toHaveClass("current-job-panel");
     expect(screen.getByRole("heading", { name: "Job Status" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Job status actions")).toHaveClass("action-row");
     expect(screen.getByText("Job ID：job-1")).toBeInTheDocument();
     expect(screen.getByText("证据数：1")).toBeInTheDocument();
     expect(screen.getByText("证据 ID：evidence-1")).toBeInTheDocument();
