@@ -757,6 +757,14 @@
 - [x] Add a restrained visual system for typography, spacing, surfaces, buttons, and responsive layouts.
 - [x] Preserve existing app workflows and interaction tests after layout restructuring.
 
+### Frontend Productization Completion Plan
+
+**Plan:** `docs/superpowers/plans/2026-06-15-frontend-productization-completion.md`
+
+- [x] Create a complete frontend productization plan from current shell state to `100%` completion.
+- [ ] Execute Tasks 46-57 in order, with TDD, focused tests, full verification, diff check, secret scan, and commits after each validated slice.
+- [ ] Stop only after the plan marks frontend productization as `100%`.
+
 ## Verification Policy
 
 Every task must follow:
