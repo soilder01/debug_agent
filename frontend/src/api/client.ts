@@ -368,6 +368,12 @@ export type ObservabilitySummary = {
     model_call_errors: number;
     average_latency_ms: number;
   };
+  strategy_feedback: {
+    total_follow_ups: number;
+    pending_count: number;
+    passed_stop_condition_count: number;
+    needs_escalation_count: number;
+  };
   usage: {
     model_call_count: number;
     prompt_character_count: number;

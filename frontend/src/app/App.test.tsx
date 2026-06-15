@@ -77,12 +77,19 @@ describe("App", () => {
               budget_utilization: 1.0869,
               budget_enforcement_enabled: true
             },
+            strategy_feedback: {
+              total_follow_ups: 6,
+              pending_count: 2,
+              passed_stop_condition_count: 3,
+              needs_escalation_count: 1
+            },
             health: {
               level: "critical",
-              reasons: ["failed jobs present", "failed spreadsheet writebacks present"],
+              reasons: ["failed jobs present", "failed spreadsheet writebacks present", "strategy follow-ups need escalation"],
               actions: [
                 "Inspect failed jobs and open their evidence chain.",
-                "Retry failed spreadsheet writebacks after checking Lark permissions and sheet headers."
+                "Retry failed spreadsheet writebacks after checking Lark permissions and sheet headers.",
+                "Open strategy follow-up history and run escalation probes."
               ]
             }
           }),
@@ -127,8 +134,10 @@ describe("App", () => {
     expect(screen.getByText("Observed estimated cost units：54.345")).toBeInTheDocument();
     expect(screen.getByText("Observed budget status：over_budget")).toBeInTheDocument();
     expect(screen.getByText("Observed budget enforcement：enabled")).toBeInTheDocument();
+    expect(screen.getByText("Observed strategy needs escalation：1")).toBeInTheDocument();
     expect(screen.getByText("Observed health：critical")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：failed jobs present")).toBeInTheDocument();
+    expect(screen.getByText("Observed health reason：strategy follow-ups need escalation")).toBeInTheDocument();
     expect(screen.getByText("Recommended action：Inspect failed jobs and open their evidence chain.")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Open failed jobs from observability" }));

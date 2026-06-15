@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 
 from debug_agent.api import routes
 from debug_agent.api.routes import job_repository
+from debug_agent.cases.fixtures import load_fixture_case
 from debug_agent.experiments.runner import ExperimentEvidence
 from debug_agent.judging.runner import JudgeResult
 from debug_agent.main import app
@@ -52,6 +53,36 @@ def test_observability_summary_reports_runtime_and_operational_counts() -> None:
                 ),
             ],
         )
+        strategy_case = load_fixture_case("handwrite233").model_copy(update={"case_id": "observability-strategy-case"})
+        job_repository.save_case(strategy_case)
+        job_repository.create_job(job_id="observability-source", case_id=strategy_case.case_id, baseline_trials=1)
+        job_repository.create_job(
+            job_id="observability-strategy-follow-up",
+            case_id=strategy_case.case_id,
+            baseline_trials=1,
+        )
+        job_repository.save_evidence(
+            job_id="observability-strategy-follow-up",
+            case_id=strategy_case.case_id,
+            evidence=[
+                ExperimentEvidence(
+                    evidence_id="observability-strategy-fail",
+                    step_name="strategy_ablation_expansion_probe",
+                    trial=0,
+                    raw_output=strategy_case.predictions[0].raw_output,
+                    judge=JudgeResult(score=0, reasons=["student_answer_mismatch"]),
+                )
+            ],
+        )
+        job_repository.mark_completed("observability-strategy-follow-up")
+        job_repository.save_strategy_follow_up_job(
+            source_job_id="observability-source",
+            stage="ablation_expansion",
+            planned_steps="strategy_ablation_expansion_probe",
+            follow_up_job_id="observability-strategy-follow-up",
+            actor="strategy-operator",
+            note="observe needs escalation",
+        )
         routes.settings = routes.settings.model_copy(update={"enforce_usage_budget": True})
 
         response = client.get("/observability/summary")
@@ -77,6 +108,10 @@ def test_observability_summary_reports_runtime_and_operational_counts() -> None:
         assert body["usage"]["budget_status"] == "over_budget"
         assert body["usage"]["budget_utilization"] >= 1.0
         assert body["usage"]["budget_enforcement_enabled"] is True
+        assert body["strategy_feedback"]["total_follow_ups"] >= 1
+        assert body["strategy_feedback"]["needs_escalation_count"] >= 1
+        assert body["strategy_feedback"]["pending_count"] >= 0
+        assert body["strategy_feedback"]["passed_stop_condition_count"] >= 0
         assert body["worker"]["running"] is False
         assert body["worker"]["auto_writeback_enabled"] is False
         assert body["worker"]["completion_hook_enabled"] is False
@@ -85,12 +120,14 @@ def test_observability_summary_reports_runtime_and_operational_counts() -> None:
         assert "failed spreadsheet writebacks present" in body["health"]["reasons"]
         assert "model call errors present" in body["health"]["reasons"]
         assert "usage budget exceeded" in body["health"]["reasons"]
+        assert "strategy follow-ups need escalation" in body["health"]["reasons"]
         assert "Inspect failed jobs and open their evidence chain." in body["health"]["actions"]
         assert "Retry failed spreadsheet writebacks after checking Lark permissions and sheet headers." in body["health"][
             "actions"
         ]
         assert "Check model endpoint health, timeout settings, and retry affected jobs." in body["health"]["actions"]
         assert "Pause new submissions or raise the usage budget before continuing." in body["health"]["actions"]
+        assert "Open strategy follow-up history and run escalation probes." in body["health"]["actions"]
 
         job_repository.mark_failed(created["job_id"], "test cleanup")
     finally:

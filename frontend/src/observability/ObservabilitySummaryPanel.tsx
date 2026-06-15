@@ -13,6 +13,12 @@ export function ObservabilitySummaryPanel({
   onLoadFailedWritebacks,
   onStartWorker
 }: ObservabilitySummaryPanelProps) {
+  const strategyFeedback = summary.strategy_feedback ?? {
+    total_follow_ups: 0,
+    pending_count: 0,
+    passed_stop_condition_count: 0,
+    needs_escalation_count: 0
+  };
   return (
     <section>
       <h2>Observability</h2>
@@ -43,6 +49,10 @@ export function ObservabilitySummaryPanel({
       <p>Observed budget status：{summary.usage.budget_status}</p>
       <p>Observed budget utilization：{summary.usage.budget_utilization}</p>
       <p>Observed budget enforcement：{summary.usage.budget_enforcement_enabled ? "enabled" : "disabled"}</p>
+      <p>Observed strategy follow-ups：{strategyFeedback.total_follow_ups}</p>
+      <p>Observed strategy pending：{strategyFeedback.pending_count}</p>
+      <p>Observed strategy passed stop condition：{strategyFeedback.passed_stop_condition_count}</p>
+      <p>Observed strategy needs escalation：{strategyFeedback.needs_escalation_count}</p>
       <p>Observed health：{summary.health.level}</p>
       {summary.health.reasons.map((reason) => (
         <p key={reason}>Observed health reason：{reason}</p>

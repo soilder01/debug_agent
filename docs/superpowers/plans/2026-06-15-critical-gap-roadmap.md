@@ -307,6 +307,21 @@
 - [x] Automatically rebuild and write back the source job report when a strategy follow-up completes.
 - [x] Keep normal completed job writeback behavior unchanged.
 
+### Task 20: Strategy Feedback Observability
+
+**Files:**
+- Modify: `backend/src/debug_agent/api/routes.py`
+- Modify: `backend/src/debug_agent/storage/repository.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/observability/ObservabilitySummaryPanel.tsx`
+- Test: `backend/tests/api/test_observability_summary.py`
+- Test: `frontend/src/observability/ObservabilitySummaryPanel.test.tsx`
+
+- [x] Add strategy follow-up feedback counts to observability summary.
+- [x] Track total, pending, passed stop condition, and needs escalation counts.
+- [x] Surface `needs_escalation` as a degraded health reason with an operator action.
+- [x] Render strategy feedback metrics in the observability panel.
+
 ## Verification Policy
 
 Every task must follow:

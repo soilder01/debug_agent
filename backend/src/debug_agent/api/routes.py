@@ -321,11 +321,19 @@ class ObservabilityUsageSummary(BaseModel):
     budget_enforcement_enabled: bool
 
 
+class ObservabilityStrategyFeedbackSummary(BaseModel):
+    total_follow_ups: int
+    pending_count: int
+    passed_stop_condition_count: int
+    needs_escalation_count: int
+
+
 class ObservabilitySummaryResponse(BaseModel):
     jobs: ObservabilityJobSummary
     worker: WorkerRuntimeStatus
     writeback_audits: SpreadsheetWritebackAuditSummaryResponse
     evidence: ObservabilityEvidenceSummary
+    strategy_feedback: ObservabilityStrategyFeedbackSummary
     health: ObservabilityHealthSummary
     usage: ObservabilityUsageSummary
 
@@ -361,6 +369,7 @@ def get_observability_summary() -> ObservabilitySummaryResponse:
         budget_units=settings.usage_budget_units,
         budget_enforcement_enabled=settings.enforce_usage_budget,
     )
+    strategy_feedback_summary = _build_strategy_feedback_summary()
     job_summary = ObservabilityJobSummary(
         by_status=job_counts,
         total_count=sum(job_counts.values()),
@@ -378,12 +387,14 @@ def get_observability_summary() -> ObservabilitySummaryResponse:
         worker=worker_status,
         writeback_audits=writeback_summary,
         evidence=evidence_summary,
+        strategy_feedback=strategy_feedback_summary,
         health=_build_observability_health(
             jobs=job_summary,
             worker=worker_status,
             writeback_audits=writeback_summary,
             evidence=evidence_summary,
             usage=usage_summary,
+            strategy_feedback=strategy_feedback_summary,
         ),
         usage=usage_summary,
     )
@@ -944,6 +955,23 @@ def _build_usage_summary(
     )
 
 
+def _build_strategy_feedback_summary() -> ObservabilityStrategyFeedbackSummary:
+    outcomes = [
+        StrategyFollowUpJobWithOutcome.model_validate(follow_up)
+        for source_job_id in {
+            follow_up.source_job_id
+            for follow_up in job_repository.list_all_strategy_follow_up_jobs()
+        }
+        for follow_up in build_strategy_follow_up_results(job_repository, source_job_id)
+    ]
+    return ObservabilityStrategyFeedbackSummary(
+        total_follow_ups=len(outcomes),
+        pending_count=sum(1 for item in outcomes if item.outcome == "pending"),
+        passed_stop_condition_count=sum(1 for item in outcomes if item.outcome == "passed_stop_condition"),
+        needs_escalation_count=sum(1 for item in outcomes if item.outcome == "needs_escalation"),
+    )
+
+
 def _raise_if_usage_budget_blocks_submission() -> None:
     if not settings.enforce_usage_budget:
         return
@@ -973,6 +1001,7 @@ def _build_observability_health(
     writeback_audits: SpreadsheetWritebackAuditSummaryResponse,
     evidence: ObservabilityEvidenceSummary,
     usage: ObservabilityUsageSummary,
+    strategy_feedback: ObservabilityStrategyFeedbackSummary,
 ) -> ObservabilityHealthSummary:
     critical_reasons: list[str] = []
     degraded_reasons: list[str] = []
@@ -994,6 +1023,8 @@ def _build_observability_health(
         degraded_reasons.append("response parse errors present")
     if writeback_audits.by_status.get("skipped", 0) > 0:
         degraded_reasons.append("skipped spreadsheet writebacks present")
+    if strategy_feedback.needs_escalation_count > 0:
+        degraded_reasons.append("strategy follow-ups need escalation")
     if critical_reasons:
         reasons = critical_reasons + degraded_reasons
         return ObservabilityHealthSummary(level="critical", reasons=reasons, actions=_observability_actions(reasons))
@@ -1019,6 +1050,7 @@ def _observability_actions(reasons: list[str]) -> list[str]:
         "jobs currently running": "Monitor running jobs for timeout or stuck execution.",
         "response parse errors present": "Inspect prompts and parser assumptions for malformed model outputs.",
         "skipped spreadsheet writebacks present": "Check spreadsheet row mappings before retrying writeback.",
+        "strategy follow-ups need escalation": "Open strategy follow-up history and run escalation probes.",
     }
     actions: list[str] = []
     for reason in reasons:

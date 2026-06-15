@@ -53,13 +53,25 @@ function makeSummary(): ObservabilitySummary {
       budget_utilization: 1.0869,
       budget_enforcement_enabled: true
     },
+    strategy_feedback: {
+      total_follow_ups: 6,
+      pending_count: 2,
+      passed_stop_condition_count: 3,
+      needs_escalation_count: 1
+    },
     health: {
       level: "critical",
-      reasons: ["failed jobs present", "failed spreadsheet writebacks present", "model call errors present"],
+      reasons: [
+        "failed jobs present",
+        "failed spreadsheet writebacks present",
+        "model call errors present",
+        "strategy follow-ups need escalation"
+      ],
       actions: [
         "Inspect failed jobs and open their evidence chain.",
         "Retry failed spreadsheet writebacks after checking Lark permissions and sheet headers.",
-        "Check model endpoint health, timeout settings, and retry affected jobs."
+        "Check model endpoint health, timeout settings, and retry affected jobs.",
+        "Open strategy follow-up history and run escalation probes."
       ]
     }
   };
@@ -106,10 +118,15 @@ describe("ObservabilitySummaryPanel", () => {
     expect(screen.getByText("Observed budget status：over_budget")).toBeInTheDocument();
     expect(screen.getByText("Observed budget utilization：1.0869")).toBeInTheDocument();
     expect(screen.getByText("Observed budget enforcement：enabled")).toBeInTheDocument();
+    expect(screen.getByText("Observed strategy follow-ups：6")).toBeInTheDocument();
+    expect(screen.getByText("Observed strategy pending：2")).toBeInTheDocument();
+    expect(screen.getByText("Observed strategy passed stop condition：3")).toBeInTheDocument();
+    expect(screen.getByText("Observed strategy needs escalation：1")).toBeInTheDocument();
     expect(screen.getByText("Observed health：critical")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：failed jobs present")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：failed spreadsheet writebacks present")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：model call errors present")).toBeInTheDocument();
+    expect(screen.getByText("Observed health reason：strategy follow-ups need escalation")).toBeInTheDocument();
     expect(screen.getByText("Recommended action：Inspect failed jobs and open their evidence chain.")).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -118,6 +135,9 @@ describe("ObservabilitySummaryPanel", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText("Recommended action：Check model endpoint health, timeout settings, and retry affected jobs.")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Recommended action：Open strategy follow-up history and run escalation probes.")
     ).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Open failed jobs from observability" }));
