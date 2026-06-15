@@ -763,6 +763,47 @@ describe("ReportPanel", () => {
     expect(onCreateTargetedProbe).toHaveBeenCalledWith("multimodal:conflict:1");
   });
 
+  it("renders targeted probe guardrail stop condition without runnable action", () => {
+    const onCreateTargetedProbe = vi.fn();
+    const report: DebugReport = {
+      case_id: "case-targeted-guardrail",
+      job_id: "job-targeted-source",
+      status: "needs_human_review",
+      observed_failure: {
+        type: "cross_modal_alignment_failure",
+        summary: "cross-modal compare failed",
+        affected_box_ids: []
+      },
+      planned_experiments: ["modality_ablation_check"],
+      experiment_summary: null,
+      root_cause: {
+        label: "cross_modal_alignment_failure",
+        confidence: "high",
+        evidence_summary: "cross-modal target failed."
+      },
+      follow_up_experiments: [
+        {
+          source: "targeted_probe_guardrail",
+          target_id: "multimodal:conflict:1",
+          result: "target_still_failing",
+          planned_steps: "",
+          summary:
+            "Targeted probe chain for multimodal:conflict:1 reached max depth 3; stop automatic escalation and require human review.",
+          stop_condition: "max_targeted_probe_depth_reached"
+        }
+      ],
+      suggested_sheet_fields: {
+        错误原因: "跨模态对齐问题"
+      }
+    };
+
+    render(<ReportPanel report={report} onCreateTargetedProbe={onCreateTargetedProbe} />);
+
+    expect(screen.getByText("targeted_probe_guardrail/target_still_failing：")).toBeInTheDocument();
+    expect(screen.getByText("Stop condition：max_targeted_probe_depth_reached")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Run targeted probe multimodal:conflict:1" })).not.toBeInTheDocument();
+  });
+
 
   it("delegates verification reruns for applied recommended actions", async () => {
     const onVerifyRecommendedAction = vi.fn();

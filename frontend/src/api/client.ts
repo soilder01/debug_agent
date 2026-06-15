@@ -118,6 +118,7 @@ export type DebugReport = {
     parent_probe_job_id?: string;
     verification_job_id?: string;
     result?: string;
+    stop_condition?: string;
     planned_steps: string;
     summary: string;
   }>;

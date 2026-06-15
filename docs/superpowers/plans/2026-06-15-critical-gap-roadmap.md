@@ -462,6 +462,23 @@
 - [x] Render parent probe job id and trigger outcome for escalation probes.
 - [x] Keep the existing flat targeted probe history available for detailed job actions.
 
+### Task 29: Targeted Probe Loop Guardrails
+
+**Files:**
+- Modify: `backend/src/debug_agent/api/routes.py`
+- Modify: `backend/src/debug_agent/reports/job_report.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `backend/tests/api/test_recommended_action_status.py`
+- Test: `backend/tests/reports/test_job_report.py`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Stop automatic targeted escalation when a target reaches max probe depth.
+- [x] Generate `targeted_probe_guardrail` follow-up entries with explicit stop condition.
+- [x] Return a 409 response when operators try to submit a probe blocked by guardrails.
+- [x] Debounce repeated target escalation by only escalating the latest probe in each target chain.
+- [x] Render targeted probe guardrail stop conditions without runnable probe actions.
+
 ## Verification Policy
 
 Every task must follow:

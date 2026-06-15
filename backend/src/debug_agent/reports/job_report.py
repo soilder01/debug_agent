@@ -15,6 +15,8 @@ from debug_agent.storage.repository import (
     TargetedProbeJob,
 )
 
+MAX_TARGETED_PROBE_DEPTH = 3
+
 
 def build_report_for_job(repository: DebugJobRepository, job_id: str) -> DebugReport | None:
     base_report = _build_base_report_for_job(repository, job_id)
@@ -223,9 +225,10 @@ def _build_targeted_escalation_follow_up_experiments(
     targeted_probe_results: list[dict[str, object]],
 ) -> list[dict[str, str]]:
     base_step_names = {step.name for step in plan_experiments(case).steps}
-    escalation_plan = plan_targeted_escalation_follow_up_experiments(case, targeted_probe_results)
+    escalation_candidates, guardrails = _targeted_escalation_candidates(targeted_probe_results)
+    escalation_plan = plan_targeted_escalation_follow_up_experiments(case, escalation_candidates)
     escalation_steps = [step for step in escalation_plan.steps if step.name not in base_step_names]
-    return [
+    escalation_follow_ups = [
         {
             "source": "targeted_probe_outcome",
             "target_id": str(result.get("target_id", "unknown")),
@@ -238,15 +241,70 @@ def _build_targeted_escalation_follow_up_experiments(
             ),
         }
         for result, step in zip(
-            [
-                item
-                for item in targeted_probe_results
-                if item.get("outcome") in {"target_still_failing", "inconclusive"}
-            ],
+            escalation_candidates,
             escalation_steps,
             strict=False,
         )
     ]
+    return [*escalation_follow_ups, *guardrails]
+
+
+def _targeted_escalation_candidates(
+    targeted_probe_results: list[dict[str, object]],
+) -> tuple[list[dict[str, object]], list[dict[str, str]]]:
+    candidates: list[dict[str, object]] = []
+    guardrails: list[dict[str, str]] = []
+    for chain in _targeted_probe_chains(targeted_probe_results):
+        latest = chain[-1]
+        if latest.get("outcome") not in {"target_still_failing", "inconclusive"}:
+            continue
+        target_id = str(latest.get("target_id", "unknown"))
+        if len(chain) >= MAX_TARGETED_PROBE_DEPTH:
+            guardrails.append(
+                {
+                    "source": "targeted_probe_guardrail",
+                    "target_id": target_id,
+                    "result": str(latest.get("outcome", "unknown")),
+                    "planned_steps": "",
+                    "summary": (
+                        f"Targeted probe chain for {target_id} reached max depth {MAX_TARGETED_PROBE_DEPTH}; "
+                        "stop automatic escalation and require human review."
+                    ),
+                    "stop_condition": "max_targeted_probe_depth_reached",
+                }
+            )
+            continue
+        candidates.append(latest)
+    return candidates, guardrails
+
+
+def _targeted_probe_chains(targeted_probe_results: list[dict[str, object]]) -> list[list[dict[str, object]]]:
+    by_target: dict[str, list[dict[str, object]]] = {}
+    for result in targeted_probe_results:
+        target_id = str(result.get("target_id", "unknown"))
+        by_target.setdefault(target_id, []).append(result)
+    return [_order_targeted_probe_chain(items) for items in by_target.values()]
+
+
+def _order_targeted_probe_chain(items: list[dict[str, object]]) -> list[dict[str, object]]:
+    by_parent: dict[str, list[dict[str, object]]] = {}
+    for item in items:
+        parent = str(item.get("parent_probe_job_id", ""))
+        by_parent.setdefault(parent, []).append(item)
+    ordered: list[dict[str, object]] = []
+
+    def visit(item: dict[str, object]) -> None:
+        ordered.append(item)
+        probe_job_id = str(item.get("probe_job_id", ""))
+        for child in by_parent.get(probe_job_id, []):
+            visit(child)
+
+    for root in by_parent.get("", []):
+        visit(root)
+    for item in items:
+        if item not in ordered:
+            visit(item)
+    return ordered
 
 
 def _recommended_action_verification_result(

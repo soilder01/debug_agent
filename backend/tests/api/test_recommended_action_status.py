@@ -439,6 +439,49 @@ def test_targeted_probe_api_creates_escalation_job_with_parent_probe_lineage() -
     routes.job_repository.mark_failed(first_probe_job_id, "test cleanup after completed probe")
 
 
+def test_targeted_probe_api_stops_escalation_when_guardrail_blocks_target() -> None:
+    client = TestClient(app)
+    job_id = _create_job_with_cross_modal_strategy()
+    parent_probe_job_id = ""
+    source_job = routes.job_repository.get_job(job_id)
+    assert source_job is not None
+    for index in range(3):
+        response = client.post(
+            f"/jobs/{job_id}/targeted-probes/multimodal:conflict:1/debug-jobs",
+            json={"actor": "targeted-operator", "note": f"probe round {index + 1}"},
+        )
+        assert response.status_code == 202
+        probe_job_id = response.json()["probe_job_id"]
+        if index > 0:
+            assert response.json()["parent_probe_job_id"] == parent_probe_job_id
+        routes.job_repository.save_evidence(
+            job_id=probe_job_id,
+            case_id=source_job.case_id,
+            evidence=[
+                ExperimentEvidence(
+                    evidence_id=f"{probe_job_id}:targeted-fail",
+                    step_name="targeted_multimodal_conflict_probe",
+                    trial=0,
+                    raw_output="{\"conflicts\":[]}",
+                    judge=JudgeResult(score=0, reasons=["multimodal:conflict:1 conflict_actual_mismatch"]),
+                )
+            ],
+        )
+        routes.job_repository.mark_completed(probe_job_id)
+        parent_probe_job_id = probe_job_id
+
+    response = client.post(
+        f"/jobs/{job_id}/targeted-probes/multimodal:conflict:1/debug-jobs",
+        json={"actor": "targeted-operator", "note": "probe past guardrail"},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == (
+        "Targeted probe stopped by guardrail for multimodal:conflict:1: max_targeted_probe_depth_reached"
+    )
+    routes.job_repository.mark_failed(parent_probe_job_id, "test cleanup after completed probe")
+
+
 def test_recommended_action_status_api_evaluates_resolved_verification_job() -> None:
     client = TestClient(app)
     job_id = _create_job_with_recommended_actions()

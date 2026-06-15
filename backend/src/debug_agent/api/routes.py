@@ -881,6 +881,11 @@ def create_targeted_probe_job(
     follow_up = _targeted_probe_from_report(report, target_id)
     if follow_up is None:
         raise HTTPException(status_code=404, detail=f"Targeted probe not found: {target_id}")
+    if follow_up.get("source") == "targeted_probe_guardrail":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Targeted probe stopped by guardrail for {target_id}: {follow_up.get('stop_condition')}",
+        )
     actor = _resolved_actor(request.actor)
     _raise_if_usage_budget_blocks_submission()
     probe_job = job_service.submit_case_debug(job.case_id, baseline_trials=job.baseline_trials)
@@ -1097,6 +1102,9 @@ def _strategy_follow_up_from_report(report: DebugReport, stage: str) -> dict[str
 
 
 def _targeted_probe_from_report(report: DebugReport, target_id: str) -> dict[str, str] | None:
+    for follow_up in report.follow_up_experiments:
+        if follow_up.get("source") == "targeted_probe_guardrail" and follow_up.get("target_id") == target_id:
+            return follow_up
     for follow_up in report.follow_up_experiments:
         if follow_up.get("source") == "targeted_probe_outcome" and follow_up.get("target_id") == target_id:
             return follow_up

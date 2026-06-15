@@ -444,6 +444,101 @@ def test_build_report_for_job_adds_escalation_follow_up_for_failed_targeted_prob
     } in report.follow_up_experiments
 
 
+def test_build_report_for_job_stops_targeted_escalation_at_max_depth() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    case = DebugCase.model_validate(
+        {
+            "case_id": "job-report-targeted-guardrail-case",
+            "task_type": "multimodal_detection",
+            "image_uri": "file:///tmp/multimodal.mp4",
+            "prompt": "Compare image and caption, then return cross-modal conflict JSON.",
+            "golden_answer": {"answers": []},
+            "expected_output": {
+                "conflicts": [
+                    {
+                        "target_id": "multimodal:conflict:1",
+                        "conflict_type": "visual_text_conflict",
+                        "modalities": ["image", "text"],
+                        "expected": "caption matches image",
+                        "actual": "caption says cat but image shows dog",
+                    }
+                ]
+            },
+            "scoring_standard": "cross-modal claims must agree.",
+            "predictions": [{"trial": 0, "raw_output": "{\"conflicts\":[]}", "score": 0}],
+            "avg_score": 0.0,
+        }
+    )
+    repository.save_case(case)
+    repository.create_job(job_id="job-source", case_id=case.case_id, baseline_trials=1)
+    repository.save_evidence(
+        job_id="job-source",
+        case_id=case.case_id,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="job-source:cross-modal",
+                step_name="modality_ablation_check",
+                trial=0,
+                request_summary={"ablation_variant": "cross_modal_compare", "ablation_modalities": ["image", "text"]},
+                raw_output=case.predictions[0].raw_output,
+                judge=JudgeResult(score=0, reasons=["multimodal:conflict:1 conflict_actual_mismatch"]),
+            )
+        ],
+    )
+    parent_probe_job_id = ""
+    for index in range(3):
+        probe_job_id = f"job-targeted-probe-{index + 1}"
+        repository.create_job(job_id=probe_job_id, case_id=case.case_id, baseline_trials=1)
+        repository.save_evidence(
+            job_id=probe_job_id,
+            case_id=case.case_id,
+            evidence=[
+                ExperimentEvidence(
+                    evidence_id=f"{probe_job_id}:still-fail",
+                    step_name="targeted_multimodal_conflict_probe",
+                    trial=0,
+                    raw_output=case.predictions[0].raw_output,
+                    judge=JudgeResult(score=0, reasons=["multimodal:conflict:1 conflict_actual_mismatch"]),
+                )
+            ],
+        )
+        repository.mark_completed(probe_job_id)
+        repository.save_targeted_probe_job(
+            source_job_id="job-source",
+            target_id="multimodal:conflict:1",
+            planned_steps="targeted_multimodal_conflict_probe",
+            probe_job_id=probe_job_id,
+            source="targeted_probe" if index == 0 else "targeted_probe_outcome",
+            parent_probe_job_id=parent_probe_job_id,
+            trigger_outcome="" if index == 0 else "target_still_failing",
+            actor="targeted-operator",
+            note=f"probe round {index + 1}",
+        )
+        parent_probe_job_id = probe_job_id
+
+    report = build_report_for_job(repository, "job-source")
+
+    assert report is not None
+    assert not any(
+        follow_up.get("source") == "targeted_probe_outcome"
+        and follow_up.get("target_id") == "multimodal:conflict:1"
+        for follow_up in report.follow_up_experiments
+    )
+    assert {
+        "source": "targeted_probe_guardrail",
+        "target_id": "multimodal:conflict:1",
+        "result": "target_still_failing",
+        "planned_steps": "",
+        "summary": (
+            "Targeted probe chain for multimodal:conflict:1 reached max depth 3; "
+            "stop automatic escalation and require human review."
+        ),
+        "stop_condition": "max_targeted_probe_depth_reached",
+    } in report.follow_up_experiments
+
+
 def test_build_report_for_job_adds_escalation_follow_up_for_failed_strategy_outcome() -> None:
     session_factory, engine = create_sqlite_memory_session_factory()
     Base.metadata.create_all(engine)

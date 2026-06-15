@@ -241,6 +241,7 @@ export function ReportPanel({
                   {followUp.source}/{followUp.stage ?? followUp.result ?? "unknown"}：{followUp.planned_steps}
                 </p>
                 <p>{followUp.summary}</p>
+                {followUp.stop_condition ? <p>Stop condition：{followUp.stop_condition}</p> : null}
                 {onCreateStrategyFollowUp && isRunnableStrategyFollowUp(followUp.source) && followUp.stage ? (
                   <p>
                     <button type="button" onClick={() => onCreateStrategyFollowUp(followUp.stage!)}>
