@@ -140,6 +140,37 @@ def plan_targeted_probe_experiments(
     )
 
 
+def plan_targeted_escalation_follow_up_experiments(
+    case: DebugCase,
+    targeted_probe_results: list[dict[str, object]],
+    baseline_trials: int | None = None,
+) -> ExperimentPlan:
+    base_plan = plan_experiments(case, baseline_trials=baseline_trials)
+    escalation_steps = [
+        ExperimentStep(
+            name=_targeted_escalation_probe_name(target_id),
+            description=f"Escalate targeted probe {target_id} from probe job {probe_job_id}: {escalation}",
+            trials=1,
+        )
+        for item in targeted_probe_results
+        if item.get("outcome") in {"target_still_failing", "inconclusive"}
+        and (target_id := item.get("target_id"))
+        and isinstance(target_id, str)
+        and (probe_job_id := item.get("probe_job_id"))
+        and isinstance(probe_job_id, str)
+        and (escalation := item.get("escalation"))
+        and isinstance(escalation, str)
+        and escalation.strip()
+    ]
+    if not escalation_steps:
+        return base_plan
+    return ExperimentPlan(
+        case_id=base_plan.case_id,
+        max_model_calls=base_plan.max_model_calls,
+        steps=[*base_plan.steps, *escalation_steps],
+    )
+
+
 def _target_ids_from_trace(root_cause_trace: list[dict[str, object]]) -> list[str]:
     target_ids: list[str] = []
     for trace in root_cause_trace:
@@ -178,6 +209,16 @@ def _strategy_escalation_probe_name(stage: str) -> str:
     if stage == "ablation_expansion":
         return "strategy_escalation_single_modality_probe"
     return f"strategy_escalation_{_safe_strategy_stage(stage)}_probe"
+
+
+def _targeted_escalation_probe_name(target_id: str) -> str:
+    if target_id.startswith("image:region:"):
+        return "targeted_escalation_image_region_probe"
+    if target_id.startswith("video:segment:"):
+        return "targeted_escalation_video_segment_probe"
+    if target_id.startswith("multimodal:conflict:"):
+        return "targeted_escalation_multimodal_conflict_probe"
+    return "targeted_escalation_probe"
 
 
 def _safe_strategy_stage(stage: str) -> str:

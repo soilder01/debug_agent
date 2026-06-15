@@ -357,6 +357,89 @@ def test_build_report_for_job_includes_targeted_probe_results() -> None:
     ]
 
 
+def test_build_report_for_job_adds_escalation_follow_up_for_failed_targeted_probe() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    case = DebugCase.model_validate(
+        {
+            "case_id": "job-report-targeted-escalation-case",
+            "task_type": "multimodal_detection",
+            "image_uri": "file:///tmp/multimodal.mp4",
+            "prompt": "Compare image and caption, then return cross-modal conflict JSON.",
+            "golden_answer": {"answers": []},
+            "expected_output": {
+                "conflicts": [
+                    {
+                        "target_id": "multimodal:conflict:1",
+                        "conflict_type": "visual_text_conflict",
+                        "modalities": ["image", "text"],
+                        "expected": "caption matches image",
+                        "actual": "caption says cat but image shows dog",
+                    }
+                ]
+            },
+            "scoring_standard": "cross-modal claims must agree.",
+            "predictions": [{"trial": 0, "raw_output": "{\"conflicts\":[]}", "score": 0}],
+            "avg_score": 0.0,
+        }
+    )
+    repository.save_case(case)
+    repository.create_job(job_id="job-source", case_id=case.case_id, baseline_trials=1)
+    repository.save_evidence(
+        job_id="job-source",
+        case_id=case.case_id,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="job-source:cross-modal",
+                step_name="modality_ablation_check",
+                trial=0,
+                request_summary={"ablation_variant": "cross_modal_compare", "ablation_modalities": ["image", "text"]},
+                raw_output=case.predictions[0].raw_output,
+                judge=JudgeResult(score=0, reasons=["multimodal:conflict:1 conflict_actual_mismatch"]),
+            )
+        ],
+    )
+    repository.create_job(job_id="job-targeted-probe", case_id=case.case_id, baseline_trials=1)
+    repository.save_evidence(
+        job_id="job-targeted-probe",
+        case_id=case.case_id,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="job-targeted-probe:still-fail",
+                step_name="targeted_multimodal_conflict_probe",
+                trial=0,
+                raw_output=case.predictions[0].raw_output,
+                judge=JudgeResult(score=0, reasons=["multimodal:conflict:1 conflict_actual_mismatch"]),
+            )
+        ],
+    )
+    repository.mark_completed("job-targeted-probe")
+    repository.save_targeted_probe_job(
+        source_job_id="job-source",
+        target_id="multimodal:conflict:1",
+        planned_steps="targeted_multimodal_conflict_probe",
+        probe_job_id="job-targeted-probe",
+        actor="targeted-operator",
+        note="probe conflict target",
+    )
+
+    report = build_report_for_job(repository, "job-source")
+
+    assert report is not None
+    assert report.targeted_probe_results[0]["outcome"] == "target_still_failing"
+    assert {
+        "source": "targeted_probe_outcome",
+        "target_id": "multimodal:conflict:1",
+        "result": "target_still_failing",
+        "planned_steps": "targeted_escalation_multimodal_conflict_probe",
+        "summary": (
+            "Targeted probe job job-targeted-probe for multimodal:conflict:1 未满足停止条件，"
+            "已生成升级 probing：targeted_escalation_multimodal_conflict_probe。"
+        ),
+    } in report.follow_up_experiments
+
+
 def test_build_report_for_job_adds_escalation_follow_up_for_failed_strategy_outcome() -> None:
     session_factory, engine = create_sqlite_memory_session_factory()
     Base.metadata.create_all(engine)

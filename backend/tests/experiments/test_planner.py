@@ -6,6 +6,7 @@ from debug_agent.experiments.planner import (
     plan_experiments,
     plan_strategy_escalation_follow_up_experiments,
     plan_strategy_follow_up_experiments,
+    plan_targeted_escalation_follow_up_experiments,
     plan_targeted_probe_experiments,
     plan_verification_follow_up_experiments,
 )
@@ -546,4 +547,72 @@ def test_plan_targeted_probe_experiments_adds_region_segment_and_conflict_probes
     assert plan.steps[-2].description == "Probe video segment target video:segment:1 with temporal evidence replay."
     assert plan.steps[-1].description == (
         "Probe multimodal conflict target multimodal:conflict:1 with cross-modal evidence replay."
+    )
+
+
+def test_plan_targeted_escalation_follow_up_experiments_adds_deeper_target_probes() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "targeted-escalation-case",
+            "task_type": "multimodal_detection",
+            "image_uri": "file:///tmp/multimodal-input.mp4",
+            "prompt": "Compare the image and caption, then return cross-modal conflict JSON.",
+            "golden_answer": {"answers": []},
+            "expected_output": {
+                "conflicts": [
+                    {
+                        "target_id": "multimodal:conflict:1",
+                        "conflict_type": "visual_text_conflict",
+                        "modalities": ["image", "text"],
+                        "expected": "caption matches the visual subject",
+                        "actual": "image and caption both describe a cat",
+                    }
+                ]
+            },
+            "scoring_standard": "cross-modal claims must agree.",
+            "predictions": [{"trial": 0, "raw_output": "{\"conflicts\":[]}", "score": 0}],
+            "avg_score": 0.0,
+        }
+    )
+
+    plan = plan_targeted_escalation_follow_up_experiments(
+        case,
+        [
+            {
+                "target_id": "image:region:1",
+                "outcome": "target_still_failing",
+                "probe_job_id": "job-image-probe",
+                "escalation": "Run deeper localized replay or modality-specific probes for image:region:1.",
+            },
+            {
+                "target_id": "video:segment:1",
+                "outcome": "inconclusive",
+                "probe_job_id": "job-video-probe",
+                "escalation": "Re-run targeted probe with evidence capture enabled for video:segment:1.",
+            },
+            {
+                "target_id": "multimodal:conflict:1",
+                "outcome": "target_cleared",
+                "probe_job_id": "job-cleared-probe",
+                "escalation": "",
+            },
+        ],
+        baseline_trials=1,
+    )
+
+    assert [step.name for step in plan.steps] == [
+        "baseline_replay",
+        "cross_modal_schema_check",
+        "modality_ablation_check",
+        "conflict_grounding_check",
+        "targeted_escalation_image_region_probe",
+        "targeted_escalation_video_segment_probe",
+    ]
+    assert plan.steps[-2].description == (
+        "Escalate targeted probe image:region:1 from probe job job-image-probe: "
+        "Run deeper localized replay or modality-specific probes for image:region:1."
+    )
+    assert plan.steps[-1].description == (
+        "Escalate targeted probe video:segment:1 from probe job job-video-probe: "
+        "Re-run targeted probe with evidence capture enabled for video:segment:1."
     )

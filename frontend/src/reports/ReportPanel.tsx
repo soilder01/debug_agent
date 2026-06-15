@@ -248,7 +248,7 @@ export function ReportPanel({
                     </button>
                   </p>
                 ) : null}
-                {onCreateTargetedProbe && followUp.source === "targeted_probe" && followUp.target_id ? (
+                {onCreateTargetedProbe && isRunnableTargetedProbeFollowUp(followUp.source) && followUp.target_id ? (
                   <p>
                     <button type="button" onClick={() => onCreateTargetedProbe(followUp.target_id!)}>
                       Run targeted probe {followUp.target_id}
@@ -409,6 +409,10 @@ function CitationCoverage({ artifactIds = "", evidenceIds = "", traceRefs = "" }
 
 function isRunnableStrategyFollowUp(source: string) {
   return source === "debug_strategy" || source === "strategy_outcome";
+}
+
+function isRunnableTargetedProbeFollowUp(source: string) {
+  return source === "targeted_probe" || source === "targeted_probe_outcome";
 }
 
 type ArtifactEvidenceButtonsProps = {

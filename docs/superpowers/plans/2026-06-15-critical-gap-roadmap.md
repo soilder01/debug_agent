@@ -412,6 +412,23 @@
 - [x] Render targeted probe metrics in the observability panel.
 - [x] Preserve compatibility with older frontend summary mocks through fallback defaults.
 
+### Task 26: Targeted Probe Escalation Planning
+
+**Files:**
+- Modify: `backend/src/debug_agent/experiments/planner.py`
+- Modify: `backend/src/debug_agent/reports/job_report.py`
+- Modify: `backend/src/debug_agent/api/routes.py`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `backend/tests/experiments/test_planner.py`
+- Test: `backend/tests/reports/test_job_report.py`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Convert `target_still_failing` and `inconclusive` targeted probe outcomes into executable escalation steps.
+- [x] Add image region, video segment, and multimodal conflict escalation probe names.
+- [x] Append targeted outcome escalation follow-up experiments to rebuilt reports.
+- [x] Allow targeted outcome follow-up experiments to create another targeted probe job.
+- [x] Preserve cleared targeted probes as terminal outcomes with no escalation follow-up.
+
 ## Verification Policy
 
 Every task must follow:

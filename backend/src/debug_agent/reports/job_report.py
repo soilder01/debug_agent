@@ -1,7 +1,11 @@
 from typing import Literal
 
 from debug_agent.cases.models import DebugCase
-from debug_agent.experiments.planner import plan_experiments, plan_strategy_escalation_follow_up_experiments
+from debug_agent.experiments.planner import (
+    plan_experiments,
+    plan_strategy_escalation_follow_up_experiments,
+    plan_targeted_escalation_follow_up_experiments,
+)
 from debug_agent.experiments.runner import ExperimentRunResult
 from debug_agent.reports.generator import DebugReport, generate_initial_report
 from debug_agent.storage.repository import (
@@ -34,6 +38,10 @@ def build_report_for_job(repository: DebugJobRepository, job_id: str) -> DebugRe
             *_build_strategy_escalation_follow_up_experiments(
                 case=case,
                 strategy_follow_up_results=report.strategy_follow_up_results,
+            ),
+            *_build_targeted_escalation_follow_up_experiments(
+                case=case,
+                targeted_probe_results=report.targeted_probe_results,
             ),
         ]
     return _merge_recommended_action_statuses(repository, job_id, report)
@@ -203,6 +211,37 @@ def _build_strategy_escalation_follow_up_experiments(
         }
         for result, step in zip(
             [item for item in strategy_follow_up_results if item.get("outcome") == "needs_escalation"],
+            escalation_steps,
+            strict=False,
+        )
+    ]
+
+
+def _build_targeted_escalation_follow_up_experiments(
+    *,
+    case: DebugCase,
+    targeted_probe_results: list[dict[str, object]],
+) -> list[dict[str, str]]:
+    base_step_names = {step.name for step in plan_experiments(case).steps}
+    escalation_plan = plan_targeted_escalation_follow_up_experiments(case, targeted_probe_results)
+    escalation_steps = [step for step in escalation_plan.steps if step.name not in base_step_names]
+    return [
+        {
+            "source": "targeted_probe_outcome",
+            "target_id": str(result.get("target_id", "unknown")),
+            "result": str(result.get("outcome", "unknown")),
+            "planned_steps": step.name,
+            "summary": (
+                f"Targeted probe job {result.get('probe_job_id')} for {result.get('target_id')} 未满足停止条件，"
+                f"已生成升级 probing：{step.name}。"
+            ),
+        }
+        for result, step in zip(
+            [
+                item
+                for item in targeted_probe_results
+                if item.get("outcome") in {"target_still_failing", "inconclusive"}
+            ],
             escalation_steps,
             strict=False,
         )

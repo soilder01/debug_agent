@@ -1095,7 +1095,7 @@ def _strategy_follow_up_from_report(report: DebugReport, stage: str) -> dict[str
 
 def _targeted_probe_from_report(report: DebugReport, target_id: str) -> dict[str, str] | None:
     for follow_up in report.follow_up_experiments:
-        if follow_up.get("source") == "targeted_probe" and follow_up.get("target_id") == target_id:
+        if follow_up.get("source") in {"targeted_probe", "targeted_probe_outcome"} and follow_up.get("target_id") == target_id:
             return follow_up
     return None
 
