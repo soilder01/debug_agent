@@ -52,6 +52,10 @@ def build_report_for_job(repository: DebugJobRepository, job_id: str) -> DebugRe
             for status in repository.list_human_handoff_statuses(job_id)
         ]
         report.final_attributions = _build_final_attributions(report.human_handoff_statuses)
+        report.final_attribution_verification_results = _build_final_attribution_verification_results(
+            final_attributions=report.final_attributions,
+            strategy_follow_up_results=report.strategy_follow_up_results,
+        )
         report.recommended_actions = [
             *report.recommended_actions,
             *_build_final_attribution_recommended_actions(report.final_attributions),
@@ -436,6 +440,61 @@ def _final_attribution_verification_step(category: str) -> str:
     if category == "model_capability_gap":
         return "final_attribution_regression_set"
     return "final_attribution_human_confirmed_verification"
+
+
+def _build_final_attribution_verification_results(
+    *,
+    final_attributions: list[dict[str, str]],
+    strategy_follow_up_results: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    category_by_target = {
+        attribution.get("target_id", ""): attribution.get("category", "unknown")
+        for attribution in final_attributions
+    }
+    results: list[dict[str, object]] = []
+    for follow_up in strategy_follow_up_results:
+        stage = str(follow_up.get("stage", ""))
+        if not stage.startswith("final_attribution:"):
+            continue
+        target_id = stage.removeprefix("final_attribution:")
+        result = _final_attribution_verification_result(str(follow_up.get("outcome", "pending")))
+        raw_success_rate = follow_up.get("success_rate", 0.0)
+        success_rate = raw_success_rate if isinstance(raw_success_rate, int | float) else 0.0
+        results.append(
+            {
+                "source": "final_attribution",
+                "target_id": target_id,
+                "category": category_by_target.get(target_id, "unknown"),
+                "verification_job_id": str(follow_up.get("follow_up_job_id", "")),
+                "result": result,
+                "success_rate": float(success_rate),
+                "summary": _final_attribution_verification_summary(
+                    target_id=target_id,
+                    result=result,
+                ),
+            }
+        )
+    return results
+
+
+def _final_attribution_verification_result(outcome: str) -> str:
+    if outcome == "passed_stop_condition":
+        return "resolved"
+    if outcome == "needs_escalation":
+        return "not_resolved"
+    if outcome == "inconclusive":
+        return "inconclusive"
+    return "pending"
+
+
+def _final_attribution_verification_summary(*, target_id: str, result: str) -> str:
+    if result == "resolved":
+        return f"Final attribution verification for {target_id} resolved the issue."
+    if result == "not_resolved":
+        return f"Final attribution verification for {target_id} did not resolve the issue."
+    if result == "inconclusive":
+        return f"Final attribution verification for {target_id} is inconclusive."
+    return f"Final attribution verification for {target_id} is still pending."
 
 
 def _recommended_action_verification_result(

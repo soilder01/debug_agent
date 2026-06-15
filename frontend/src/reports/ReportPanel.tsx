@@ -56,6 +56,7 @@ export function ReportPanel({
   const followUpExperiments = report.follow_up_experiments ?? [];
   const humanHandoffRequests = report.human_handoff_requests ?? [];
   const finalAttributions = report.final_attributions ?? [];
+  const finalAttributionVerificationResults = report.final_attribution_verification_results ?? [];
   const verificationResultByJobId = new Map(
     recommendedActionVerificationResults.map((result) => [result.verification_job_id, result])
   );
@@ -325,6 +326,23 @@ export function ReportPanel({
                 <p>Attribution actor：{attribution.actor || "unknown"}</p>
                 <p>{attribution.summary}</p>
                 <p>Attribution recommendation：{attribution.recommended_action}</p>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {finalAttributionVerificationResults.length > 0 ? (
+        <>
+          <h3>Final Attribution Verification Results</h3>
+          <ul aria-label="Final attribution verification results">
+            {finalAttributionVerificationResults.map((result) => (
+              <li key={`${result.target_id}:${result.verification_job_id}`}>
+                <p>Attribution verification target：{result.target_id}</p>
+                <p>Attribution verification category：{result.category}</p>
+                <p>Attribution verification result：{result.result}</p>
+                <p>Attribution verification job：{result.verification_job_id}</p>
+                <p>Attribution verification success rate：{formatPercent(result.success_rate)}</p>
+                <p>{result.summary}</p>
               </li>
             ))}
           </ul>

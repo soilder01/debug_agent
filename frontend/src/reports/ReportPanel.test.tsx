@@ -836,6 +836,17 @@ describe("ReportPanel", () => {
           recommended_action: "Update prompt instructions and rerun verification before assigning model capability blame."
         }
       ],
+      final_attribution_verification_results: [
+        {
+          source: "final_attribution",
+          target_id: "multimodal:conflict:1",
+          category: "prompt_issue",
+          verification_job_id: "job-final-attribution-verify",
+          result: "resolved",
+          success_rate: 1,
+          summary: "Final attribution verification for multimodal:conflict:1 resolved the issue."
+        }
+      ],
       suggested_sheet_fields: {
         错误原因: "跨模态对齐问题"
       }
@@ -869,6 +880,11 @@ describe("ReportPanel", () => {
         "Attribution recommendation：Update prompt instructions and rerun verification before assigning model capability blame."
       )
     ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Final Attribution Verification Results" })).toBeInTheDocument();
+    expect(screen.getByText("Attribution verification target：multimodal:conflict:1")).toBeInTheDocument();
+    expect(screen.getByText("Attribution verification result：resolved")).toBeInTheDocument();
+    expect(screen.getByText("Attribution verification job：job-final-attribution-verify")).toBeInTheDocument();
+    expect(screen.getByText("Attribution verification success rate：100%")).toBeInTheDocument();
     expect(screen.getByText("Handoff owner：human-debugger")).toBeInTheDocument();
     expect(
       screen.getByText(

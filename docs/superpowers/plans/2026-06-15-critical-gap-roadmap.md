@@ -617,6 +617,24 @@
 - [x] Render runnable final-attribution follow-up buttons in report panels.
 - [x] Wire App submission flow so operators can create and open the verification job from the report.
 
+### Task 38: Final Attribution Verification Outcome
+
+**Files:**
+- Modify: `backend/src/debug_agent/reports/generator.py`
+- Modify: `backend/src/debug_agent/reports/job_report.py`
+- Modify: `backend/src/debug_agent/spreadsheets/writeback.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `backend/tests/reports/test_job_report.py`
+- Test: `backend/tests/spreadsheets/test_writeback.py`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Evaluate `final_attribution:<target_id>` follow-up jobs as final attribution verification results.
+- [x] Classify completed verification jobs as `resolved`, `not_resolved`, or `inconclusive`.
+- [x] Keep incomplete final attribution verification jobs as `pending`.
+- [x] Include final attribution verification results in spreadsheet `评估问题反馈`.
+- [x] Render final attribution verification results in the report panel.
+
 ## Verification Policy
 
 Every task must follow:

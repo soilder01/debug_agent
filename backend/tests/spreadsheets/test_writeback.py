@@ -263,6 +263,17 @@ def test_build_report_writeback_fields_includes_targeted_probe_guardrails() -> N
                     "recommended_action": "Update prompt instructions and rerun verification before assigning model capability blame.",
                 }
             ],
+            "final_attribution_verification_results": [
+                {
+                    "source": "final_attribution",
+                    "target_id": "multimodal:conflict:1",
+                    "category": "prompt_issue",
+                    "verification_job_id": "job-final-attribution-verify",
+                    "result": "resolved",
+                    "success_rate": 1.0,
+                    "summary": "Final attribution verification for multimodal:conflict:1 resolved the issue.",
+                }
+            ],
         }
     )
 
@@ -285,6 +296,10 @@ def test_build_report_writeback_fields_includes_targeted_probe_guardrails() -> N
     assert "建议：Update prompt instructions and rerun verification before assigning model capability blame." in fields[
         "评估问题反馈"
     ]
+    assert "最终归因验证：" in fields["评估问题反馈"]
+    assert "multimodal:conflict:1/prompt_issue/resolved" in fields["评估问题反馈"]
+    assert "验证任务：job-final-attribution-verify" in fields["评估问题反馈"]
+    assert "通过率：100%" in fields["评估问题反馈"]
 
 
 def test_write_report_to_spreadsheet_row_updates_client_with_payload() -> None:

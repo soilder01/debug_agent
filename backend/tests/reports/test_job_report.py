@@ -524,6 +524,29 @@ def test_build_report_for_job_stops_targeted_escalation_at_max_depth() -> None:
         actor="human-debugger",
         note="Final attribution: prompt lacks cross-modal conflict checklist; update prompt before model capability attribution.",
     )
+    repository.create_job(job_id="job-final-attribution-verify", case_id=case.case_id, baseline_trials=1)
+    repository.save_evidence(
+        job_id="job-final-attribution-verify",
+        case_id=case.case_id,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="job-final-attribution-verify:pass",
+                step_name="final_attribution_prompt_verification",
+                trial=0,
+                raw_output="{\"conflicts\":[]}",
+                judge=JudgeResult(score=1, reasons=[]),
+            )
+        ],
+    )
+    repository.mark_completed("job-final-attribution-verify")
+    repository.save_strategy_follow_up_job(
+        source_job_id="job-source",
+        stage="final_attribution:multimodal:conflict:1",
+        planned_steps="final_attribution_prompt_verification",
+        follow_up_job_id="job-final-attribution-verify",
+        actor="final-attribution-operator",
+        note="verify final prompt attribution",
+    )
 
     report = build_report_for_job(repository, "job-source")
 
@@ -594,6 +617,17 @@ def test_build_report_for_job_stops_targeted_escalation_at_max_depth() -> None:
             "run final_attribution_prompt_verification to verify the recommended fix."
         ),
     } in report.follow_up_experiments
+    assert report.final_attribution_verification_results == [
+        {
+            "source": "final_attribution",
+            "target_id": "multimodal:conflict:1",
+            "category": "prompt_issue",
+            "verification_job_id": "job-final-attribution-verify",
+            "result": "resolved",
+            "success_rate": 1.0,
+            "summary": "Final attribution verification for multimodal:conflict:1 resolved the issue.",
+        }
+    ]
 
 
 def test_build_report_for_job_adds_escalation_follow_up_for_failed_strategy_outcome() -> None:
