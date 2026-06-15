@@ -20,6 +20,7 @@ type ReportPanelProps = {
   onVerifyRecommendedAction?: (actionIndex: number) => void;
   onCreateStrategyFollowUp?: (stage: string) => void;
   onCreateTargetedProbe?: (targetId: string) => void;
+  onCreateFinalAttributionFollowUp?: (targetId: string) => void;
 };
 
 export function ReportPanel({
@@ -33,7 +34,8 @@ export function ReportPanel({
   onUpdateHumanHandoffStatus,
   onVerifyRecommendedAction,
   onCreateStrategyFollowUp,
-  onCreateTargetedProbe
+  onCreateTargetedProbe,
+  onCreateFinalAttributionFollowUp
 }: ReportPanelProps) {
   const experimentSummary = report.experiment_summary;
   const artifactIds = experimentSummary?.artifact_ids?.length
@@ -263,6 +265,13 @@ export function ReportPanel({
                   <p>
                     <button type="button" onClick={() => onCreateTargetedProbe(followUp.target_id!)}>
                       Run targeted probe {followUp.target_id}
+                    </button>
+                  </p>
+                ) : null}
+                {onCreateFinalAttributionFollowUp && followUp.source === "final_attribution" && followUp.target_id ? (
+                  <p>
+                    <button type="button" onClick={() => onCreateFinalAttributionFollowUp(followUp.target_id!)}>
+                      Run final attribution follow-up {followUp.target_id}
                     </button>
                   </p>
                 ) : null}

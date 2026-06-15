@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import {
   type BatchDebugJobResponse,
+  createFinalAttributionVerificationJob,
   createRecommendedActionVerificationJob,
   createStrategyFollowUpJob,
   createTargetedProbeJob,
@@ -729,6 +730,33 @@ export function App() {
     }
   }
 
+  async function createCurrentFinalAttributionFollowUp(targetId: string) {
+    if (!report?.job_id) {
+      return;
+    }
+    setError("");
+    try {
+      const followUp = await createFinalAttributionVerificationJob(report.job_id, targetId, {
+        actor: localDevActor,
+        note: ""
+      });
+      setSubmittedJob(
+        followUp.follow_up_job ?? {
+          job_id: followUp.follow_up_job_id,
+          case_id: report.case_id,
+          status: "created"
+        }
+      );
+      setJobStatus(null);
+      setReport(null);
+      setStrategyFollowUps([]);
+      setTargetedProbes([]);
+      setSelectedEvidence(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
   async function openStrategyFollowUpJob(jobId: string) {
     setError("");
     try {
@@ -865,6 +893,7 @@ export function App() {
           onVerifyRecommendedAction={(actionIndex) => void verifyCurrentRecommendedAction(actionIndex)}
           onCreateStrategyFollowUp={(stage) => void createCurrentStrategyFollowUp(stage)}
           onCreateTargetedProbe={(targetId) => void createCurrentTargetedProbe(targetId)}
+          onCreateFinalAttributionFollowUp={(targetId) => void createCurrentFinalAttributionFollowUp(targetId)}
           onOpenStrategyFollowUp={(jobId) => void openStrategyFollowUpJob(jobId)}
           onOpenTargetedProbe={(jobId) => void openStrategyFollowUpJob(jobId)}
         />

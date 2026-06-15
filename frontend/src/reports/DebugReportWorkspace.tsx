@@ -37,6 +37,7 @@ type DebugReportWorkspaceProps = {
   onVerifyRecommendedAction?: (actionIndex: number) => void;
   onCreateStrategyFollowUp?: (stage: string) => void;
   onCreateTargetedProbe?: (targetId: string) => void;
+  onCreateFinalAttributionFollowUp?: (targetId: string) => void;
   onOpenStrategyFollowUp?: (jobId: string) => void;
   onOpenTargetedProbe?: (jobId: string) => void;
 };
@@ -60,6 +61,7 @@ export function DebugReportWorkspace({
   onVerifyRecommendedAction,
   onCreateStrategyFollowUp,
   onCreateTargetedProbe,
+  onCreateFinalAttributionFollowUp,
   onOpenStrategyFollowUp,
   onOpenTargetedProbe
 }: DebugReportWorkspaceProps) {
@@ -91,6 +93,7 @@ export function DebugReportWorkspace({
         onVerifyRecommendedAction={onVerifyRecommendedAction}
         onCreateStrategyFollowUp={onCreateStrategyFollowUp}
         onCreateTargetedProbe={onCreateTargetedProbe}
+        onCreateFinalAttributionFollowUp={onCreateFinalAttributionFollowUp}
       />
       {report.job_id ? (
         <SpreadsheetWritebackPanel

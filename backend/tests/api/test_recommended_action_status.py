@@ -518,6 +518,42 @@ def test_human_handoff_status_api_rejects_unknown_handoff_target() -> None:
     assert response.json()["detail"] == "Human handoff target not found: multimodal:conflict:missing"
 
 
+def test_final_attribution_follow_up_api_creates_traceable_verification_job() -> None:
+    client = TestClient(app)
+    job_id = _create_job_with_targeted_probe_guardrail()
+    routes.job_repository.save_human_handoff_status(
+        job_id=job_id,
+        target_id="multimodal:conflict:1",
+        status="resolved",
+        actor="human-debugger",
+        note="Final attribution: prompt lacks cross-modal conflict checklist; update prompt before model capability attribution.",
+    )
+
+    response = client.post(
+        f"/jobs/{job_id}/final-attributions/multimodal:conflict:1/verification-jobs",
+        json={"actor": "final-attribution-operator", "note": "verify prompt attribution fix"},
+    )
+
+    assert response.status_code == 202
+    body = response.json()
+    assert body["source_job_id"] == job_id
+    assert body["stage"] == "final_attribution:multimodal:conflict:1"
+    assert body["planned_steps"] == "final_attribution_prompt_verification"
+    assert body["actor"] == "final-attribution-operator"
+    assert body["note"] == "verify prompt attribution fix"
+    assert body["follow_up_job_id"] == body["follow_up_job"]["job_id"]
+    assert body["follow_up_job"]["status"] == "created"
+
+    list_response = client.get(f"/jobs/{job_id}/strategy-follow-ups")
+    assert list_response.status_code == 200
+    assert any(
+        follow_up["stage"] == "final_attribution:multimodal:conflict:1"
+        and follow_up["planned_steps"] == "final_attribution_prompt_verification"
+        for follow_up in list_response.json()["follow_ups"]
+    )
+    routes.job_repository.mark_failed(body["follow_up_job_id"], "test cleanup")
+
+
 def test_recommended_action_status_api_evaluates_resolved_verification_job() -> None:
     client = TestClient(app)
     job_id = _create_job_with_recommended_actions()

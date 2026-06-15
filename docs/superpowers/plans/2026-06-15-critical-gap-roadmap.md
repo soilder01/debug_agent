@@ -597,6 +597,26 @@
 - [x] Generate final-attribution follow-up verification entries with category-specific planned steps.
 - [x] Preserve existing recommended actions and follow-up experiments while appending attribution-driven entries.
 
+### Task 37: Executable Final Attribution Verification
+
+**Files:**
+- Modify: `backend/src/debug_agent/api/routes.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/app/App.tsx`
+- Modify: `frontend/src/reports/DebugReportWorkspace.tsx`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `backend/tests/api/test_recommended_action_status.py`
+- Test: `frontend/src/api/client.test.ts`
+- Test: `frontend/src/app/App.test.tsx`
+- Test: `frontend/src/reports/DebugReportWorkspace.test.tsx`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Add an API endpoint to submit final-attribution verification jobs from report follow-up entries.
+- [x] Persist final-attribution verification jobs through existing follow-up lineage with an explicit `final_attribution:<target_id>` stage.
+- [x] Add frontend client support for final-attribution verification job submission.
+- [x] Render runnable final-attribution follow-up buttons in report panels.
+- [x] Wire App submission flow so operators can create and open the verification job from the report.
+
 ## Verification Policy
 
 Every task must follow:

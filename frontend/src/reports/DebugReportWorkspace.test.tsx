@@ -335,7 +335,17 @@ describe("DebugReportWorkspace", () => {
 
   it("delegates human handoff status updates from the report panel", async () => {
     const onUpdateHumanHandoffStatus = vi.fn();
+    const onCreateFinalAttributionFollowUp = vi.fn();
     const report = makeReport({
+      follow_up_experiments: [
+        {
+          source: "final_attribution",
+          target_id: "multimodal:conflict:1",
+          category: "prompt_issue",
+          planned_steps: "final_attribution_prompt_verification",
+          summary: "Final attribution for multimodal:conflict:1 is prompt_issue; run verification."
+        }
+      ],
       human_handoff_requests: [
         {
           source: "targeted_probe_guardrail",
@@ -369,13 +379,16 @@ describe("DebugReportWorkspace", () => {
         onSelectEvidence={vi.fn()}
         onWriteReport={vi.fn()}
         onLoadWritebackAudit={vi.fn()}
+        onCreateFinalAttributionFollowUp={onCreateFinalAttributionFollowUp}
         onUpdateHumanHandoffStatus={onUpdateHumanHandoffStatus}
       />
     );
 
     expect(screen.getByText("Handoff status：acknowledged")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Run final attribution follow-up multimodal:conflict:1" }));
     await userEvent.click(screen.getByRole("button", { name: "Start handoff multimodal:conflict:1" }));
 
+    expect(onCreateFinalAttributionFollowUp).toHaveBeenCalledWith("multimodal:conflict:1");
     expect(onUpdateHumanHandoffStatus).toHaveBeenCalledWith("multimodal:conflict:1", "in_progress");
   });
 

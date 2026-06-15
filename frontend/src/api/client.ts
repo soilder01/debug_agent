@@ -134,6 +134,7 @@ export type DebugReport = {
     source: string;
     stage?: string;
     target_id?: string;
+    category?: string;
     parent_probe_job_id?: string;
     verification_job_id?: string;
     result?: string;
@@ -876,6 +877,31 @@ export async function createTargetedProbeJob(
     throw new Error(`Failed to create targeted probe job ${targetId} for ${jobId}: ${response.status}`);
   }
   return (await response.json()) as TargetedProbeJobResponse;
+}
+
+export async function createFinalAttributionVerificationJob(
+  jobId: string,
+  targetId: string,
+  request: {
+    actor?: string;
+    note?: string;
+  }
+): Promise<StrategyFollowUpJobResponse> {
+  const response = await fetch(
+    `/api/jobs/${encodeURIComponent(jobId)}/final-attributions/${encodeURIComponent(targetId)}/verification-jobs`,
+    {
+      body: JSON.stringify({
+        actor: request.actor ?? "",
+        note: request.note ?? ""
+      }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST"
+    }
+  );
+  if (!response.ok) {
+    throw new Error(`Failed to create final attribution verification job ${targetId} for ${jobId}: ${response.status}`);
+  }
+  return (await response.json()) as StrategyFollowUpJobResponse;
 }
 
 export async function updateHumanHandoffStatus(

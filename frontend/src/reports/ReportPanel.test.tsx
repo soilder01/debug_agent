@@ -765,6 +765,7 @@ describe("ReportPanel", () => {
 
   it("renders targeted probe guardrail stop condition without runnable action", async () => {
     const onCreateTargetedProbe = vi.fn();
+    const onCreateFinalAttributionFollowUp = vi.fn();
     const onUpdateHumanHandoffStatus = vi.fn();
     const report: DebugReport = {
       case_id: "case-targeted-guardrail",
@@ -791,6 +792,14 @@ describe("ReportPanel", () => {
           summary:
             "Targeted probe chain for multimodal:conflict:1 reached max depth 3; stop automatic escalation and require human review.",
           stop_condition: "max_targeted_probe_depth_reached"
+        },
+        {
+          source: "final_attribution",
+          target_id: "multimodal:conflict:1",
+          category: "prompt_issue",
+          planned_steps: "final_attribution_prompt_verification",
+          summary:
+            "Final attribution for multimodal:conflict:1 is prompt_issue; run final_attribution_prompt_verification to verify the recommended fix."
         }
       ],
       human_handoff_requests: [
@@ -836,6 +845,7 @@ describe("ReportPanel", () => {
       <ReportPanel
         report={report}
         onCreateTargetedProbe={onCreateTargetedProbe}
+        onCreateFinalAttributionFollowUp={onCreateFinalAttributionFollowUp}
         onUpdateHumanHandoffStatus={onUpdateHumanHandoffStatus}
       />
     );
@@ -866,6 +876,9 @@ describe("ReportPanel", () => {
       )
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Run targeted probe multimodal:conflict:1" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Run final attribution follow-up multimodal:conflict:1" }));
+    expect(onCreateFinalAttributionFollowUp).toHaveBeenCalledWith("multimodal:conflict:1");
 
     await userEvent.click(screen.getByRole("button", { name: "Resolve handoff multimodal:conflict:1" }));
 
