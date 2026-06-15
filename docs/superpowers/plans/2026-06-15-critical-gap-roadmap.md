@@ -174,6 +174,19 @@
 - [x] Summarize evidence spine, diagnostics, confidence, recommended action, verification result, and next probe.
 - [x] Preserve the detailed report panel as the drill-down view.
 
+### Task 11: Multi-Step Root Cause Strategy Planner
+
+**Files:**
+- Modify: `backend/src/debug_agent/reports/generator.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `backend/tests/reports/test_generator.py`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Add structured `debug_strategy` stages to reports.
+- [x] Include objective, trigger, planned probe, stop condition, and escalation for each strategy stage.
+- [x] Render debug strategy stages in the frontend report panel.
+
 ## Verification Policy
 
 Every task must follow:

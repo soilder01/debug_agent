@@ -90,6 +90,14 @@ export type DebugReport = {
     artifact_ids?: string;
     trace_refs?: string;
   }>;
+  debug_strategy?: Array<{
+    stage: string;
+    objective: string;
+    trigger: string;
+    planned_probe: string;
+    stop_condition: string;
+    escalation: string;
+  }>;
   suggested_sheet_fields: Record<string, string>;
 };
 

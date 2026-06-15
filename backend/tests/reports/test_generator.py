@@ -452,6 +452,32 @@ def test_generate_report_infers_cross_modal_alignment_from_ablation_results() ->
     assert report.suggested_sheet_fields["Ablation结论"] == (
         "单模态变体 image_only, text_only 可通过，但跨模态变体 cross_modal_compare 失败。"
     )
+    assert report.debug_strategy == [
+        {
+            "stage": "evidence_audit",
+            "objective": "确认当前 root cause 是否有足够 evidence/artifact 支撑。",
+            "trigger": "root_cause=cross_modal_alignment_failure",
+            "planned_probe": "复查 e-image-only, e-text-only, e-cross-modal 和关联产物，确认失败目标与 delta 是否一致。",
+            "stop_condition": "关键 target、delta reason、artifact citation 能共同解释当前失败。",
+            "escalation": "如果证据链不完整，先补充 targeted evidence replay，而不是直接归因模型能力。",
+        },
+        {
+            "stage": "ablation_expansion",
+            "objective": "验证跨模态失败是否稳定复现，且不是单模态感知失败。",
+            "trigger": "trace_refs=modality_ablation_check:image_only, modality_ablation_check:text_only, modality_ablation_check:cross_modal_compare",
+            "planned_probe": "对比 image/text 单模态结果与 cross_modal_compare 结果，必要时加入 conflict_grounding_check。",
+            "stop_condition": "单模态通过且 cross-modal probe 失败时，确认跨模态对齐/融合链路为主因。",
+            "escalation": "如果单模态也失败，切换到 single_modality_capability_gap 策略。",
+        },
+        {
+            "stage": "verification_gate",
+            "objective": "验证推荐操作是否真正改善 badcase，而非只改善报告描述。",
+            "trigger": "recommended_actions_present",
+            "planned_probe": "将 applied 推荐操作提交 verification job，并比较 source/verification success rate。",
+            "stop_condition": "verification result 为 resolved，且未出现 regressed。",
+            "escalation": "若 verification 为 not_resolved/regressed，自动生成 follow-up probing plan。",
+        },
+    ]
 
 
 def test_generate_report_infers_single_modality_gap_from_ablation_results() -> None:

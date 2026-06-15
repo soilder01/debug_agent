@@ -40,6 +40,7 @@ export function ReportPanel({
   const recommendedActions = report.recommended_actions ?? [];
   const evaluationAssetDiagnostics = report.evaluation_asset_diagnostics ?? [];
   const confidenceReasons = report.confidence_reasons ?? [];
+  const debugStrategy = report.debug_strategy ?? [];
   const verificationResultByJobId = new Map(
     recommendedActionVerificationResults.map((result) => [result.verification_job_id, result])
   );
@@ -202,6 +203,24 @@ export function ReportPanel({
                     </button>
                   </p>
                 ) : null}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {debugStrategy.length > 0 ? (
+        <>
+          <h3>Debug Strategy</h3>
+          <ul aria-label="Debug strategy">
+            {debugStrategy.map((strategy) => (
+              <li key={`${strategy.stage}:${strategy.objective}`}>
+                <p>
+                  {strategy.stage}：{strategy.objective}
+                </p>
+                <p>触发：{strategy.trigger}</p>
+                <p>探测：{strategy.planned_probe}</p>
+                <p>停止条件：{strategy.stop_condition}</p>
+                <p>升级：{strategy.escalation}</p>
               </li>
             ))}
           </ul>

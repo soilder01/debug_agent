@@ -506,6 +506,16 @@ describe("ReportPanel", () => {
           detail: "单模态通过但跨模态失败，优先检查 fusion/alignment 能力。"
         }
       ],
+      debug_strategy: [
+        {
+          stage: "ablation_expansion",
+          objective: "验证跨模态失败是否稳定复现，且不是单模态感知失败。",
+          trigger: "trace_refs=modality_ablation_check:cross_modal_compare",
+          planned_probe: "对比 image/text 单模态结果与 cross_modal_compare 结果。",
+          stop_condition: "单模态通过且 cross-modal probe 失败时，确认跨模态对齐/融合链路为主因。",
+          escalation: "如果单模态也失败，切换到 single_modality_capability_gap 策略。"
+        }
+      ],
       confidence_reasons: [
         {
           source: "evidence_count",
@@ -554,6 +564,12 @@ describe("ReportPanel", () => {
     expect(screen.getAllByText("状态：pending")[0]).toBeInTheDocument();
     expect(screen.getByText("要求模型先分别列出 image/text 证据，再输出冲突结论。")).toBeInTheDocument();
     expect(screen.getByText("model_capability/high：将跨模态融合短板纳入模型能力归因。")).toBeInTheDocument();
+    expect(screen.getByText("Debug Strategy")).toBeInTheDocument();
+    expect(screen.getByText("ablation_expansion：验证跨模态失败是否稳定复现，且不是单模态感知失败。")).toBeInTheDocument();
+    expect(screen.getByText("触发：trace_refs=modality_ablation_check:cross_modal_compare")).toBeInTheDocument();
+    expect(screen.getByText("探测：对比 image/text 单模态结果与 cross_modal_compare 结果。")).toBeInTheDocument();
+    expect(screen.getByText("停止条件：单模态通过且 cross-modal probe 失败时，确认跨模态对齐/融合链路为主因。")).toBeInTheDocument();
+    expect(screen.getByText("升级：如果单模态也失败，切换到 single_modality_capability_gap 策略。")).toBeInTheDocument();
     expect(screen.getByText("Confidence Reasons")).toBeInTheDocument();
     expect(screen.getByText("evidence_count/high：3 条 evidence 支撑当前判断。")).toBeInTheDocument();
     expect(
