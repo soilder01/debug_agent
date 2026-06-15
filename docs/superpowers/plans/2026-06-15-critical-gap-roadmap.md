@@ -358,6 +358,24 @@
 - [x] Add frontend API/client support and runnable targeted probe buttons.
 - [x] Wire targeted probe creation into the main app flow and show the created job.
 
+### Task 23: Targeted Probe History and Outcome Evaluation
+
+**Files:**
+- Modify: `backend/src/debug_agent/api/routes.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/app/App.tsx`
+- Modify: `frontend/src/reports/DebugReportWorkspace.tsx`
+- Test: `backend/tests/api/test_recommended_action_status.py`
+- Test: `frontend/src/api/client.test.ts`
+- Test: `frontend/src/app/App.test.tsx`
+- Test: `frontend/src/reports/DebugReportWorkspace.test.tsx`
+
+- [x] Add API endpoint to list targeted probe job lineage for a source job.
+- [x] Evaluate targeted probe outcomes as `pending`, `target_cleared`, `target_still_failing`, or `inconclusive`.
+- [x] Include success rate, summary, and escalation guidance for targeted probe history.
+- [x] Add frontend API/client support for targeted probe history.
+- [x] Render targeted probe job history in the report workspace and allow opening probe jobs.
+
 ## Verification Policy
 
 Every task must follow:

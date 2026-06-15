@@ -7,7 +7,8 @@ import type {
   ExperimentEvidence,
   SpreadsheetWritebackAudit,
   SpreadsheetWritebackResult,
-  StrategyFollowUpJob
+  StrategyFollowUpJob,
+  TargetedProbeJob
 } from "../api/client";
 import { DebugReportWorkspace } from "./DebugReportWorkspace";
 
@@ -104,6 +105,22 @@ function makeStrategyFollowUp(): StrategyFollowUpJob {
     success_rate: 0,
     summary: "Strategy follow-up job still failed; escalation is recommended.",
     escalation: "Run single-modality capability probes before keeping cross-modal attribution."
+  };
+}
+
+function makeTargetedProbe(): TargetedProbeJob {
+  return {
+    source_job_id: "job-1",
+    target_id: "multimodal:conflict:1",
+    planned_steps: "targeted_multimodal_conflict_probe",
+    probe_job_id: "job-targeted-probe-1",
+    actor: "targeted-operator",
+    note: "probe conflict target",
+    created_at: "2026-06-15T00:00:02+00:00",
+    outcome: "target_still_failing",
+    success_rate: 0,
+    summary: "Targeted probe still failed on multimodal:conflict:1; escalation is recommended.",
+    escalation: "Run deeper localized replay or modality-specific probes for multimodal:conflict:1."
   };
 }
 
@@ -343,6 +360,38 @@ describe("DebugReportWorkspace", () => {
     await userEvent.click(screen.getByRole("button", { name: "Open strategy follow-up job-follow-up-1" }));
 
     expect(onOpenStrategyFollowUp).toHaveBeenCalledWith("job-follow-up-1");
+  });
+
+  it("renders targeted probe job history and delegates opening probe jobs", async () => {
+    const onOpenTargetedProbe = vi.fn();
+
+    render(
+      <DebugReportWorkspace
+        report={makeReport()}
+        selectedEvidence={null}
+        targetedProbes={[makeTargetedProbe()]}
+        writebackResult={null}
+        writebackAudit={null}
+        onSelectEvidence={vi.fn()}
+        onWriteReport={vi.fn()}
+        onLoadWritebackAudit={vi.fn()}
+        onOpenTargetedProbe={onOpenTargetedProbe}
+      />
+    );
+
+    expect(screen.getByRole("heading", { name: "Targeted Probe Job History" })).toBeInTheDocument();
+    expect(screen.getByText("multimodal:conflict:1：targeted_multimodal_conflict_probe")).toBeInTheDocument();
+    expect(screen.getByText("任务：job-targeted-probe-1")).toBeInTheDocument();
+    expect(screen.getByText("Outcome：target_still_failing")).toBeInTheDocument();
+    expect(screen.getByText("Success Rate：0%")).toBeInTheDocument();
+    expect(screen.getByText("Targeted probe still failed on multimodal:conflict:1; escalation is recommended.")).toBeInTheDocument();
+    expect(screen.getByText("Escalation：Run deeper localized replay or modality-specific probes for multimodal:conflict:1.")).toBeInTheDocument();
+    expect(screen.getByText("操作者：targeted-operator")).toBeInTheDocument();
+    expect(screen.getByText("备注：probe conflict target")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Open targeted probe job-targeted-probe-1" }));
+
+    expect(onOpenTargetedProbe).toHaveBeenCalledWith("job-targeted-probe-1");
   });
 
   it("renders an explainability workspace narrative across evidence, diagnostics, confidence, actions, and verification", () => {

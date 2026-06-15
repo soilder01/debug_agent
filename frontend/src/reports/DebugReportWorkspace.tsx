@@ -7,7 +7,8 @@ import type {
   RecommendedActionStatusValue,
   SpreadsheetWritebackAudit,
   SpreadsheetWritebackResult,
-  StrategyFollowUpJob
+  StrategyFollowUpJob,
+  TargetedProbeJob
 } from "../api/client";
 import { CaseDetail } from "../cases/CaseDetail";
 import { EvidenceDetail } from "../evidence/EvidenceDetail";
@@ -22,6 +23,7 @@ type DebugReportWorkspaceProps = {
   recommendedActionVerifications?: RecommendedActionVerification[];
   recommendedActionVerificationResults?: RecommendedActionVerificationResult[];
   strategyFollowUps?: StrategyFollowUpJob[];
+  targetedProbes?: TargetedProbeJob[];
   writebackResult: SpreadsheetWritebackResult | null;
   writebackAudit: SpreadsheetWritebackAudit | null;
   onSelectEvidence: (evidenceId: string) => void;
@@ -32,6 +34,7 @@ type DebugReportWorkspaceProps = {
   onCreateStrategyFollowUp?: (stage: string) => void;
   onCreateTargetedProbe?: (targetId: string) => void;
   onOpenStrategyFollowUp?: (jobId: string) => void;
+  onOpenTargetedProbe?: (jobId: string) => void;
 };
 
 export function DebugReportWorkspace({
@@ -41,6 +44,7 @@ export function DebugReportWorkspace({
   recommendedActionVerifications = [],
   recommendedActionVerificationResults = [],
   strategyFollowUps = [],
+  targetedProbes = [],
   writebackResult,
   writebackAudit,
   onSelectEvidence,
@@ -50,7 +54,8 @@ export function DebugReportWorkspace({
   onVerifyRecommendedAction,
   onCreateStrategyFollowUp,
   onCreateTargetedProbe,
-  onOpenStrategyFollowUp
+  onOpenStrategyFollowUp,
+  onOpenTargetedProbe
 }: DebugReportWorkspaceProps) {
   return (
     <>
@@ -67,6 +72,7 @@ export function DebugReportWorkspace({
         report={report}
       />
       <StrategyFollowUpHistory followUps={strategyFollowUps} onOpenStrategyFollowUp={onOpenStrategyFollowUp} />
+      <TargetedProbeHistory probes={targetedProbes} onOpenTargetedProbe={onOpenTargetedProbe} />
       <ReportPanel
         report={report}
         recommendedActionStatusEvents={recommendedActionStatusEvents}
@@ -120,6 +126,45 @@ function StrategyFollowUpHistory({ followUps, onOpenStrategyFollowUp }: Strategy
             {onOpenStrategyFollowUp ? (
               <button type="button" onClick={() => onOpenStrategyFollowUp(followUp.follow_up_job_id)}>
                 Open strategy follow-up {followUp.follow_up_job_id}
+              </button>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+type TargetedProbeHistoryProps = {
+  probes: TargetedProbeJob[];
+  onOpenTargetedProbe?: (jobId: string) => void;
+};
+
+function TargetedProbeHistory({ probes, onOpenTargetedProbe }: TargetedProbeHistoryProps) {
+  if (probes.length === 0) {
+    return null;
+  }
+
+  return (
+    <section aria-label="Targeted probe job history">
+      <h2>Targeted Probe Job History</h2>
+      <ul>
+        {probes.map((probe) => (
+          <li key={`${probe.target_id}:${probe.probe_job_id}`}>
+            <p>
+              {probe.target_id}：{probe.planned_steps}
+            </p>
+            <p>任务：{probe.probe_job_id}</p>
+            <p>Outcome：{probe.outcome ?? "pending"}</p>
+            <p>Success Rate：{formatPercent(probe.success_rate ?? 0)}</p>
+            {probe.summary ? <p>{probe.summary}</p> : null}
+            {probe.escalation ? <p>Escalation：{probe.escalation}</p> : null}
+            <p>操作者：{probe.actor || "unknown"}</p>
+            {probe.note ? <p>备注：{probe.note}</p> : null}
+            <p>时间：{probe.created_at}</p>
+            {onOpenTargetedProbe ? (
+              <button type="button" onClick={() => onOpenTargetedProbe(probe.probe_job_id)}>
+                Open targeted probe {probe.probe_job_id}
               </button>
             ) : null}
           </li>

@@ -22,6 +22,7 @@ import {
   fetchSpreadsheetWritebackAudits,
   fetchSpreadsheetWritebackAuditSummary,
   fetchStrategyFollowUpJobs,
+  fetchTargetedProbeJobs,
   fetchWorkerStatus,
   importCsvCases,
   importJsonlCases,
@@ -42,6 +43,7 @@ import {
   type SpreadsheetWritebackAuditListResponse,
   type SpreadsheetSyncResponse,
   type StrategyFollowUpJob,
+  type TargetedProbeJob,
   type SpreadsheetWritebackResult,
   stopWorker,
   syncSpreadsheetRows,
@@ -100,6 +102,7 @@ export function App() {
     RecommendedActionVerificationResult[]
   >([]);
   const [strategyFollowUps, setStrategyFollowUps] = useState<StrategyFollowUpJob[]>([]);
+  const [targetedProbes, setTargetedProbes] = useState<TargetedProbeJob[]>([]);
   const [spreadsheetWritebackAuditSummary, setSpreadsheetWritebackAuditSummary] =
     useState<SpreadsheetWritebackAuditCounts | null>(null);
   const [spreadsheetWritebackAuditList, setSpreadsheetWritebackAuditList] =
@@ -527,6 +530,15 @@ export function App() {
       } else {
         setStrategyFollowUps([]);
       }
+      if (
+        loadedReport.job_id &&
+        (loadedReport.follow_up_experiments ?? []).some((followUp) => followUp.source === "targeted_probe")
+      ) {
+        const probes = await fetchTargetedProbeJobs(loadedReport.job_id);
+        setTargetedProbes(probes.probes ?? []);
+      } else {
+        setTargetedProbes([]);
+      }
       setSpreadsheetWritebackResult(null);
       setSpreadsheetWritebackAudit(null);
       setSelectedEvidence(null);
@@ -673,6 +685,8 @@ export function App() {
       setJobStatus(null);
       setReport(null);
       setStrategyFollowUps([]);
+      setTargetedProbes([]);
+      setSelectedEvidence(null);
       setSelectedEvidence(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
@@ -687,6 +701,7 @@ export function App() {
       setJobStatus(status);
       setReport(null);
       setStrategyFollowUps([]);
+      setTargetedProbes([]);
       setSpreadsheetWritebackResult(null);
       setSpreadsheetWritebackAudit(null);
       setSelectedEvidence(null);
@@ -800,6 +815,7 @@ export function App() {
           recommendedActionVerifications={recommendedActionVerifications}
           recommendedActionVerificationResults={recommendedActionVerificationResults}
           strategyFollowUps={strategyFollowUps}
+          targetedProbes={targetedProbes}
           writebackResult={spreadsheetWritebackResult}
           writebackAudit={spreadsheetWritebackAudit}
           onSelectEvidence={selectEvidence}
@@ -812,6 +828,7 @@ export function App() {
           onCreateStrategyFollowUp={(stage) => void createCurrentStrategyFollowUp(stage)}
           onCreateTargetedProbe={(targetId) => void createCurrentTargetedProbe(targetId)}
           onOpenStrategyFollowUp={(jobId) => void openStrategyFollowUpJob(jobId)}
+          onOpenTargetedProbe={(jobId) => void openStrategyFollowUpJob(jobId)}
         />
       ) : submittedJob ? null : (
         <p>点击按钮运行第一条可验证 debug 闭环。</p>

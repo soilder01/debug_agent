@@ -1144,6 +1144,12 @@ describe("App", () => {
         })
       )
       .mockResolvedValueOnce(
+        new Response(JSON.stringify({ probes: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        })
+      )
+      .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
             source_job_id: "job-targeted-source",

@@ -237,6 +237,13 @@ class TargetedProbeJobResponse(TargetedProbeJob):
     probe_job: SubmittedDebugJob
 
 
+class TargetedProbeJobWithOutcome(TargetedProbeJob):
+    outcome: Literal["pending", "target_cleared", "target_still_failing", "inconclusive"]
+    success_rate: float
+    summary: str
+    escalation: str
+
+
 class StrategyFollowUpJobWithOutcome(StrategyFollowUpJob):
     outcome: Literal["pending", "passed_stop_condition", "needs_escalation", "inconclusive"]
     success_rate: float
@@ -246,6 +253,10 @@ class StrategyFollowUpJobWithOutcome(StrategyFollowUpJob):
 
 class StrategyFollowUpJobListResponse(BaseModel):
     follow_ups: list[StrategyFollowUpJobWithOutcome] = Field(default_factory=list)
+
+
+class TargetedProbeJobListResponse(BaseModel):
+    probes: list[TargetedProbeJobWithOutcome] = Field(default_factory=list)
 
 
 class RecommendedActionVerificationResult(BaseModel):
@@ -874,6 +885,18 @@ def create_targeted_probe_job(
     )
 
 
+@router.get("/jobs/{job_id}/targeted-probes")
+def list_targeted_probe_jobs(job_id: str) -> TargetedProbeJobListResponse:
+    if job_repository.get_job(job_id) is None:
+        raise HTTPException(status_code=404, detail=f"Debug job not found: {job_id}")
+    return TargetedProbeJobListResponse(
+        probes=[
+            TargetedProbeJobWithOutcome.model_validate(probe)
+            for probe in _build_targeted_probe_results(job_repository, job_id)
+        ]
+    )
+
+
 @router.get("/jobs/{job_id}/recommended-actions/statuses")
 def list_recommended_action_statuses(job_id: str) -> RecommendedActionStatusListResponse:
     if job_repository.get_job(job_id) is None:
@@ -1044,6 +1067,47 @@ def _targeted_probe_from_report(report: DebugReport, target_id: str) -> dict[str
         if follow_up.get("source") == "targeted_probe" and follow_up.get("target_id") == target_id:
             return follow_up
     return None
+
+
+def _build_targeted_probe_results(repository: DebugJobRepository, job_id: str) -> list[dict[str, object]]:
+    return [_targeted_probe_result(repository=repository, probe=probe) for probe in repository.list_targeted_probe_jobs(job_id)]
+
+
+def _targeted_probe_result(*, repository: DebugJobRepository, probe: TargetedProbeJob) -> dict[str, object]:
+    job = repository.get_job(probe.probe_job_id)
+    if job is None or job.status != "completed":
+        return {
+            **probe.model_dump(),
+            "outcome": "pending",
+            "success_rate": 0.0,
+            "summary": "Targeted probe job is not completed yet.",
+            "escalation": "",
+        }
+    evidence = repository.list_evidence(probe.probe_job_id)
+    if not evidence:
+        return {
+            **probe.model_dump(),
+            "outcome": "inconclusive",
+            "success_rate": 0.0,
+            "summary": f"Targeted probe completed without evidence for {probe.target_id}.",
+            "escalation": f"Re-run targeted probe with evidence capture enabled for {probe.target_id}.",
+        }
+    success_rate = sum(1 for item in evidence if item.judge.score == 1) / len(evidence)
+    if success_rate >= 1.0:
+        return {
+            **probe.model_dump(),
+            "outcome": "target_cleared",
+            "success_rate": success_rate,
+            "summary": f"Targeted probe passed for {probe.target_id}; localized failure did not reproduce.",
+            "escalation": "",
+        }
+    return {
+        **probe.model_dump(),
+        "outcome": "target_still_failing",
+        "success_rate": success_rate,
+        "summary": f"Targeted probe still failed on {probe.target_id}; escalation is recommended.",
+        "escalation": f"Run deeper localized replay or modality-specific probes for {probe.target_id}.",
+    }
 
 
 def _build_observability_health(

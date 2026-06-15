@@ -6,6 +6,7 @@ import {
   createTargetedProbeJob,
   fetchRecommendedActionStatuses,
   fetchStrategyFollowUpJobs,
+  fetchTargetedProbeJobs,
   updateRecommendedActionStatus
 } from "./client";
 
@@ -251,5 +252,36 @@ describe("api client recommended action status", () => {
       method: "POST"
     });
     expect(response.probe_job.job_id).toBe("job-targeted-probe-1");
+  });
+
+  it("fetches targeted probe job history with outcomes", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          probes: [
+            {
+              source_job_id: "job-1",
+              target_id: "multimodal:conflict:1",
+              planned_steps: "targeted_multimodal_conflict_probe",
+              probe_job_id: "job-targeted-probe-1",
+              actor: "targeted-operator",
+              note: "probe conflict target",
+              created_at: "2026-06-15T00:00:02+00:00",
+              outcome: "target_still_failing",
+              success_rate: 0,
+              summary: "Targeted probe still failed on multimodal:conflict:1; escalation is recommended.",
+              escalation: "Run deeper localized replay or modality-specific probes for multimodal:conflict:1."
+            }
+          ]
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    const response = await fetchTargetedProbeJobs("job-1");
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1/targeted-probes");
+    expect(response.probes[0].probe_job_id).toBe("job-targeted-probe-1");
+    expect(response.probes[0].outcome).toBe("target_still_failing");
   });
 });

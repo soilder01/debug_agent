@@ -171,6 +171,10 @@ export type TargetedProbeJob = {
   actor: string;
   note: string;
   created_at: string;
+  outcome?: "pending" | "target_cleared" | "target_still_failing" | "inconclusive";
+  success_rate?: number;
+  summary?: string;
+  escalation?: string;
 };
 
 export type TargetedProbeJobResponse = TargetedProbeJob & {
@@ -179,6 +183,10 @@ export type TargetedProbeJobResponse = TargetedProbeJob & {
 
 export type StrategyFollowUpJobListResponse = {
   follow_ups: StrategyFollowUpJob[];
+};
+
+export type TargetedProbeJobListResponse = {
+  probes: TargetedProbeJob[];
 };
 
 export type RecommendedActionVerificationResult = {
@@ -765,6 +773,14 @@ export async function fetchStrategyFollowUpJobs(jobId: string): Promise<Strategy
     throw new Error(`Failed to fetch strategy follow-up jobs for ${jobId}: ${response.status}`);
   }
   return (await response.json()) as StrategyFollowUpJobListResponse;
+}
+
+export async function fetchTargetedProbeJobs(jobId: string): Promise<TargetedProbeJobListResponse> {
+  const response = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/targeted-probes`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch targeted probe jobs for ${jobId}: ${response.status}`);
+  }
+  return (await response.json()) as TargetedProbeJobListResponse;
 }
 
 export async function createTargetedProbeJob(

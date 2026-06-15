@@ -323,6 +323,74 @@ def test_targeted_probe_api_rejects_unknown_target() -> None:
     assert response.json()["detail"] == "Targeted probe not found: multimodal:conflict:missing"
 
 
+def test_targeted_probe_api_lists_pending_probe_history() -> None:
+    client = TestClient(app)
+    job_id = _create_job_with_cross_modal_strategy()
+    create_response = client.post(
+        f"/jobs/{job_id}/targeted-probes/multimodal:conflict:1/debug-jobs",
+        json={"actor": "targeted-operator", "note": "probe conflict target"},
+    )
+    assert create_response.status_code == 202
+    probe_job_id = create_response.json()["probe_job_id"]
+
+    response = client.get(f"/jobs/{job_id}/targeted-probes")
+
+    assert response.status_code == 200
+    assert response.json()["probes"] == [
+        {
+            "source_job_id": job_id,
+            "target_id": "multimodal:conflict:1",
+            "planned_steps": "targeted_multimodal_conflict_probe",
+            "probe_job_id": probe_job_id,
+            "actor": "targeted-operator",
+            "note": "probe conflict target",
+            "created_at": create_response.json()["created_at"],
+            "outcome": "pending",
+            "success_rate": 0.0,
+            "summary": "Targeted probe job is not completed yet.",
+            "escalation": "",
+        }
+    ]
+    routes.job_repository.mark_failed(probe_job_id, "test cleanup")
+
+
+def test_targeted_probe_api_evaluates_completed_probe_outcome() -> None:
+    client = TestClient(app)
+    job_id = _create_job_with_cross_modal_strategy()
+    create_response = client.post(
+        f"/jobs/{job_id}/targeted-probes/multimodal:conflict:1/debug-jobs",
+        json={"actor": "targeted-operator", "note": "probe conflict target"},
+    )
+    assert create_response.status_code == 202
+    probe_job_id = create_response.json()["probe_job_id"]
+    source_job = routes.job_repository.get_job(job_id)
+    assert source_job is not None
+    routes.job_repository.save_evidence(
+        job_id=probe_job_id,
+        case_id=source_job.case_id,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id=f"{probe_job_id}:targeted-fail",
+                step_name="targeted_multimodal_conflict_probe",
+                trial=0,
+                raw_output="{\"conflicts\":[]}",
+                judge=JudgeResult(score=0, reasons=["multimodal:conflict:1 conflict_actual_mismatch"]),
+            )
+        ],
+    )
+    routes.job_repository.mark_completed(probe_job_id)
+
+    response = client.get(f"/jobs/{job_id}/targeted-probes")
+
+    assert response.status_code == 200
+    probe = response.json()["probes"][0]
+    assert probe["outcome"] == "target_still_failing"
+    assert probe["success_rate"] == 0.0
+    assert probe["summary"] == "Targeted probe still failed on multimodal:conflict:1; escalation is recommended."
+    assert probe["escalation"] == "Run deeper localized replay or modality-specific probes for multimodal:conflict:1."
+    routes.job_repository.mark_failed(probe_job_id, "test cleanup after completed probe")
+
+
 def test_recommended_action_status_api_evaluates_resolved_verification_job() -> None:
     client = TestClient(app)
     job_id = _create_job_with_recommended_actions()
