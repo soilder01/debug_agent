@@ -303,6 +303,76 @@ def test_completion_hook_builds_report_and_writes_mapped_row() -> None:
     assert audit.error_message == ""
 
 
+def test_completion_hook_writes_source_report_when_strategy_follow_up_completes() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    case = load_fixture_case("handwrite233").model_copy(update={"case_id": "auto-writeback-strategy-case"})
+    repository.save_case(case)
+    repository.create_job(job_id="job-source", case_id=case.case_id, baseline_trials=1)
+    repository.save_evidence(
+        job_id="job-source",
+        case_id=case.case_id,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="auto-writeback-strategy-case:baseline:0",
+                step_name="baseline_replay",
+                trial=0,
+                raw_output=case.predictions[0].raw_output,
+                judge=JudgeResult(score=0, reasons=["student_answer_mismatch"]),
+            )
+        ],
+    )
+    repository.create_job(job_id="job-strategy-follow-up", case_id=case.case_id, baseline_trials=1)
+    repository.save_evidence(
+        job_id="job-strategy-follow-up",
+        case_id=case.case_id,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="job-strategy-follow-up:strategy-pass",
+                step_name="strategy_evidence_audit_probe",
+                trial=0,
+                raw_output=case.predictions[0].raw_output,
+                judge=JudgeResult(score=1, reasons=[]),
+            )
+        ],
+    )
+    repository.mark_completed("job-strategy-follow-up")
+    repository.save_strategy_follow_up_job(
+        source_job_id="job-source",
+        stage="evidence_audit",
+        planned_steps="strategy_evidence_audit_probe",
+        follow_up_job_id="job-strategy-follow-up",
+        actor="strategy-operator",
+        note="audit evidence chain",
+    )
+    repository.save_spreadsheet_row_mapping(
+        spreadsheet_id="spreadsheet-1",
+        sheet_id="sheet-1",
+        row_id="source-row",
+        case_id=case.case_id,
+        job_id="job-source",
+    )
+    client = RecordingWritebackClient()
+    hook = make_spreadsheet_writeback_completion_hook(
+        repository=repository,
+        client=client,
+        report_base_url="https://debug-agent.local",
+    )
+
+    hook(SubmittedDebugJob(job_id="job-strategy-follow-up", case_id=case.case_id, status="completed"))
+
+    assert client.row_id == "source-row"
+    assert client.fields["分析报告链接"] == "https://debug-agent.local/jobs/job-source/report"
+    assert "策略 Follow-up：" in client.fields["评估问题反馈"]
+    assert "evidence_audit/passed_stop_condition" in client.fields["评估问题反馈"]
+    audit = repository.get_spreadsheet_writeback_audit("job-source")
+    assert audit is not None
+    assert audit.status == "succeeded"
+    assert audit.row_id == "source-row"
+    assert audit.report_url == "https://debug-agent.local/jobs/job-source/report"
+
+
 def test_completion_hook_skips_when_report_cannot_be_rebuilt() -> None:
     session_factory, engine = create_sqlite_memory_session_factory()
     Base.metadata.create_all(engine)

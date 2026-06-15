@@ -441,6 +441,19 @@ class DebugJobRepository:
                     query = query.where(StrategyFollowUpJobRow.stage == stage)
                 return [_strategy_follow_up_job_from_row(row) for row in session.scalars(query)]
 
+    def list_strategy_follow_up_sources(self, follow_up_job_id: str) -> list[StrategyFollowUpJob]:
+        with self._lock:
+            with self._session_factory() as session:
+                rows = session.scalars(
+                    select(StrategyFollowUpJobRow)
+                    .where(StrategyFollowUpJobRow.follow_up_job_id == follow_up_job_id)
+                    .order_by(
+                        StrategyFollowUpJobRow.created_at,
+                        StrategyFollowUpJobRow.source_job_id,
+                    )
+                )
+                return [_strategy_follow_up_job_from_row(row) for row in rows]
+
     def list_cases(self, has_regions: bool = False, limit: int | None = None, offset: int = 0) -> list[DebugCase]:
         with self._lock:
             with self._session_factory() as session:

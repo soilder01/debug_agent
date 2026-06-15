@@ -295,6 +295,18 @@
 - [x] Render runnable controls for escalation follow-up experiments in the report panel.
 - [x] Preserve existing debug strategy follow-up submission behavior.
 
+### Task 19: Strategy Feedback Loop Automation
+
+**Files:**
+- Modify: `backend/src/debug_agent/storage/repository.py`
+- Modify: `backend/src/debug_agent/spreadsheets/writeback.py`
+- Test: `backend/tests/spreadsheets/test_writeback.py`
+
+- [x] Detect when a completed job is a strategy follow-up job.
+- [x] Resolve the source job from strategy follow-up lineage.
+- [x] Automatically rebuild and write back the source job report when a strategy follow-up completes.
+- [x] Keep normal completed job writeback behavior unchanged.
+
 ## Verification Policy
 
 Every task must follow:

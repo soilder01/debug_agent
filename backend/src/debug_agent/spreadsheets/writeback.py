@@ -76,58 +76,81 @@ def make_spreadsheet_writeback_completion_hook(
     def on_job_completed(job: SubmittedDebugJob) -> None:
         if job.status != "completed":
             return
-        report_url = f"{base_url}/jobs/{job.job_id}/report"
-        report = build_report_for_job(repository, job.job_id)
-        if report is None:
-            repository.save_spreadsheet_writeback_audit(
-                job_id=job.job_id,
-                status="skipped",
-                row_id="",
-                report_url=report_url,
-                fields={},
-                error_message="debug report could not be rebuilt",
-            )
-            return
-        mapping = repository.get_spreadsheet_row_mapping_by_job_id(job.job_id)
-        if mapping is None:
-            repository.save_spreadsheet_writeback_audit(
-                job_id=job.job_id,
-                status="skipped",
-                row_id="",
-                report_url=report_url,
-                fields={},
-                error_message="spreadsheet row mapping not found",
-            )
-            return
-        try:
-            result = write_report_to_spreadsheet_row(
+        target_job_ids = _writeback_target_job_ids(repository, job.job_id)
+        for target_job_id in target_job_ids:
+            _write_completed_job_report(
+                repository=repository,
                 client=client,
-                spreadsheet_id=mapping.spreadsheet_id,
-                sheet_id=mapping.sheet_id,
-                row_id=mapping.row_id,
-                report=report,
-                report_url=report_url,
+                job_id=target_job_id,
+                report_url=f"{base_url}/jobs/{target_job_id}/report",
             )
-        except Exception as exc:
-            repository.save_spreadsheet_writeback_audit(
-                job_id=job.job_id,
-                status="failed",
-                row_id=mapping.row_id,
-                report_url=report_url,
-                fields={},
-                error_message=str(exc),
-            )
-            raise
-        repository.save_spreadsheet_writeback_audit(
-            job_id=job.job_id,
-            status="succeeded",
-            row_id=result.row_id,
-            report_url=report_url,
-            fields=result.fields,
-            error_message="",
-        )
 
     return on_job_completed
+
+
+def _writeback_target_job_ids(repository: DebugJobRepository, completed_job_id: str) -> list[str]:
+    sources = repository.list_strategy_follow_up_sources(completed_job_id)
+    if sources:
+        return [source.source_job_id for source in sources]
+    return [completed_job_id]
+
+
+def _write_completed_job_report(
+    *,
+    repository: DebugJobRepository,
+    client: SpreadsheetWritebackClient,
+    job_id: str,
+    report_url: str,
+) -> None:
+    report = build_report_for_job(repository, job_id)
+    if report is None:
+        repository.save_spreadsheet_writeback_audit(
+            job_id=job_id,
+            status="skipped",
+            row_id="",
+            report_url=report_url,
+            fields={},
+            error_message="debug report could not be rebuilt",
+        )
+        return
+    mapping = repository.get_spreadsheet_row_mapping_by_job_id(job_id)
+    if mapping is None:
+        repository.save_spreadsheet_writeback_audit(
+            job_id=job_id,
+            status="skipped",
+            row_id="",
+            report_url=report_url,
+            fields={},
+            error_message="spreadsheet row mapping not found",
+        )
+        return
+    try:
+        result = write_report_to_spreadsheet_row(
+            client=client,
+            spreadsheet_id=mapping.spreadsheet_id,
+            sheet_id=mapping.sheet_id,
+            row_id=mapping.row_id,
+            report=report,
+            report_url=report_url,
+        )
+    except Exception as exc:
+        repository.save_spreadsheet_writeback_audit(
+            job_id=job_id,
+            status="failed",
+            row_id=mapping.row_id,
+            report_url=report_url,
+            fields={},
+            error_message=str(exc),
+        )
+        raise
+    repository.save_spreadsheet_writeback_audit(
+        job_id=job_id,
+        status="succeeded",
+        row_id=result.row_id,
+        report_url=report_url,
+        fields=result.fields,
+        error_message="",
+    )
 
 
 def _evaluation_feedback(report: DebugReport) -> str:
