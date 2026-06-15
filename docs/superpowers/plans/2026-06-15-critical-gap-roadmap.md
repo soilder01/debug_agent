@@ -731,6 +731,15 @@
 - [x] Persist reinvestigation jobs through strategy follow-up lineage with `final_attribution_reinvestigation:<target_id>`.
 - [x] Include final-attribution reinvestigation follow-ups in spreadsheet `评估问题反馈`.
 
+### Frontend Productization Pause Marker
+
+**Status:** Backend critical-gap execution is paused after Task 44. The next implementation phase should prioritize frontend productization, interaction design, and motion polish before adding more backend intelligence loops.
+
+**Next Frontend Direction:**
+- Use animation-focused skills for Anime.js and GSAP if available.
+- Keep the existing backend roadmap state intact; do not continue backend feature work until frontend productization is resumed or explicitly reprioritized.
+- Preserve current verification discipline: frontend changes still need focused Vitest coverage, full `verify.ps1`, diff check, and secret scan before commit.
+
 ## Verification Policy
 
 Every task must follow:
