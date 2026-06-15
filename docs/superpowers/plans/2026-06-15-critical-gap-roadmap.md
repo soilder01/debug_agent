@@ -635,6 +635,21 @@
 - [x] Include final attribution verification results in spreadsheet `评估问题反馈`.
 - [x] Render final attribution verification results in the report panel.
 
+### Task 39: Final Attribution Verification Observability
+
+**Files:**
+- Modify: `backend/src/debug_agent/api/routes.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/observability/ObservabilitySummaryPanel.tsx`
+- Test: `backend/tests/api/test_observability_summary.py`
+- Test: `frontend/src/observability/ObservabilitySummaryPanel.test.tsx`
+
+- [x] Add final-attribution verification feedback metrics to observability summary responses.
+- [x] Count `final_attribution:<target_id>` follow-up outcomes as pending, resolved, not resolved, or inconclusive.
+- [x] Degrade observability health when final-attribution verification results remain not resolved.
+- [x] Add an operator action for unresolved final-attribution verification results.
+- [x] Render final-attribution verification observability metrics in the frontend panel.
+
 ## Verification Policy
 
 Every task must follow:

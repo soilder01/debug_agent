@@ -477,6 +477,13 @@ export type ObservabilitySummary = {
     wont_fix_count: number;
     open_count: number;
   };
+  final_attribution_verification_feedback?: {
+    total_verifications: number;
+    pending_count: number;
+    resolved_count: number;
+    not_resolved_count: number;
+    inconclusive_count: number;
+  };
   usage: {
     model_call_count: number;
     prompt_character_count: number;

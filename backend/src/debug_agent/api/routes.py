@@ -381,6 +381,14 @@ class ObservabilityHumanHandoffFeedbackSummary(BaseModel):
     open_count: int
 
 
+class ObservabilityFinalAttributionVerificationFeedbackSummary(BaseModel):
+    total_verifications: int
+    pending_count: int
+    resolved_count: int
+    not_resolved_count: int
+    inconclusive_count: int
+
+
 class ObservabilitySummaryResponse(BaseModel):
     jobs: ObservabilityJobSummary
     worker: WorkerRuntimeStatus
@@ -389,6 +397,7 @@ class ObservabilitySummaryResponse(BaseModel):
     strategy_feedback: ObservabilityStrategyFeedbackSummary
     targeted_probe_feedback: ObservabilityTargetedProbeFeedbackSummary
     human_handoff_feedback: ObservabilityHumanHandoffFeedbackSummary
+    final_attribution_verification_feedback: ObservabilityFinalAttributionVerificationFeedbackSummary
     health: ObservabilityHealthSummary
     usage: ObservabilityUsageSummary
 
@@ -427,6 +436,7 @@ def get_observability_summary() -> ObservabilitySummaryResponse:
     strategy_feedback_summary = _build_strategy_feedback_summary()
     targeted_probe_feedback_summary = _build_targeted_probe_feedback_summary()
     human_handoff_feedback_summary = _build_human_handoff_feedback_summary()
+    final_attribution_verification_feedback_summary = _build_final_attribution_verification_feedback_summary()
     job_summary = ObservabilityJobSummary(
         by_status=job_counts,
         total_count=sum(job_counts.values()),
@@ -447,6 +457,7 @@ def get_observability_summary() -> ObservabilitySummaryResponse:
         strategy_feedback=strategy_feedback_summary,
         targeted_probe_feedback=targeted_probe_feedback_summary,
         human_handoff_feedback=human_handoff_feedback_summary,
+        final_attribution_verification_feedback=final_attribution_verification_feedback_summary,
         health=_build_observability_health(
             jobs=job_summary,
             worker=worker_status,
@@ -456,6 +467,7 @@ def get_observability_summary() -> ObservabilitySummaryResponse:
             strategy_feedback=strategy_feedback_summary,
             targeted_probe_feedback=targeted_probe_feedback_summary,
             human_handoff_feedback=human_handoff_feedback_summary,
+            final_attribution_verification_feedback=final_attribution_verification_feedback_summary,
         ),
         usage=usage_summary,
     )
@@ -1190,6 +1202,26 @@ def _build_human_handoff_feedback_summary() -> ObservabilityHumanHandoffFeedback
     )
 
 
+def _build_final_attribution_verification_feedback_summary() -> ObservabilityFinalAttributionVerificationFeedbackSummary:
+    outcomes = [
+        StrategyFollowUpJobWithOutcome.model_validate(follow_up)
+        for source_job_id in {
+            follow_up.source_job_id
+            for follow_up in job_repository.list_all_strategy_follow_up_jobs()
+            if follow_up.stage.startswith("final_attribution:")
+        }
+        for follow_up in build_strategy_follow_up_results(job_repository, source_job_id)
+        if str(follow_up.get("stage", "")).startswith("final_attribution:")
+    ]
+    return ObservabilityFinalAttributionVerificationFeedbackSummary(
+        total_verifications=len(outcomes),
+        pending_count=sum(1 for item in outcomes if item.outcome == "pending"),
+        resolved_count=sum(1 for item in outcomes if item.outcome == "passed_stop_condition"),
+        not_resolved_count=sum(1 for item in outcomes if item.outcome == "needs_escalation"),
+        inconclusive_count=sum(1 for item in outcomes if item.outcome == "inconclusive"),
+    )
+
+
 def _count_targeted_probe_max_depth_chains(outcomes: list[TargetedProbeJobWithOutcome]) -> int:
     by_target: dict[tuple[str, str], list[TargetedProbeJobWithOutcome]] = {}
     for outcome in outcomes:
@@ -1254,6 +1286,7 @@ def _build_observability_health(
     strategy_feedback: ObservabilityStrategyFeedbackSummary,
     targeted_probe_feedback: ObservabilityTargetedProbeFeedbackSummary,
     human_handoff_feedback: ObservabilityHumanHandoffFeedbackSummary,
+    final_attribution_verification_feedback: ObservabilityFinalAttributionVerificationFeedbackSummary,
 ) -> ObservabilityHealthSummary:
     critical_reasons: list[str] = []
     degraded_reasons: list[str] = []
@@ -1283,6 +1316,8 @@ def _build_observability_health(
         degraded_reasons.append("targeted probe guardrails reached")
     if human_handoff_feedback.open_count > 0:
         degraded_reasons.append("human handoffs still open")
+    if final_attribution_verification_feedback.not_resolved_count > 0:
+        degraded_reasons.append("final attribution verifications not resolved")
     if critical_reasons:
         reasons = critical_reasons + degraded_reasons
         return ObservabilityHealthSummary(level="critical", reasons=reasons, actions=_observability_actions(reasons))
@@ -1312,6 +1347,9 @@ def _observability_actions(reasons: list[str]) -> list[str]:
         "targeted probes still failing": "Open targeted probe history and escalate unresolved targets.",
         "targeted probe guardrails reached": "Review targeted probe guardrails and assign human investigation.",
         "human handoffs still open": "Review human handoff queue and drive open investigations to resolution.",
+        "final attribution verifications not resolved": (
+            "Open final attribution verification results and rerun unresolved attribution fixes."
+        ),
     }
     actions: list[str] = []
     for reason in reasons:

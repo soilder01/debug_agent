@@ -76,6 +76,13 @@ function makeSummary(): ObservabilitySummary {
       wont_fix_count: 0,
       open_count: 2
     },
+    final_attribution_verification_feedback: {
+      total_verifications: 4,
+      pending_count: 1,
+      resolved_count: 1,
+      not_resolved_count: 2,
+      inconclusive_count: 0
+    },
     health: {
       level: "critical",
       reasons: [
@@ -85,7 +92,8 @@ function makeSummary(): ObservabilitySummary {
         "strategy follow-ups need escalation",
         "targeted probes still failing",
         "targeted probe guardrails reached",
-        "human handoffs still open"
+        "human handoffs still open",
+        "final attribution verifications not resolved"
       ],
       actions: [
         "Inspect failed jobs and open their evidence chain.",
@@ -94,7 +102,8 @@ function makeSummary(): ObservabilitySummary {
         "Open strategy follow-up history and run escalation probes.",
         "Open targeted probe history and escalate unresolved targets.",
         "Review targeted probe guardrails and assign human investigation.",
-        "Review human handoff queue and drive open investigations to resolution."
+        "Review human handoff queue and drive open investigations to resolution.",
+        "Open final attribution verification results and rerun unresolved attribution fixes."
       ]
     }
   };
@@ -156,6 +165,11 @@ describe("ObservabilitySummaryPanel", () => {
     expect(screen.getByText("Observed handoff in progress：1")).toBeInTheDocument();
     expect(screen.getByText("Observed handoff resolved：1")).toBeInTheDocument();
     expect(screen.getByText("Observed handoff open：2")).toBeInTheDocument();
+    expect(screen.getByText("Observed final attribution verifications：4")).toBeInTheDocument();
+    expect(screen.getByText("Observed final attribution pending：1")).toBeInTheDocument();
+    expect(screen.getByText("Observed final attribution resolved：1")).toBeInTheDocument();
+    expect(screen.getByText("Observed final attribution not resolved：2")).toBeInTheDocument();
+    expect(screen.getByText("Observed final attribution inconclusive：0")).toBeInTheDocument();
     expect(screen.getByText("Observed health：critical")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：failed jobs present")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：failed spreadsheet writebacks present")).toBeInTheDocument();
@@ -164,6 +178,7 @@ describe("ObservabilitySummaryPanel", () => {
     expect(screen.getByText("Observed health reason：targeted probes still failing")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：targeted probe guardrails reached")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：human handoffs still open")).toBeInTheDocument();
+    expect(screen.getByText("Observed health reason：final attribution verifications not resolved")).toBeInTheDocument();
     expect(screen.getByText("Recommended action：Inspect failed jobs and open their evidence chain.")).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -184,6 +199,11 @@ describe("ObservabilitySummaryPanel", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText("Recommended action：Review human handoff queue and drive open investigations to resolution.")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Recommended action：Open final attribution verification results and rerun unresolved attribution fixes."
+      )
     ).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Open failed jobs from observability" }));

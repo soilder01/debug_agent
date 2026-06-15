@@ -36,6 +36,13 @@ export function ObservabilitySummaryPanel({
     wont_fix_count: 0,
     open_count: 0
   };
+  const finalAttributionVerificationFeedback = summary.final_attribution_verification_feedback ?? {
+    total_verifications: 0,
+    pending_count: 0,
+    resolved_count: 0,
+    not_resolved_count: 0,
+    inconclusive_count: 0
+  };
   return (
     <section>
       <h2>Observability</h2>
@@ -83,6 +90,11 @@ export function ObservabilitySummaryPanel({
       <p>Observed handoff resolved：{humanHandoffFeedback.resolved_count}</p>
       <p>Observed handoff wont fix：{humanHandoffFeedback.wont_fix_count}</p>
       <p>Observed handoff open：{humanHandoffFeedback.open_count}</p>
+      <p>Observed final attribution verifications：{finalAttributionVerificationFeedback.total_verifications}</p>
+      <p>Observed final attribution pending：{finalAttributionVerificationFeedback.pending_count}</p>
+      <p>Observed final attribution resolved：{finalAttributionVerificationFeedback.resolved_count}</p>
+      <p>Observed final attribution not resolved：{finalAttributionVerificationFeedback.not_resolved_count}</p>
+      <p>Observed final attribution inconclusive：{finalAttributionVerificationFeedback.inconclusive_count}</p>
       <p>Observed health：{summary.health.level}</p>
       {summary.health.reasons.map((reason) => (
         <p key={reason}>Observed health reason：{reason}</p>
