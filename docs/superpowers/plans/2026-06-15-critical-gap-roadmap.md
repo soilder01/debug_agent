@@ -681,6 +681,22 @@
 - [x] Render runnable recovery buttons for `final_attribution_verification_outcome` follow-ups.
 - [x] Wire App submission flow so operators can create and open recovery jobs from reports.
 
+### Task 42: Final Attribution Recovery Outcome Reporting
+
+**Files:**
+- Modify: `backend/src/debug_agent/reports/generator.py`
+- Modify: `backend/src/debug_agent/reports/job_report.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `backend/tests/reports/test_job_report.py`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Evaluate `final_attribution_recovery:<target_id>` follow-up jobs as final attribution recovery results.
+- [x] Classify successful recovery jobs as `closed` and failed recovery jobs as `reopen`.
+- [x] Keep pending or inconclusive recovery jobs visible as structured report results.
+- [x] Add closure recommended actions when recovery jobs close the attribution loop.
+- [x] Render final-attribution recovery results in the report panel.
+
 ## Verification Policy
 
 Every task must follow:

@@ -113,6 +113,15 @@ export type DebugReport = {
     success_rate: number;
     summary: string;
   }>;
+  final_attribution_recovery_results?: Array<{
+    source: string;
+    target_id: string;
+    category: string;
+    recovery_job_id: string;
+    result: string;
+    success_rate: number;
+    summary: string;
+  }>;
   evaluation_asset_diagnostics?: Array<{
     source: string;
     status: string;

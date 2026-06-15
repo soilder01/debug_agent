@@ -59,6 +59,7 @@ export function ReportPanel({
   const humanHandoffRequests = report.human_handoff_requests ?? [];
   const finalAttributions = report.final_attributions ?? [];
   const finalAttributionVerificationResults = report.final_attribution_verification_results ?? [];
+  const finalAttributionRecoveryResults = report.final_attribution_recovery_results ?? [];
   const verificationResultByJobId = new Map(
     recommendedActionVerificationResults.map((result) => [result.verification_job_id, result])
   );
@@ -408,6 +409,23 @@ export function ReportPanel({
                 {verificationResultByJobId.has(verification.verification_job_id) ? (
                   <VerificationResultSummary result={verificationResultByJobId.get(verification.verification_job_id)!} />
                 ) : null}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {finalAttributionRecoveryResults.length > 0 ? (
+        <>
+          <h3>Final Attribution Recovery Results</h3>
+          <ul aria-label="Final attribution recovery results">
+            {finalAttributionRecoveryResults.map((result) => (
+              <li key={`${result.target_id}:${result.recovery_job_id}`}>
+                <p>Attribution recovery target：{result.target_id}</p>
+                <p>Attribution recovery category：{result.category}</p>
+                <p>Attribution recovery result：{result.result}</p>
+                <p>Attribution recovery job：{result.recovery_job_id}</p>
+                <p>Attribution recovery success rate：{formatPercent(result.success_rate)}</p>
+                <p>{result.summary}</p>
               </li>
             ))}
           </ul>

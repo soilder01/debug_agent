@@ -57,6 +57,7 @@ class DebugReport(BaseModel):
     human_handoff_statuses: list[dict[str, str]] = Field(default_factory=list)
     final_attributions: list[dict[str, str]] = Field(default_factory=list)
     final_attribution_verification_results: list[dict[str, object]] = Field(default_factory=list)
+    final_attribution_recovery_results: list[dict[str, object]] = Field(default_factory=list)
     confidence_reasons: list[dict[str, str]] = Field(default_factory=list)
     debug_strategy: list[dict[str, str]] = Field(default_factory=list)
     suggested_sheet_fields: dict[str, str]

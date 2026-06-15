@@ -858,6 +858,17 @@ describe("ReportPanel", () => {
           summary: "Final attribution verification for multimodal:conflict:1 resolved the issue."
         }
       ],
+      final_attribution_recovery_results: [
+        {
+          source: "final_attribution_recovery",
+          target_id: "multimodal:conflict:1",
+          category: "prompt_issue",
+          recovery_job_id: "job-final-attribution-recovery",
+          result: "closed",
+          success_rate: 1,
+          summary: "Final attribution recovery for multimodal:conflict:1 closed the attribution loop."
+        }
+      ],
       suggested_sheet_fields: {
         错误原因: "跨模态对齐问题"
       }
@@ -897,6 +908,11 @@ describe("ReportPanel", () => {
     expect(screen.getByText("Attribution verification result：resolved")).toBeInTheDocument();
     expect(screen.getByText("Attribution verification job：job-final-attribution-verify")).toBeInTheDocument();
     expect(screen.getByText("Attribution verification success rate：100%")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Final Attribution Recovery Results" })).toBeInTheDocument();
+    expect(screen.getByText("Attribution recovery target：multimodal:conflict:1")).toBeInTheDocument();
+    expect(screen.getByText("Attribution recovery result：closed")).toBeInTheDocument();
+    expect(screen.getByText("Attribution recovery job：job-final-attribution-recovery")).toBeInTheDocument();
+    expect(screen.getByText("Attribution recovery success rate：100%")).toBeInTheDocument();
     expect(screen.getByText("Handoff owner：human-debugger")).toBeInTheDocument();
     expect(
       screen.getByText(

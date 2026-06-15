@@ -56,11 +56,18 @@ def build_report_for_job(repository: DebugJobRepository, job_id: str) -> DebugRe
             final_attributions=report.final_attributions,
             strategy_follow_up_results=report.strategy_follow_up_results,
         )
+        report.final_attribution_recovery_results = _build_final_attribution_recovery_results(
+            final_attributions=report.final_attributions,
+            strategy_follow_up_results=report.strategy_follow_up_results,
+        )
         report.recommended_actions = [
             *report.recommended_actions,
             *_build_final_attribution_recommended_actions(report.final_attributions),
             *_build_final_attribution_verification_recovery_actions(
                 report.final_attribution_verification_results
+            ),
+            *_build_final_attribution_recovery_closure_actions(
+                report.final_attribution_recovery_results
             ),
         ]
         report.follow_up_experiments = [
@@ -438,6 +445,25 @@ def _build_final_attribution_verification_recovery_actions(
     ]
 
 
+def _build_final_attribution_recovery_closure_actions(
+    final_attribution_recovery_results: list[dict[str, object]],
+) -> list[dict[str, str]]:
+    return [
+        {
+            "category": "attribution_closure",
+            "priority": "high",
+            "status": "pending",
+            "summary": f"Close final attribution recovery for {result.get('target_id', 'unknown')}.",
+            "detail": (
+                f"Recovery job {result.get('recovery_job_id', '')} closed the attribution loop. "
+                "Record closure and keep the resolved case in regression monitoring."
+            ),
+        }
+        for result in final_attribution_recovery_results
+        if result.get("result") == "closed"
+    ]
+
+
 def _build_final_attribution_follow_up_experiments(final_attributions: list[dict[str, str]]) -> list[dict[str, str]]:
     return [
         {
@@ -532,11 +558,56 @@ def _build_final_attribution_verification_results(
     return results
 
 
+def _build_final_attribution_recovery_results(
+    *,
+    final_attributions: list[dict[str, str]],
+    strategy_follow_up_results: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    category_by_target = {
+        attribution.get("target_id", ""): attribution.get("category", "unknown")
+        for attribution in final_attributions
+    }
+    results: list[dict[str, object]] = []
+    for follow_up in strategy_follow_up_results:
+        stage = str(follow_up.get("stage", ""))
+        if not stage.startswith("final_attribution_recovery:"):
+            continue
+        target_id = stage.removeprefix("final_attribution_recovery:")
+        result = _final_attribution_recovery_result(str(follow_up.get("outcome", "pending")))
+        raw_success_rate = follow_up.get("success_rate", 0.0)
+        success_rate = raw_success_rate if isinstance(raw_success_rate, int | float) else 0.0
+        results.append(
+            {
+                "source": "final_attribution_recovery",
+                "target_id": target_id,
+                "category": category_by_target.get(target_id, "unknown"),
+                "recovery_job_id": str(follow_up.get("follow_up_job_id", "")),
+                "result": result,
+                "success_rate": float(success_rate),
+                "summary": _final_attribution_recovery_summary(
+                    target_id=target_id,
+                    result=result,
+                ),
+            }
+        )
+    return results
+
+
 def _final_attribution_verification_result(outcome: str) -> str:
     if outcome == "passed_stop_condition":
         return "resolved"
     if outcome == "needs_escalation":
         return "not_resolved"
+    if outcome == "inconclusive":
+        return "inconclusive"
+    return "pending"
+
+
+def _final_attribution_recovery_result(outcome: str) -> str:
+    if outcome == "passed_stop_condition":
+        return "closed"
+    if outcome == "needs_escalation":
+        return "reopen"
     if outcome == "inconclusive":
         return "inconclusive"
     return "pending"
@@ -550,6 +621,16 @@ def _final_attribution_verification_summary(*, target_id: str, result: str) -> s
     if result == "inconclusive":
         return f"Final attribution verification for {target_id} is inconclusive."
     return f"Final attribution verification for {target_id} is still pending."
+
+
+def _final_attribution_recovery_summary(*, target_id: str, result: str) -> str:
+    if result == "closed":
+        return f"Final attribution recovery for {target_id} closed the attribution loop."
+    if result == "reopen":
+        return f"Final attribution recovery for {target_id} still failed; reopen attribution review."
+    if result == "inconclusive":
+        return f"Final attribution recovery for {target_id} is inconclusive."
+    return f"Final attribution recovery for {target_id} is still pending."
 
 
 def _recommended_action_verification_result(
