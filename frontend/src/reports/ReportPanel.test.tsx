@@ -654,6 +654,19 @@ describe("ReportPanel", () => {
             created_at: "2026-06-14T00:00:02+00:00"
           }
         ]}
+        recommendedActionVerificationResults={[
+          {
+            job_id: "job-action-verifications",
+            action_index: 0,
+            verification_job_id: "job-verify-1",
+            result: "resolved",
+            source_success_rate: 0.5,
+            verification_success_rate: 1,
+            source_root_cause: "single_modality_capability_gap",
+            verification_root_cause: "output_mismatch",
+            summary: "验证任务通过率 100%，高于原任务 50%，推荐操作可能已修复该问题。"
+          }
+        ]}
       />
     );
 
@@ -661,5 +674,8 @@ describe("ReportPanel", () => {
     expect(screen.getByText("操作 1 验证任务：job-verify-1")).toBeInTheDocument();
     expect(screen.getByText("操作者：qa-reviewer")).toBeInTheDocument();
     expect(screen.getByText("备注：verify prompt fix")).toBeInTheDocument();
+    expect(screen.getByText("验证结果：resolved")).toBeInTheDocument();
+    expect(screen.getByText("验证通过率：100%｜原通过率：50%")).toBeInTheDocument();
+    expect(screen.getByText("验证任务通过率 100%，高于原任务 50%，推荐操作可能已修复该问题。")).toBeInTheDocument();
   });
 });

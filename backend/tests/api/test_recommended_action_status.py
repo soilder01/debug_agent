@@ -89,6 +89,90 @@ def test_recommended_action_status_api_creates_verification_job_link() -> None:
             "created_at": body["created_at"],
         }
     ]
+    routes.job_repository.mark_failed(body["verification_job_id"], "test cleanup")
+
+
+def test_recommended_action_status_api_evaluates_resolved_verification_job() -> None:
+    client = TestClient(app)
+    job_id = _create_job_with_recommended_actions()
+    verification_response = client.post(
+        f"/jobs/{job_id}/recommended-actions/0/verification-jobs",
+        json={"actor": "frontend-operator", "note": "verify applied prompt fix"},
+    )
+    assert verification_response.status_code == 202
+    verification_job_id = verification_response.json()["verification_job_id"]
+    source_job = routes.job_repository.get_job(job_id)
+    assert source_job is not None
+    routes.job_repository.save_evidence(
+        job_id=verification_job_id,
+        case_id=source_job.case_id,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id=f"{verification_job_id}:baseline-pass",
+                step_name="baseline_replay",
+                trial=0,
+                raw_output="{\"conflicts\":[]}",
+                judge=JudgeResult(score=1, reasons=[]),
+            ),
+            ExperimentEvidence(
+                evidence_id=f"{verification_job_id}:ablation-pass",
+                step_name="modality_ablation_check",
+                trial=1,
+                request_summary={"ablation_variant": "cross_modal_compare", "ablation_modalities": ["image", "text"]},
+                raw_output="{\"conflicts\":[]}",
+                judge=JudgeResult(score=1, reasons=[]),
+            ),
+        ],
+    )
+    routes.job_repository.mark_completed(verification_job_id)
+
+    response = client.get(f"/jobs/{job_id}/recommended-actions/statuses")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["verification_results"] == [
+        {
+            "job_id": job_id,
+            "action_index": 0,
+            "verification_job_id": verification_job_id,
+            "result": "resolved",
+            "source_success_rate": 0.5,
+            "verification_success_rate": 1.0,
+            "source_root_cause": "single_modality_capability_gap",
+            "verification_root_cause": "output_mismatch",
+            "summary": "验证任务通过率 100%，高于原任务 50%，推荐操作可能已修复该问题。",
+        }
+    ]
+
+
+def test_recommended_action_status_api_marks_incomplete_verification_pending() -> None:
+    client = TestClient(app)
+    job_id = _create_job_with_recommended_actions()
+    verification_response = client.post(
+        f"/jobs/{job_id}/recommended-actions/0/verification-jobs",
+        json={"actor": "frontend-operator", "note": "verify applied prompt fix"},
+    )
+    assert verification_response.status_code == 202
+    verification_job_id = verification_response.json()["verification_job_id"]
+    routes.job_repository.mark_failed(verification_job_id, "test keeps verification pending without queue pollution")
+
+    response = client.get(f"/jobs/{job_id}/recommended-actions/statuses")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["verification_results"] == [
+        {
+            "job_id": job_id,
+            "action_index": 0,
+            "verification_job_id": verification_job_id,
+            "result": "pending",
+            "source_success_rate": 0.5,
+            "verification_success_rate": 0.0,
+            "source_root_cause": "single_modality_capability_gap",
+            "verification_root_cause": "",
+            "summary": "验证任务尚未完成，等待复测结果后再判断推荐操作是否生效。",
+        }
+    ]
 
 
 def test_recommended_action_status_api_returns_404_for_missing_job() -> None:

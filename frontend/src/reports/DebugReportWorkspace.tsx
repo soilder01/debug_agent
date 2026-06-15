@@ -3,6 +3,7 @@ import type {
   ExperimentEvidence,
   RecommendedActionStatusEvent,
   RecommendedActionVerification,
+  RecommendedActionVerificationResult,
   RecommendedActionStatusValue,
   SpreadsheetWritebackAudit,
   SpreadsheetWritebackResult
@@ -18,6 +19,7 @@ type DebugReportWorkspaceProps = {
   selectedEvidence: ExperimentEvidence | null;
   recommendedActionStatusEvents?: RecommendedActionStatusEvent[];
   recommendedActionVerifications?: RecommendedActionVerification[];
+  recommendedActionVerificationResults?: RecommendedActionVerificationResult[];
   writebackResult: SpreadsheetWritebackResult | null;
   writebackAudit: SpreadsheetWritebackAudit | null;
   onSelectEvidence: (evidenceId: string) => void;
@@ -32,6 +34,7 @@ export function DebugReportWorkspace({
   selectedEvidence,
   recommendedActionStatusEvents = [],
   recommendedActionVerifications = [],
+  recommendedActionVerificationResults = [],
   writebackResult,
   writebackAudit,
   onSelectEvidence,
@@ -53,6 +56,7 @@ export function DebugReportWorkspace({
         report={report}
         recommendedActionStatusEvents={recommendedActionStatusEvents}
         recommendedActionVerifications={recommendedActionVerifications}
+        recommendedActionVerificationResults={recommendedActionVerificationResults}
         onSelectEvidence={onSelectEvidence}
         onUpdateRecommendedActionStatus={onUpdateRecommendedActionStatus}
         onVerifyRecommendedAction={onVerifyRecommendedAction}

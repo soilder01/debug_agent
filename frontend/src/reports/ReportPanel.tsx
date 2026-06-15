@@ -2,13 +2,15 @@ import type {
   DebugReport,
   RecommendedActionStatusEvent,
   RecommendedActionStatusValue,
-  RecommendedActionVerification
+  RecommendedActionVerification,
+  RecommendedActionVerificationResult
 } from "../api/client";
 
 type ReportPanelProps = {
   report: DebugReport;
   recommendedActionStatusEvents?: RecommendedActionStatusEvent[];
   recommendedActionVerifications?: RecommendedActionVerification[];
+  recommendedActionVerificationResults?: RecommendedActionVerificationResult[];
   onSelectEvidence?: (evidenceId: string) => void;
   onUpdateRecommendedActionStatus?: (actionIndex: number, status: RecommendedActionStatusValue) => void;
   onVerifyRecommendedAction?: (actionIndex: number) => void;
@@ -18,6 +20,7 @@ export function ReportPanel({
   report,
   recommendedActionStatusEvents = [],
   recommendedActionVerifications = [],
+  recommendedActionVerificationResults = [],
   onSelectEvidence,
   onUpdateRecommendedActionStatus,
   onVerifyRecommendedAction
@@ -35,6 +38,9 @@ export function ReportPanel({
   const ablationConclusion = report.suggested_sheet_fields["Ablation结论"];
   const rootCauseTrace = report.root_cause_trace ?? [];
   const recommendedActions = report.recommended_actions ?? [];
+  const verificationResultByJobId = new Map(
+    recommendedActionVerificationResults.map((result) => [result.verification_job_id, result])
+  );
 
   return (
     <section>
@@ -198,6 +204,9 @@ export function ReportPanel({
                 <p>操作者：{verification.actor || "unknown"}</p>
                 {verification.note ? <p>备注：{verification.note}</p> : null}
                 <p>时间：{verification.created_at}</p>
+                {verificationResultByJobId.has(verification.verification_job_id) ? (
+                  <VerificationResultSummary result={verificationResultByJobId.get(verification.verification_job_id)!} />
+                ) : null}
               </li>
             ))}
           </ul>
@@ -261,6 +270,23 @@ export function ReportPanel({
 
 function formatPercent(value: number): string {
   return `${Math.round(value * 100)}%`;
+}
+
+type VerificationResultSummaryProps = {
+  result: RecommendedActionVerificationResult;
+};
+
+function VerificationResultSummary({ result }: VerificationResultSummaryProps) {
+  return (
+    <>
+      <p>验证结果：{result.result}</p>
+      <p>
+        验证通过率：{formatPercent(result.verification_success_rate)}｜原通过率：
+        {formatPercent(result.source_success_rate)}
+      </p>
+      <p>{result.summary}</p>
+    </>
+  );
 }
 
 type ArtifactEvidenceButtonsProps = {

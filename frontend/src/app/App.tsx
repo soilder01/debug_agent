@@ -29,6 +29,7 @@ import {
   type RecommendedActionStatusValue,
   type RecommendedActionStatusEvent,
   type RecommendedActionVerification,
+  type RecommendedActionVerificationResult,
   startWorker,
   submitBatchDebugJobs,
   submitDebugJob,
@@ -90,6 +91,9 @@ export function App() {
   const [spreadsheetWritebackAudit, setSpreadsheetWritebackAudit] = useState<SpreadsheetWritebackAudit | null>(null);
   const [recommendedActionStatusEvents, setRecommendedActionStatusEvents] = useState<RecommendedActionStatusEvent[]>([]);
   const [recommendedActionVerifications, setRecommendedActionVerifications] = useState<RecommendedActionVerification[]>([]);
+  const [recommendedActionVerificationResults, setRecommendedActionVerificationResults] = useState<
+    RecommendedActionVerificationResult[]
+  >([]);
   const [spreadsheetWritebackAuditSummary, setSpreadsheetWritebackAuditSummary] =
     useState<SpreadsheetWritebackAuditCounts | null>(null);
   const [spreadsheetWritebackAuditList, setSpreadsheetWritebackAuditList] =
@@ -503,11 +507,13 @@ export function App() {
       setReport(loadedReport);
       if (loadedReport.job_id && (loadedReport.recommended_actions ?? []).length > 0) {
         const actionStatuses = await fetchRecommendedActionStatuses(loadedReport.job_id);
-        setRecommendedActionStatusEvents(actionStatuses.events);
-        setRecommendedActionVerifications(actionStatuses.verifications);
+        setRecommendedActionStatusEvents(actionStatuses.events ?? []);
+        setRecommendedActionVerifications(actionStatuses.verifications ?? []);
+        setRecommendedActionVerificationResults(actionStatuses.verification_results ?? []);
       } else {
         setRecommendedActionStatusEvents([]);
         setRecommendedActionVerifications([]);
+        setRecommendedActionVerificationResults([]);
       }
       setSpreadsheetWritebackResult(null);
       setSpreadsheetWritebackAudit(null);
@@ -585,7 +591,9 @@ export function App() {
         };
       });
       const actionStatuses = await fetchRecommendedActionStatuses(report.job_id);
-      setRecommendedActionStatusEvents(actionStatuses.events);
+      setRecommendedActionStatusEvents(actionStatuses.events ?? []);
+      setRecommendedActionVerifications(actionStatuses.verifications ?? []);
+      setRecommendedActionVerificationResults(actionStatuses.verification_results ?? []);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
     }
@@ -605,7 +613,9 @@ export function App() {
       setJobStatus(null);
       setSelectedEvidence(null);
       const actionStatuses = await fetchRecommendedActionStatuses(report.job_id);
-      setRecommendedActionVerifications(actionStatuses.verifications);
+      setRecommendedActionStatusEvents(actionStatuses.events ?? []);
+      setRecommendedActionVerifications(actionStatuses.verifications ?? []);
+      setRecommendedActionVerificationResults(actionStatuses.verification_results ?? []);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
     }
@@ -714,6 +724,7 @@ export function App() {
           selectedEvidence={selectedEvidence}
           recommendedActionStatusEvents={recommendedActionStatusEvents}
           recommendedActionVerifications={recommendedActionVerifications}
+          recommendedActionVerificationResults={recommendedActionVerificationResults}
           writebackResult={spreadsheetWritebackResult}
           writebackAudit={spreadsheetWritebackAudit}
           onSelectEvidence={selectEvidence}

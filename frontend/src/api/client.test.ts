@@ -81,6 +81,19 @@ describe("api client recommended action status", () => {
               note: "verify prompt fix",
               created_at: "2026-06-14T00:00:02+00:00"
             }
+          ],
+          verification_results: [
+            {
+              job_id: "job-1",
+              action_index: 0,
+              verification_job_id: "job-verify-1",
+              result: "resolved",
+              source_success_rate: 0.5,
+              verification_success_rate: 1,
+              source_root_cause: "single_modality_capability_gap",
+              verification_root_cause: "output_mismatch",
+              summary: "验证任务通过率 100%，高于原任务 50%，推荐操作可能已修复该问题。"
+            }
           ]
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
@@ -93,6 +106,7 @@ describe("api client recommended action status", () => {
     expect(response.events).toHaveLength(1);
     expect(response.events[0].event_id).toBe(7);
     expect(response.verifications[0].verification_job_id).toBe("job-verify-1");
+    expect(response.verification_results[0].result).toBe("resolved");
   });
 
   it("creates recommended action verification jobs with reviewer context", async () => {

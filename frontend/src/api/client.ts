@@ -102,10 +102,23 @@ export type RecommendedActionVerificationResponse = RecommendedActionVerificatio
   verification_job: SubmittedDebugJob;
 };
 
+export type RecommendedActionVerificationResult = {
+  job_id: string;
+  action_index: number;
+  verification_job_id: string;
+  result: "pending" | "resolved" | "not_resolved" | "regressed" | "inconclusive";
+  source_success_rate: number;
+  verification_success_rate: number;
+  source_root_cause: string;
+  verification_root_cause: string;
+  summary: string;
+};
+
 export type RecommendedActionStatusListResponse = {
   statuses: RecommendedActionStatus[];
   events: RecommendedActionStatusEvent[];
   verifications: RecommendedActionVerification[];
+  verification_results: RecommendedActionVerificationResult[];
 };
 
 export type RetryRecommendationDetail = {

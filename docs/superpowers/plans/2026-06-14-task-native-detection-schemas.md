@@ -615,6 +615,8 @@
 - [x] Render recommended action verification job records in the report panel.
 - [x] Run focused backend API and frontend API/report/App tests.
 
+> Follow-up critical gap execution moved to `docs/superpowers/plans/2026-06-15-critical-gap-roadmap.md`.
+
 ## Multimodal Harness Schema Roadmap
 
 ### Image-Native Outputs
