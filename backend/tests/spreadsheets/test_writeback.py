@@ -241,6 +241,17 @@ def test_build_report_writeback_fields_includes_targeted_probe_guardrails() -> N
                     "next_action": "Review the full targeted probe chain, inspect evidence artifacts, and decide whether to update prompt, evaluation assets, or model capability attribution.",
                 }
             ],
+            "human_handoff_statuses": [
+                {
+                    "job_id": "job-1",
+                    "target_id": "multimodal:conflict:1",
+                    "status": "resolved",
+                    "actor": "human-debugger",
+                    "note": "Final attribution: prompt lacks cross-modal conflict checklist; update prompt before model capability attribution.",
+                    "created_at": "2026-06-15T00:00:00+00:00",
+                    "updated_at": "2026-06-15T00:00:01+00:00",
+                }
+            ],
         }
     )
 
@@ -254,6 +265,10 @@ def test_build_report_writeback_fields_includes_targeted_probe_guardrails() -> N
     assert "人工接管：" in fields["评估问题反馈"]
     assert "multimodal:conflict:1/high/max_targeted_probe_depth_reached" in fields["评估问题反馈"]
     assert "负责人：human-debugger" in fields["评估问题反馈"]
+    assert "人工接管状态：" in fields["评估问题反馈"]
+    assert "multimodal:conflict:1/resolved" in fields["评估问题反馈"]
+    assert "处理人：human-debugger" in fields["评估问题反馈"]
+    assert "结论：Final attribution: prompt lacks cross-modal conflict checklist" in fields["评估问题反馈"]
 
 
 def test_write_report_to_spreadsheet_row_updates_client_with_payload() -> None:

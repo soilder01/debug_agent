@@ -56,7 +56,8 @@ export function ReportPanel({
   const verificationResultByJobId = new Map(
     recommendedActionVerificationResults.map((result) => [result.verification_job_id, result])
   );
-  const humanHandoffStatusByTargetId = new Map(humanHandoffStatuses.map((status) => [status.target_id, status]));
+  const resolvedHumanHandoffStatuses = humanHandoffStatuses.length > 0 ? humanHandoffStatuses : (report.human_handoff_statuses ?? []);
+  const humanHandoffStatusByTargetId = new Map(resolvedHumanHandoffStatuses.map((status) => [status.target_id, status]));
 
   return (
     <section>

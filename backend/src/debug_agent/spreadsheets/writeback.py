@@ -176,6 +176,9 @@ def _evaluation_feedback(report: DebugReport) -> str:
     human_handoffs = _human_handoff_requests(report)
     if human_handoffs:
         lines.append(f"人工接管：{human_handoffs}")
+    human_handoff_statuses = _human_handoff_statuses(report)
+    if human_handoff_statuses:
+        lines.append(f"人工接管状态：{human_handoff_statuses}")
     if report.experiment_summary is not None:
         summary = report.experiment_summary
         lines.extend(
@@ -283,4 +286,24 @@ def _human_handoff_line(request: dict[str, str]) -> str:
         line = f"{line}\n负责人：{owner}"
     if next_action:
         line = f"{line}\n下一步：{next_action}"
+    return line
+
+
+def _human_handoff_statuses(report: DebugReport) -> str:
+    return "\n".join(
+        _human_handoff_status_line(status)
+        for status in report.human_handoff_statuses
+    )
+
+
+def _human_handoff_status_line(status: dict[str, str]) -> str:
+    target_id = status.get("target_id", "unknown")
+    state = status.get("status", "unknown")
+    actor = status.get("actor", "")
+    note = status.get("note", "")
+    line = f"{target_id}/{state}"
+    if actor:
+        line = f"{line}\n处理人：{actor}"
+    if note:
+        line = f"{line}\n结论：{note}"
     return line

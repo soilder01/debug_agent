@@ -94,6 +94,7 @@ export type DebugReport = {
     recommended_owner: string;
     next_action: string;
   }>;
+  human_handoff_statuses?: HumanHandoffStatus[];
   evaluation_asset_diagnostics?: Array<{
     source: string;
     status: string;

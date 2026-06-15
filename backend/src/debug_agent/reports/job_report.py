@@ -47,6 +47,10 @@ def build_report_for_job(repository: DebugJobRepository, job_id: str) -> DebugRe
             ),
         ]
         report.human_handoff_requests = _build_human_handoff_requests(report.follow_up_experiments)
+        report.human_handoff_statuses = [
+            status.model_dump()
+            for status in repository.list_human_handoff_statuses(job_id)
+        ]
     return _merge_recommended_action_statuses(repository, job_id, report)
 
 

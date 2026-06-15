@@ -805,6 +805,17 @@ describe("ReportPanel", () => {
             "Review the full targeted probe chain, inspect evidence artifacts, and decide whether to update prompt, evaluation assets, or model capability attribution."
         }
       ],
+      human_handoff_statuses: [
+        {
+          job_id: "job-targeted-source",
+          target_id: "multimodal:conflict:1",
+          status: "in_progress",
+          actor: "human-debugger",
+          note: "reviewing full probe chain",
+          created_at: "2026-06-15T00:00:00+00:00",
+          updated_at: "2026-06-15T00:00:01+00:00"
+        }
+      ],
       suggested_sheet_fields: {
         错误原因: "跨模态对齐问题"
       }
@@ -813,17 +824,6 @@ describe("ReportPanel", () => {
     render(
       <ReportPanel
         report={report}
-        humanHandoffStatuses={[
-          {
-            job_id: "job-targeted-source",
-            target_id: "multimodal:conflict:1",
-            status: "in_progress",
-            actor: "human-debugger",
-            note: "reviewing full probe chain",
-            created_at: "2026-06-15T00:00:00+00:00",
-            updated_at: "2026-06-15T00:00:01+00:00"
-          }
-        ]}
         onCreateTargetedProbe={onCreateTargetedProbe}
         onUpdateHumanHandoffStatus={onUpdateHumanHandoffStatus}
       />

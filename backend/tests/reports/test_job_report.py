@@ -517,6 +517,13 @@ def test_build_report_for_job_stops_targeted_escalation_at_max_depth() -> None:
             note=f"probe round {index + 1}",
         )
         parent_probe_job_id = probe_job_id
+    repository.save_human_handoff_status(
+        job_id="job-source",
+        target_id="multimodal:conflict:1",
+        status="resolved",
+        actor="human-debugger",
+        note="Final attribution: prompt lacks cross-modal conflict checklist; update prompt before model capability attribution.",
+    )
 
     report = build_report_for_job(repository, "job-source")
 
@@ -546,6 +553,17 @@ def test_build_report_for_job_stops_targeted_escalation_at_max_depth() -> None:
             "summary": "Targeted probe chain for multimodal:conflict:1 reached max depth 3.",
             "recommended_owner": "human-debugger",
             "next_action": "Review the full targeted probe chain, inspect evidence artifacts, and decide whether to update prompt, evaluation assets, or model capability attribution.",
+        }
+    ]
+    assert report.human_handoff_statuses == [
+        {
+            "job_id": "job-source",
+            "target_id": "multimodal:conflict:1",
+            "status": "resolved",
+            "actor": "human-debugger",
+            "note": "Final attribution: prompt lacks cross-modal conflict checklist; update prompt before model capability attribution.",
+            "created_at": report.human_handoff_statuses[0]["created_at"],
+            "updated_at": report.human_handoff_statuses[0]["updated_at"],
         }
     ]
 

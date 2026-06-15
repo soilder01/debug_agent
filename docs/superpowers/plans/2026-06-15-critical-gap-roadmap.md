@@ -549,6 +549,24 @@
 - [x] Wire report-level handoff actions through `DebugReportWorkspace`.
 - [x] Update App state after handoff status PATCH responses so operators see the new status immediately.
 
+### Task 34: Human Handoff Resolution Writeback
+
+**Files:**
+- Modify: `backend/src/debug_agent/reports/generator.py`
+- Modify: `backend/src/debug_agent/reports/job_report.py`
+- Modify: `backend/src/debug_agent/spreadsheets/writeback.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `backend/tests/reports/test_job_report.py`
+- Test: `backend/tests/spreadsheets/test_writeback.py`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Include persisted human handoff statuses in rebuilt `DebugReport`.
+- [x] Surface resolved handoff actor and conclusion note in report rendering.
+- [x] Include human handoff status and final conclusion in spreadsheet `评估问题反馈`.
+- [x] Keep report panel compatible with status data embedded directly in report payloads.
+- [x] Preserve external handoff status props as the live UI override path.
+
 ## Verification Policy
 
 Every task must follow:
