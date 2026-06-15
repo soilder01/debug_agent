@@ -390,6 +390,33 @@ textarea:focus-visible {
   gap: 0.85rem;
 }
 
+.evidence-detail,
+.evidence-section,
+.evidence-artifacts,
+.experiment-timeline {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.evidence-artifacts ul,
+.experiment-timeline ul,
+.experiment-timeline ol {
+  margin: 0;
+}
+
+.evidence-artifacts img {
+  max-width: min(100%, 28rem);
+  border-radius: 1rem;
+  box-shadow: 0 1rem 2.5rem rgba(31, 42, 68, 0.14);
+}
+
+.experiment-timeline__row {
+  border-radius: 0.85rem;
+  padding: 0.55rem 0.7rem;
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: inset 0 0 0 1px rgba(23, 32, 51, 0.08);
+}
+
 @media (max-width: 1180px) {
   .agent-shell__grid {
     grid-template-columns: 1fr 1fr;

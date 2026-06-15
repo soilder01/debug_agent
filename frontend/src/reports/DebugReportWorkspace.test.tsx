@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -148,6 +148,11 @@ describe("DebugReportWorkspace", () => {
     expect(screen.getByText("Job ID：job-1")).toBeInTheDocument();
     expect(screen.getByText("样本 ID：case-1")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Experiment Plan" })).toBeInTheDocument();
+    const timeline = screen.getByRole("region", { name: "Experiment Plan" });
+    expect(timeline).toHaveClass("experiment-timeline");
+    expect(screen.getByLabelText("Experiment evidence")).toHaveClass("experiment-timeline__evidence");
+    expect(within(timeline).getByText("baseline_replay")).toHaveClass("experiment-timeline__row");
+    expect(within(timeline).getByText("baseline_replay")).toHaveAttribute("data-anime-flow");
     expect(screen.getByText("复测稳定性：unstable")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Spreadsheet Writeback" })).toBeInTheDocument();
     expect(screen.getByText("Spreadsheet writeback row：row-7")).toBeInTheDocument();

@@ -9,6 +9,13 @@ afterEach(() => {
 });
 
 describe("EvidenceDetail", () => {
+  it("renders an empty selected-evidence state", () => {
+    render(<EvidenceDetail evidence={null} />);
+
+    expect(screen.getByRole("region", { name: "Evidence Detail" })).toHaveClass("evidence-detail");
+    expect(screen.getByText("No evidence selected")).toBeInTheDocument();
+  });
+
   it("renders generic evidence artifacts before legacy image artifacts", () => {
     const evidence = {
       evidence_id: "case-1:baseline_replay:0",
@@ -63,6 +70,12 @@ describe("EvidenceDetail", () => {
 
     render(<EvidenceDetail evidence={evidence} />);
 
+    expect(screen.getByRole("region", { name: "Evidence Detail" })).toHaveClass("evidence-detail");
+    expect(screen.getByLabelText("Evidence request metadata")).toHaveClass("evidence-section");
+    expect(screen.getByLabelText("Evidence summary metrics")).toHaveClass("metric-strip");
+    expect(screen.getByLabelText("Evidence artifacts")).toHaveClass("evidence-artifacts");
+    expect(screen.getByLabelText("Judge result")).toHaveClass("evidence-section");
+    expect(screen.getByLabelText("Model raw output")).toHaveClass("evidence-section");
     expect(screen.getByText("Evidence Artifacts")).toBeInTheDocument();
     expect(screen.getByText("Artifact case-1:baseline_replay:0:input-snapshot")).toBeInTheDocument();
     expect(screen.getByText("类型：input_snapshot")).toBeInTheDocument();

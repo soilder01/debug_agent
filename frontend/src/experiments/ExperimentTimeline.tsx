@@ -14,7 +14,7 @@ export function ExperimentTimeline({
   onSelectEvidence
 }: ExperimentTimelineProps) {
   return (
-    <section>
+    <section className="experiment-timeline" aria-label="Experiment Plan">
       <h2>Experiment Plan</h2>
       {summary ? (
         <p>
@@ -25,9 +25,9 @@ export function ExperimentTimeline({
       {summary ? (
         <>
           <h3>Evidence</h3>
-          <ul>
+          <ul className="experiment-timeline__evidence" aria-label="Experiment evidence">
             {summary.evidence_ids.map((evidenceId) => (
-              <li key={evidenceId}>
+              <li className="experiment-timeline__row" key={evidenceId} data-anime-flow>
                 <button type="button" onClick={() => onSelectEvidence(evidenceId)}>
                   {evidenceId}
                 </button>
@@ -38,7 +38,9 @@ export function ExperimentTimeline({
       ) : null}
       <ol>
         {experiments.map((experiment) => (
-          <li key={experiment}>{experiment}</li>
+          <li className="experiment-timeline__row" key={experiment} data-anime-flow>
+            {experiment}
+          </li>
         ))}
       </ol>
     </section>

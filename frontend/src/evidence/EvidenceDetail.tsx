@@ -1,4 +1,5 @@
 import type { ExperimentEvidence } from "../api/client";
+import { EmptyState, MetricStrip, ProductSurface } from "../ui/ProductPrimitives";
 
 type EvidenceDetailProps = {
   evidence: ExperimentEvidence | null;
@@ -6,7 +7,16 @@ type EvidenceDetailProps = {
 
 export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
   if (!evidence) {
-    return null;
+    return (
+      <ProductSurface
+        title="Evidence Detail"
+        eyebrow="Evidence"
+        description="Select an evidence record to inspect request metadata, artifacts, judge output, and raw model response."
+        className="evidence-detail"
+      >
+        <EmptyState title="No evidence selected" description="Open evidence from a job, report trajectory, or artifact link." />
+      </ProductSurface>
+    );
   }
   const imageArtifacts = evidence.image_artifacts ?? [];
   const genericArtifacts = evidence.artifacts ?? [];
@@ -15,25 +25,41 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
   const ablationModalities = stringArrayValue(evidence.request_summary.ablation_modalities);
 
   return (
-    <section>
-      <h2>Evidence Detail</h2>
-      <p>证据 ID：{evidence.evidence_id}</p>
-      <p>实验步骤：{evidence.step_name}</p>
-      <p>Trial：{evidence.trial}</p>
-      <p>模型名称：{evidence.model_name}</p>
-      <p>模型 Provider：{evidence.model_provider}</p>
-      <p>模型 ID：{evidence.model_id}</p>
-      <p>调用耗时：{evidence.latency_ms}ms</p>
-      <p>Prompt 长度：{evidence.request_summary.prompt_length ?? 0}</p>
-      <p>包含图片：{String(evidence.request_summary.has_image ?? false)}</p>
-      <p>图片 URI Scheme：{evidence.request_summary.image_uri_scheme || "无"}</p>
-      {ablationVariant ? <p>Ablation Variant：{ablationVariant}</p> : null}
-      {ablationModalities.length > 0 ? <p>Ablation 模态：{ablationModalities.join(", ")}</p> : null}
-      {evidence.response_parse_error ? <p>解析错误：{evidence.response_parse_error}</p> : null}
-      {evidence.model_call_error_type ? <p>模型调用错误类型：{evidence.model_call_error_type}</p> : null}
-      {evidence.model_call_error_message ? <p>模型调用错误信息：{evidence.model_call_error_message}</p> : null}
-      {genericArtifacts.length > 0 ? (
-        <>
+    <ProductSurface
+      title="Evidence Detail"
+      eyebrow="Evidence"
+      description="Inspect the selected model call, request context, artifacts, judge result, and raw response."
+      className="evidence-detail"
+    >
+      <section className="evidence-section" aria-label="Evidence request metadata">
+        <MetricStrip
+          label="Evidence summary metrics"
+          metrics={[
+            { label: "Trial", value: evidence.trial, helper: evidence.step_name },
+            { label: "Latency", value: `${evidence.latency_ms}ms`, helper: evidence.model_name },
+            { label: "Prompt", value: evidence.request_summary.prompt_length ?? 0, helper: "Characters" },
+            { label: "Judge", value: evidence.judge.score, helper: "Score" }
+          ]}
+        />
+        <p>证据 ID：{evidence.evidence_id}</p>
+        <p>实验步骤：{evidence.step_name}</p>
+        <p>Trial：{evidence.trial}</p>
+        <p>模型名称：{evidence.model_name}</p>
+        <p>模型 Provider：{evidence.model_provider}</p>
+        <p>模型 ID：{evidence.model_id}</p>
+        <p>调用耗时：{evidence.latency_ms}ms</p>
+        <p>Prompt 长度：{evidence.request_summary.prompt_length ?? 0}</p>
+        <p>包含图片：{String(evidence.request_summary.has_image ?? false)}</p>
+        <p>图片 URI Scheme：{evidence.request_summary.image_uri_scheme || "无"}</p>
+        {ablationVariant ? <p>Ablation Variant：{ablationVariant}</p> : null}
+        {ablationModalities.length > 0 ? <p>Ablation 模态：{ablationModalities.join(", ")}</p> : null}
+        {evidence.response_parse_error ? <p>解析错误：{evidence.response_parse_error}</p> : null}
+        {evidence.model_call_error_type ? <p>模型调用错误类型：{evidence.model_call_error_type}</p> : null}
+        {evidence.model_call_error_message ? <p>模型调用错误信息：{evidence.model_call_error_message}</p> : null}
+      </section>
+      <section className="evidence-artifacts" aria-label="Evidence artifacts">
+        {genericArtifacts.length > 0 ? (
+          <>
           <h3>Evidence Artifacts</h3>
           <ul>
             {genericArtifacts.map((artifact) => (
@@ -70,9 +96,9 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
               </li>
             ))}
           </ul>
-        </>
-      ) : imageArtifacts.length > 0 ? (
-        <>
+          </>
+        ) : imageArtifacts.length > 0 ? (
+          <>
           <h3>Evidence Artifacts</h3>
           <ul>
             {imageArtifacts.map((artifact) => (
@@ -104,34 +130,41 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
               </li>
             ))}
           </ul>
-        </>
-      ) : null}
-      <p>Judge Score：{evidence.judge.score}</p>
-      <h3>Judge Reasons</h3>
-      <ul>
-        {evidence.judge.reasons.map((reason) => (
-          <li key={reason}>{reason}</li>
-        ))}
-      </ul>
-      {judgeDeltas.length > 0 ? (
-        <>
-          <h3>Judge Deltas</h3>
-          <ul aria-label="Judge deltas">
-            {judgeDeltas.map((delta) => (
-              <li key={`${delta.target_id}:${delta.reason}`}>
-                <p>目标：{delta.target_id}</p>
-                <p>原因：{delta.reason}</p>
-                <p>期望：{delta.expected ?? "无"}</p>
-                <p>实际：{delta.actual ?? "无"}</p>
-                <p>元数据：{JSON.stringify(delta.metadata)}</p>
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : null}
-      <h3>Raw Output</h3>
-      <pre>{evidence.raw_output}</pre>
-    </section>
+          </>
+        ) : (
+          <EmptyState title="No evidence artifacts" description="This evidence record does not include media or manifest artifacts." />
+        )}
+      </section>
+      <section className="evidence-section" aria-label="Judge result">
+        <p>Judge Score：{evidence.judge.score}</p>
+        <h3>Judge Reasons</h3>
+        <ul>
+          {evidence.judge.reasons.map((reason) => (
+            <li key={reason}>{reason}</li>
+          ))}
+        </ul>
+        {judgeDeltas.length > 0 ? (
+          <>
+            <h3>Judge Deltas</h3>
+            <ul aria-label="Judge deltas">
+              {judgeDeltas.map((delta) => (
+                <li key={`${delta.target_id}:${delta.reason}`}>
+                  <p>目标：{delta.target_id}</p>
+                  <p>原因：{delta.reason}</p>
+                  <p>期望：{delta.expected ?? "无"}</p>
+                  <p>实际：{delta.actual ?? "无"}</p>
+                  <p>元数据：{JSON.stringify(delta.metadata)}</p>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
+      </section>
+      <section className="evidence-section" aria-label="Model raw output">
+        <h3>Raw Output</h3>
+        <pre>{evidence.raw_output}</pre>
+      </section>
+    </ProductSurface>
   );
 }
 

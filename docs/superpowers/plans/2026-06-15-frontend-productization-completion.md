@@ -236,15 +236,15 @@ Commit only after the focused tests and full verification pass.
 - Modify: `frontend/src/experiments/ExperimentTimeline.tsx`
 - Modify: `frontend/src/styles/product.css`
 
-- [ ] Add RED tests requiring evidence preview to show request metadata, judge score, reasons, artifacts, and selected evidence state in separate regions.
-- [ ] Productize `EvidenceDetail` into evidence summary, model output, judge result, artifacts, and media links.
-- [ ] Productize `ExperimentTimeline` with timeline row classes and selected evidence affordances.
-- [ ] Add Anime.js `data-anime-flow` to timeline rows only when useful.
-- [ ] Run:
+- [x] Add RED tests requiring evidence preview to show request metadata, judge score, reasons, artifacts, and selected evidence state in separate regions.
+- [x] Productize `EvidenceDetail` into evidence summary, model output, judge result, artifacts, and media links.
+- [x] Productize `ExperimentTimeline` with timeline row classes and selected evidence affordances.
+- [x] Add Anime.js `data-anime-flow` to timeline rows only when useful.
+- [x] Run:
   ```powershell
   npx --yes pnpm@9.15.4 --dir frontend test -- --run src/evidence/EvidenceDetail.test.tsx src/reports/DebugReportWorkspace.test.tsx
   ```
-- [ ] Commit:
+- [x] Commit:
   ```powershell
   git add frontend/src/evidence frontend/src/experiments frontend/src/reports/DebugReportWorkspace.test.tsx frontend/src/styles/product.css
   git commit -m "feat: productize evidence workspace"
