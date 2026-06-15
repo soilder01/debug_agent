@@ -763,8 +763,9 @@ describe("ReportPanel", () => {
     expect(onCreateTargetedProbe).toHaveBeenCalledWith("multimodal:conflict:1");
   });
 
-  it("renders targeted probe guardrail stop condition without runnable action", () => {
+  it("renders targeted probe guardrail stop condition without runnable action", async () => {
     const onCreateTargetedProbe = vi.fn();
+    const onUpdateHumanHandoffStatus = vi.fn();
     const report: DebugReport = {
       case_id: "case-targeted-guardrail",
       job_id: "job-targeted-source",
@@ -809,7 +810,24 @@ describe("ReportPanel", () => {
       }
     };
 
-    render(<ReportPanel report={report} onCreateTargetedProbe={onCreateTargetedProbe} />);
+    render(
+      <ReportPanel
+        report={report}
+        humanHandoffStatuses={[
+          {
+            job_id: "job-targeted-source",
+            target_id: "multimodal:conflict:1",
+            status: "in_progress",
+            actor: "human-debugger",
+            note: "reviewing full probe chain",
+            created_at: "2026-06-15T00:00:00+00:00",
+            updated_at: "2026-06-15T00:00:01+00:00"
+          }
+        ]}
+        onCreateTargetedProbe={onCreateTargetedProbe}
+        onUpdateHumanHandoffStatus={onUpdateHumanHandoffStatus}
+      />
+    );
 
     expect(screen.getByText("targeted_probe_guardrail/target_still_failing：")).toBeInTheDocument();
     expect(screen.getByText("Stop condition：max_targeted_probe_depth_reached")).toBeInTheDocument();
@@ -817,6 +835,9 @@ describe("ReportPanel", () => {
     expect(screen.getByText("Handoff target：multimodal:conflict:1")).toBeInTheDocument();
     expect(screen.getByText("Handoff priority：high")).toBeInTheDocument();
     expect(screen.getByText("Handoff reason：max_targeted_probe_depth_reached")).toBeInTheDocument();
+    expect(screen.getByText("Handoff status：in_progress")).toBeInTheDocument();
+    expect(screen.getByText("Handoff actor：human-debugger")).toBeInTheDocument();
+    expect(screen.getByText("Handoff note：reviewing full probe chain")).toBeInTheDocument();
     expect(screen.getByText("Handoff owner：human-debugger")).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -824,6 +845,10 @@ describe("ReportPanel", () => {
       )
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Run targeted probe multimodal:conflict:1" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Resolve handoff multimodal:conflict:1" }));
+
+    expect(onUpdateHumanHandoffStatus).toHaveBeenCalledWith("multimodal:conflict:1", "resolved");
   });
 
 

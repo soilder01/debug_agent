@@ -1,6 +1,8 @@
 import type {
   DebugReport,
   ExperimentEvidence,
+  HumanHandoffStatus,
+  HumanHandoffStatusValue,
   RecommendedActionStatusEvent,
   RecommendedActionVerification,
   RecommendedActionVerificationResult,
@@ -24,12 +26,14 @@ type DebugReportWorkspaceProps = {
   recommendedActionVerificationResults?: RecommendedActionVerificationResult[];
   strategyFollowUps?: StrategyFollowUpJob[];
   targetedProbes?: TargetedProbeJob[];
+  humanHandoffStatuses?: HumanHandoffStatus[];
   writebackResult: SpreadsheetWritebackResult | null;
   writebackAudit: SpreadsheetWritebackAudit | null;
   onSelectEvidence: (evidenceId: string) => void;
   onWriteReport: () => void;
   onLoadWritebackAudit: () => void;
   onUpdateRecommendedActionStatus?: (actionIndex: number, status: RecommendedActionStatusValue) => void;
+  onUpdateHumanHandoffStatus?: (targetId: string, status: HumanHandoffStatusValue) => void;
   onVerifyRecommendedAction?: (actionIndex: number) => void;
   onCreateStrategyFollowUp?: (stage: string) => void;
   onCreateTargetedProbe?: (targetId: string) => void;
@@ -45,12 +49,14 @@ export function DebugReportWorkspace({
   recommendedActionVerificationResults = [],
   strategyFollowUps = [],
   targetedProbes = [],
+  humanHandoffStatuses = [],
   writebackResult,
   writebackAudit,
   onSelectEvidence,
   onWriteReport,
   onLoadWritebackAudit,
   onUpdateRecommendedActionStatus,
+  onUpdateHumanHandoffStatus,
   onVerifyRecommendedAction,
   onCreateStrategyFollowUp,
   onCreateTargetedProbe,
@@ -78,8 +84,10 @@ export function DebugReportWorkspace({
         recommendedActionStatusEvents={recommendedActionStatusEvents}
         recommendedActionVerifications={recommendedActionVerifications}
         recommendedActionVerificationResults={recommendedActionVerificationResults}
+        humanHandoffStatuses={humanHandoffStatuses}
         onSelectEvidence={onSelectEvidence}
         onUpdateRecommendedActionStatus={onUpdateRecommendedActionStatus}
+        onUpdateHumanHandoffStatus={onUpdateHumanHandoffStatus}
         onVerifyRecommendedAction={onVerifyRecommendedAction}
         onCreateStrategyFollowUp={onCreateStrategyFollowUp}
         onCreateTargetedProbe={onCreateTargetedProbe}

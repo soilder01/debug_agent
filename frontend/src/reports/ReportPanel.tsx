@@ -1,5 +1,7 @@
 import type {
   DebugReport,
+  HumanHandoffStatus,
+  HumanHandoffStatusValue,
   RecommendedActionStatusEvent,
   RecommendedActionStatusValue,
   RecommendedActionVerification,
@@ -11,8 +13,10 @@ type ReportPanelProps = {
   recommendedActionStatusEvents?: RecommendedActionStatusEvent[];
   recommendedActionVerifications?: RecommendedActionVerification[];
   recommendedActionVerificationResults?: RecommendedActionVerificationResult[];
+  humanHandoffStatuses?: HumanHandoffStatus[];
   onSelectEvidence?: (evidenceId: string) => void;
   onUpdateRecommendedActionStatus?: (actionIndex: number, status: RecommendedActionStatusValue) => void;
+  onUpdateHumanHandoffStatus?: (targetId: string, status: HumanHandoffStatusValue) => void;
   onVerifyRecommendedAction?: (actionIndex: number) => void;
   onCreateStrategyFollowUp?: (stage: string) => void;
   onCreateTargetedProbe?: (targetId: string) => void;
@@ -23,8 +27,10 @@ export function ReportPanel({
   recommendedActionStatusEvents = [],
   recommendedActionVerifications = [],
   recommendedActionVerificationResults = [],
+  humanHandoffStatuses = [],
   onSelectEvidence,
   onUpdateRecommendedActionStatus,
+  onUpdateHumanHandoffStatus,
   onVerifyRecommendedAction,
   onCreateStrategyFollowUp,
   onCreateTargetedProbe
@@ -50,6 +56,7 @@ export function ReportPanel({
   const verificationResultByJobId = new Map(
     recommendedActionVerificationResults.map((result) => [result.verification_job_id, result])
   );
+  const humanHandoffStatusByTargetId = new Map(humanHandoffStatuses.map((status) => [status.target_id, status]));
 
   return (
     <section>
@@ -271,9 +278,25 @@ export function ReportPanel({
                 <p>Handoff target：{request.target_id}</p>
                 <p>Handoff priority：{request.priority}</p>
                 <p>Handoff reason：{request.reason}</p>
+                <p>Handoff status：{humanHandoffStatusByTargetId.get(request.target_id)?.status ?? "pending"}</p>
+                <p>Handoff actor：{humanHandoffStatusByTargetId.get(request.target_id)?.actor || "unassigned"}</p>
+                <p>Handoff note：{humanHandoffStatusByTargetId.get(request.target_id)?.note || "none"}</p>
                 <p>{request.summary}</p>
                 <p>Handoff owner：{request.recommended_owner}</p>
                 <p>Handoff next action：{request.next_action}</p>
+                {onUpdateHumanHandoffStatus ? (
+                  <p>
+                    <button type="button" onClick={() => onUpdateHumanHandoffStatus(request.target_id, "acknowledged")}>
+                      Acknowledge handoff {request.target_id}
+                    </button>
+                    <button type="button" onClick={() => onUpdateHumanHandoffStatus(request.target_id, "in_progress")}>
+                      Start handoff {request.target_id}
+                    </button>
+                    <button type="button" onClick={() => onUpdateHumanHandoffStatus(request.target_id, "resolved")}>
+                      Resolve handoff {request.target_id}
+                    </button>
+                  </p>
+                ) : null}
               </li>
             ))}
           </ul>

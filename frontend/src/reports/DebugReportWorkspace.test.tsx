@@ -333,6 +333,52 @@ describe("DebugReportWorkspace", () => {
     expect(onVerifyRecommendedAction).toHaveBeenCalledWith(0);
   });
 
+  it("delegates human handoff status updates from the report panel", async () => {
+    const onUpdateHumanHandoffStatus = vi.fn();
+    const report = makeReport({
+      human_handoff_requests: [
+        {
+          source: "targeted_probe_guardrail",
+          target_id: "multimodal:conflict:1",
+          priority: "high",
+          reason: "max_targeted_probe_depth_reached",
+          summary: "Targeted probe chain for multimodal:conflict:1 reached max depth 3.",
+          recommended_owner: "human-debugger",
+          next_action: "Review the full targeted probe chain and decide the final attribution."
+        }
+      ]
+    });
+
+    render(
+      <DebugReportWorkspace
+        report={report}
+        selectedEvidence={null}
+        humanHandoffStatuses={[
+          {
+            job_id: "job-1",
+            target_id: "multimodal:conflict:1",
+            status: "acknowledged",
+            actor: "human-debugger",
+            note: "accepted handoff",
+            created_at: "2026-06-15T00:00:00+00:00",
+            updated_at: "2026-06-15T00:00:01+00:00"
+          }
+        ]}
+        writebackResult={null}
+        writebackAudit={null}
+        onSelectEvidence={vi.fn()}
+        onWriteReport={vi.fn()}
+        onLoadWritebackAudit={vi.fn()}
+        onUpdateHumanHandoffStatus={onUpdateHumanHandoffStatus}
+      />
+    );
+
+    expect(screen.getByText("Handoff status：acknowledged")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Start handoff multimodal:conflict:1" }));
+
+    expect(onUpdateHumanHandoffStatus).toHaveBeenCalledWith("multimodal:conflict:1", "in_progress");
+  });
+
   it("renders strategy follow-up job history and delegates opening follow-up jobs", async () => {
     const onOpenStrategyFollowUp = vi.fn();
 

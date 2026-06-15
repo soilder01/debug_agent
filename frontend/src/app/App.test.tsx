@@ -772,6 +772,134 @@ describe("App", () => {
     expect(screen.getByText("操作者：local-dev-operator")).toBeInTheDocument();
   });
 
+  it("updates human handoff status from a persisted report", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jobs: [
+              {
+                job_id: "job-handoff-source",
+                case_id: "case-handoff",
+                status: "completed",
+                attempt_count: 1,
+                max_attempts: 2,
+                remaining_attempts: 1,
+                will_retry: false,
+                retry_recommendation: "none",
+                retry_recommendation_detail: {
+                  code: "none",
+                  label: "无需重试",
+                  action: "查看报告",
+                  severity: "info"
+                },
+                error_message: null,
+                evidence_ids: [],
+                evidence_error_counts: {
+                  total_evidence: 0,
+                  failed_judgements: 0,
+                  response_parse_errors: 0,
+                  model_call_errors: 0
+                },
+                spreadsheet_writeback_audit: null,
+                created_at: "2026-06-15T00:00:00+00:00",
+                updated_at: "2026-06-15T00:00:01+00:00"
+              }
+            ],
+            total_count: 1
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            job_id: "job-handoff-source",
+            case_id: "case-handoff",
+            status: "needs_human_review",
+            observed_failure: {
+              type: "cross_modal_alignment_failure",
+              summary: "cross-modal compare failed",
+              affected_box_ids: []
+            },
+            planned_experiments: ["modality_ablation_check"],
+            experiment_summary: null,
+            root_cause: {
+              label: "cross_modal_alignment_failure",
+              confidence: "high",
+              evidence_summary: "cross-modal target failed."
+            },
+            human_handoff_requests: [
+              {
+                source: "targeted_probe_guardrail",
+                target_id: "multimodal:conflict:1",
+                priority: "high",
+                reason: "max_targeted_probe_depth_reached",
+                summary: "Targeted probe chain for multimodal:conflict:1 reached max depth 3.",
+                recommended_owner: "human-debugger",
+                next_action: "Review the full targeted probe chain and decide the final attribution."
+              }
+            ],
+            suggested_sheet_fields: {
+              "错误原因": "跨模态对齐问题"
+            }
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            statuses: [
+              {
+                job_id: "job-handoff-source",
+                target_id: "multimodal:conflict:1",
+                status: "pending",
+                actor: "",
+                note: "",
+                created_at: "2026-06-15T00:00:00+00:00",
+                updated_at: "2026-06-15T00:00:00+00:00"
+              }
+            ]
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            job_id: "job-handoff-source",
+            target_id: "multimodal:conflict:1",
+            status: "resolved",
+            actor: "local-dev-operator",
+            note: "",
+            created_at: "2026-06-15T00:00:00+00:00",
+            updated_at: "2026-06-15T00:00:02+00:00"
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load debug jobs" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Open job job-handoff-source" }));
+    await userEvent.click(screen.getByRole("button", { name: "Load persisted report" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Resolve handoff multimodal:conflict:1" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-handoff-source/human-handoffs/statuses");
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-handoff-source/human-handoffs/multimodal%3Aconflict%3A1/status", {
+      body: JSON.stringify({
+        status: "resolved",
+        actor: "local-dev-operator",
+        note: ""
+      }),
+      headers: { "Content-Type": "application/json" },
+      method: "PATCH"
+    });
+    expect(await screen.findByText("Handoff status：resolved")).toBeInTheDocument();
+  });
+
   it("creates a verification debug job for an applied recommended action", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")

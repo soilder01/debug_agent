@@ -533,6 +533,22 @@
 - [x] Add human handoff status counts to observability summary and health guidance.
 - [x] Add frontend API support and observability metrics for human handoff queues.
 
+### Task 33: Human Handoff Report Workflow
+
+**Files:**
+- Modify: `frontend/src/app/App.tsx`
+- Modify: `frontend/src/reports/DebugReportWorkspace.tsx`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `frontend/src/app/App.test.tsx`
+- Test: `frontend/src/reports/DebugReportWorkspace.test.tsx`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Load human handoff statuses when opening a persisted debug report with handoff requests.
+- [x] Render current handoff status, actor, and note beside each handoff request.
+- [x] Add report-level actions to acknowledge, start, and resolve a handoff.
+- [x] Wire report-level handoff actions through `DebugReportWorkspace`.
+- [x] Update App state after handoff status PATCH responses so operators see the new status immediately.
+
 ## Verification Policy
 
 Every task must follow:

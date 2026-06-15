@@ -15,6 +15,7 @@ import {
   fetchJobEvidenceDetail,
   fetchJobReport,
   fetchJobStatus,
+  fetchHumanHandoffStatuses,
   fetchLarkSpreadsheetStatus,
   fetchObservabilitySummary,
   fetchRecommendedActionStatuses,
@@ -28,6 +29,8 @@ import {
   importJsonlCases,
   importSpreadsheetRows,
   type JsonlImportResponse,
+  type HumanHandoffStatus,
+  type HumanHandoffStatusValue,
   type LarkSpreadsheetStatus,
   type ObservabilitySummary,
   type RecommendedActionStatusValue,
@@ -51,6 +54,7 @@ import {
   type DebugReport,
   type ExperimentEvidence,
   type SubmittedDebugJob,
+  updateHumanHandoffStatus,
   updateRecommendedActionStatus,
   type WorkerStatus,
   writeJobReportToSpreadsheet
@@ -103,6 +107,7 @@ export function App() {
   >([]);
   const [strategyFollowUps, setStrategyFollowUps] = useState<StrategyFollowUpJob[]>([]);
   const [targetedProbes, setTargetedProbes] = useState<TargetedProbeJob[]>([]);
+  const [humanHandoffStatuses, setHumanHandoffStatuses] = useState<HumanHandoffStatus[]>([]);
   const [spreadsheetWritebackAuditSummary, setSpreadsheetWritebackAuditSummary] =
     useState<SpreadsheetWritebackAuditCounts | null>(null);
   const [spreadsheetWritebackAuditList, setSpreadsheetWritebackAuditList] =
@@ -541,6 +546,12 @@ export function App() {
       } else {
         setTargetedProbes([]);
       }
+      if (loadedReport.job_id && (loadedReport.human_handoff_requests ?? []).length > 0) {
+        const handoffStatuses = await fetchHumanHandoffStatuses(loadedReport.job_id);
+        setHumanHandoffStatuses(handoffStatuses.statuses ?? []);
+      } else {
+        setHumanHandoffStatuses([]);
+      }
       setSpreadsheetWritebackResult(null);
       setSpreadsheetWritebackAudit(null);
       setSelectedEvidence(null);
@@ -620,6 +631,29 @@ export function App() {
       setRecommendedActionStatusEvents(actionStatuses.events ?? []);
       setRecommendedActionVerifications(actionStatuses.verifications ?? []);
       setRecommendedActionVerificationResults(actionStatuses.verification_results ?? []);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
+  async function updateCurrentHumanHandoffStatus(targetId: string, status: HumanHandoffStatusValue) {
+    if (!report?.job_id) {
+      return;
+    }
+    setError("");
+    try {
+      const updatedStatus = await updateHumanHandoffStatus(report.job_id, targetId, {
+        status,
+        actor: localDevActor,
+        note: ""
+      });
+      setHumanHandoffStatuses((current) => [
+        ...current.filter(
+          (handoffStatus) =>
+            handoffStatus.job_id !== updatedStatus.job_id || handoffStatus.target_id !== updatedStatus.target_id
+        ),
+        updatedStatus
+      ]);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
     }
@@ -818,6 +852,7 @@ export function App() {
           recommendedActionVerificationResults={recommendedActionVerificationResults}
           strategyFollowUps={strategyFollowUps}
           targetedProbes={targetedProbes}
+          humanHandoffStatuses={humanHandoffStatuses}
           writebackResult={spreadsheetWritebackResult}
           writebackAudit={spreadsheetWritebackAudit}
           onSelectEvidence={selectEvidence}
@@ -826,6 +861,7 @@ export function App() {
           onUpdateRecommendedActionStatus={(actionIndex, status) =>
             void updateCurrentRecommendedActionStatus(actionIndex, status)
           }
+          onUpdateHumanHandoffStatus={(targetId, status) => void updateCurrentHumanHandoffStatus(targetId, status)}
           onVerifyRecommendedAction={(actionIndex) => void verifyCurrentRecommendedAction(actionIndex)}
           onCreateStrategyFollowUp={(stage) => void createCurrentStrategyFollowUp(stage)}
           onCreateTargetedProbe={(targetId) => void createCurrentTargetedProbe(targetId)}
