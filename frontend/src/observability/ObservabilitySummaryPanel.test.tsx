@@ -83,6 +83,13 @@ function makeSummary(): ObservabilitySummary {
       not_resolved_count: 2,
       inconclusive_count: 0
     },
+    final_attribution_recovery_feedback: {
+      total_recoveries: 5,
+      pending_count: 1,
+      closed_count: 2,
+      reopen_count: 1,
+      inconclusive_count: 1
+    },
     health: {
       level: "critical",
       reasons: [
@@ -93,7 +100,8 @@ function makeSummary(): ObservabilitySummary {
         "targeted probes still failing",
         "targeted probe guardrails reached",
         "human handoffs still open",
-        "final attribution verifications not resolved"
+        "final attribution verifications not resolved",
+        "final attribution recoveries reopened"
       ],
       actions: [
         "Inspect failed jobs and open their evidence chain.",
@@ -103,7 +111,8 @@ function makeSummary(): ObservabilitySummary {
         "Open targeted probe history and escalate unresolved targets.",
         "Review targeted probe guardrails and assign human investigation.",
         "Review human handoff queue and drive open investigations to resolution.",
-        "Open final attribution verification results and rerun unresolved attribution fixes."
+        "Open final attribution verification results and rerun unresolved attribution fixes.",
+        "Open final attribution recovery results and reassign reopened attribution review."
       ]
     }
   };
@@ -170,6 +179,11 @@ describe("ObservabilitySummaryPanel", () => {
     expect(screen.getByText("Observed final attribution resolved：1")).toBeInTheDocument();
     expect(screen.getByText("Observed final attribution not resolved：2")).toBeInTheDocument();
     expect(screen.getByText("Observed final attribution inconclusive：0")).toBeInTheDocument();
+    expect(screen.getByText("Observed final attribution recoveries：5")).toBeInTheDocument();
+    expect(screen.getByText("Observed final attribution recovery pending：1")).toBeInTheDocument();
+    expect(screen.getByText("Observed final attribution recovery closed：2")).toBeInTheDocument();
+    expect(screen.getByText("Observed final attribution recovery reopen：1")).toBeInTheDocument();
+    expect(screen.getByText("Observed final attribution recovery inconclusive：1")).toBeInTheDocument();
     expect(screen.getByText("Observed health：critical")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：failed jobs present")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：failed spreadsheet writebacks present")).toBeInTheDocument();
@@ -179,6 +193,7 @@ describe("ObservabilitySummaryPanel", () => {
     expect(screen.getByText("Observed health reason：targeted probe guardrails reached")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：human handoffs still open")).toBeInTheDocument();
     expect(screen.getByText("Observed health reason：final attribution verifications not resolved")).toBeInTheDocument();
+    expect(screen.getByText("Observed health reason：final attribution recoveries reopened")).toBeInTheDocument();
     expect(screen.getByText("Recommended action：Inspect failed jobs and open their evidence chain.")).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -203,6 +218,11 @@ describe("ObservabilitySummaryPanel", () => {
     expect(
       screen.getByText(
         "Recommended action：Open final attribution verification results and rerun unresolved attribution fixes."
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Recommended action：Open final attribution recovery results and reassign reopened attribution review."
       )
     ).toBeInTheDocument();
 

@@ -154,6 +154,33 @@ def test_observability_summary_reports_runtime_and_operational_counts() -> None:
             actor="final-attribution-operator",
             note="observe unresolved final attribution verification",
         )
+        job_repository.create_job(
+            job_id="observability-final-attribution-recovery",
+            case_id=targeted_case.case_id,
+            baseline_trials=1,
+        )
+        job_repository.save_evidence(
+            job_id="observability-final-attribution-recovery",
+            case_id=targeted_case.case_id,
+            evidence=[
+                ExperimentEvidence(
+                    evidence_id="observability-final-attribution-recovery-fail",
+                    step_name="final_attribution_recovery_probe",
+                    trial=0,
+                    raw_output=targeted_case.predictions[0].raw_output,
+                    judge=JudgeResult(score=0, reasons=["image:region:1 still failing after recovery"]),
+                )
+            ],
+        )
+        job_repository.mark_completed("observability-final-attribution-recovery")
+        job_repository.save_strategy_follow_up_job(
+            source_job_id="observability-targeted-source",
+            stage="final_attribution_recovery:image:region:1",
+            planned_steps="final_attribution_recovery_probe",
+            follow_up_job_id="observability-final-attribution-recovery",
+            actor="recovery-operator",
+            note="observe reopened final attribution recovery",
+        )
         routes.settings = routes.settings.model_copy(update={"enforce_usage_budget": True})
 
         response = client.get("/observability/summary")
@@ -198,6 +225,11 @@ def test_observability_summary_reports_runtime_and_operational_counts() -> None:
         assert body["final_attribution_verification_feedback"]["resolved_count"] >= 0
         assert body["final_attribution_verification_feedback"]["not_resolved_count"] >= 1
         assert body["final_attribution_verification_feedback"]["inconclusive_count"] >= 0
+        assert body["final_attribution_recovery_feedback"]["total_recoveries"] >= 1
+        assert body["final_attribution_recovery_feedback"]["pending_count"] >= 0
+        assert body["final_attribution_recovery_feedback"]["closed_count"] >= 0
+        assert body["final_attribution_recovery_feedback"]["reopen_count"] >= 1
+        assert body["final_attribution_recovery_feedback"]["inconclusive_count"] >= 0
         assert body["worker"]["running"] is False
         assert body["worker"]["auto_writeback_enabled"] is False
         assert body["worker"]["completion_hook_enabled"] is False
@@ -211,6 +243,7 @@ def test_observability_summary_reports_runtime_and_operational_counts() -> None:
         assert "targeted probe guardrails reached" in body["health"]["reasons"]
         assert "human handoffs still open" in body["health"]["reasons"]
         assert "final attribution verifications not resolved" in body["health"]["reasons"]
+        assert "final attribution recoveries reopened" in body["health"]["reasons"]
         assert "Inspect failed jobs and open their evidence chain." in body["health"]["actions"]
         assert "Retry failed spreadsheet writebacks after checking Lark permissions and sheet headers." in body["health"][
             "actions"
@@ -222,6 +255,9 @@ def test_observability_summary_reports_runtime_and_operational_counts() -> None:
         assert "Review targeted probe guardrails and assign human investigation." in body["health"]["actions"]
         assert "Review human handoff queue and drive open investigations to resolution." in body["health"]["actions"]
         assert "Open final attribution verification results and rerun unresolved attribution fixes." in body["health"][
+            "actions"
+        ]
+        assert "Open final attribution recovery results and reassign reopened attribution review." in body["health"][
             "actions"
         ]
 

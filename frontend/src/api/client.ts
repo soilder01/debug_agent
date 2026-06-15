@@ -493,6 +493,13 @@ export type ObservabilitySummary = {
     not_resolved_count: number;
     inconclusive_count: number;
   };
+  final_attribution_recovery_feedback?: {
+    total_recoveries: number;
+    pending_count: number;
+    closed_count: number;
+    reopen_count: number;
+    inconclusive_count: number;
+  };
   usage: {
     model_call_count: number;
     prompt_character_count: number;

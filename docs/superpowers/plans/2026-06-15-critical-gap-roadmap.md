@@ -697,6 +697,24 @@
 - [x] Add closure recommended actions when recovery jobs close the attribution loop.
 - [x] Render final-attribution recovery results in the report panel.
 
+### Task 43: Recovery Outcome Operations Loop
+
+**Files:**
+- Modify: `backend/src/debug_agent/api/routes.py`
+- Modify: `backend/src/debug_agent/spreadsheets/writeback.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/observability/ObservabilitySummaryPanel.tsx`
+- Test: `backend/tests/api/test_observability_summary.py`
+- Test: `backend/tests/spreadsheets/test_writeback.py`
+- Test: `frontend/src/observability/ObservabilitySummaryPanel.test.tsx`
+
+- [x] Add final-attribution recovery feedback metrics to observability summary responses.
+- [x] Count recovery outcomes as pending, closed, reopen, or inconclusive.
+- [x] Degrade observability health when recovery outcomes reopen attribution review.
+- [x] Add operator action for reopened final-attribution recovery results.
+- [x] Include final-attribution recovery results in spreadsheet `评估问题反馈`.
+- [x] Render final-attribution recovery observability metrics in the frontend panel.
+
 ## Verification Policy
 
 Every task must follow:

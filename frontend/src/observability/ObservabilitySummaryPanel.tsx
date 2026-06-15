@@ -43,6 +43,13 @@ export function ObservabilitySummaryPanel({
     not_resolved_count: 0,
     inconclusive_count: 0
   };
+  const finalAttributionRecoveryFeedback = summary.final_attribution_recovery_feedback ?? {
+    total_recoveries: 0,
+    pending_count: 0,
+    closed_count: 0,
+    reopen_count: 0,
+    inconclusive_count: 0
+  };
   return (
     <section>
       <h2>Observability</h2>
@@ -95,6 +102,11 @@ export function ObservabilitySummaryPanel({
       <p>Observed final attribution resolved：{finalAttributionVerificationFeedback.resolved_count}</p>
       <p>Observed final attribution not resolved：{finalAttributionVerificationFeedback.not_resolved_count}</p>
       <p>Observed final attribution inconclusive：{finalAttributionVerificationFeedback.inconclusive_count}</p>
+      <p>Observed final attribution recoveries：{finalAttributionRecoveryFeedback.total_recoveries}</p>
+      <p>Observed final attribution recovery pending：{finalAttributionRecoveryFeedback.pending_count}</p>
+      <p>Observed final attribution recovery closed：{finalAttributionRecoveryFeedback.closed_count}</p>
+      <p>Observed final attribution recovery reopen：{finalAttributionRecoveryFeedback.reopen_count}</p>
+      <p>Observed final attribution recovery inconclusive：{finalAttributionRecoveryFeedback.inconclusive_count}</p>
       <p>Observed health：{summary.health.level}</p>
       {summary.health.reasons.map((reason) => (
         <p key={reason}>Observed health reason：{reason}</p>

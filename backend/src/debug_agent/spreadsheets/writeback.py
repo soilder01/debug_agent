@@ -185,6 +185,9 @@ def _evaluation_feedback(report: DebugReport) -> str:
     final_attribution_verification_results = _final_attribution_verification_results(report)
     if final_attribution_verification_results:
         lines.append(f"最终归因验证：{final_attribution_verification_results}")
+    final_attribution_recovery_results = _final_attribution_recovery_results(report)
+    if final_attribution_recovery_results:
+        lines.append(f"最终归因恢复：{final_attribution_recovery_results}")
     if report.experiment_summary is not None:
         summary = report.experiment_summary
         lines.extend(
@@ -352,5 +355,27 @@ def _final_attribution_verification_line(result: dict[str, object]) -> str:
     line = f"{target_id}/{category}/{status}：{summary}"
     if verification_job_id:
         line = f"{line}\n验证任务：{verification_job_id}"
+    line = f"{line}\n通过率：{success_rate_percent}%"
+    return line
+
+
+def _final_attribution_recovery_results(report: DebugReport) -> str:
+    return "\n".join(
+        _final_attribution_recovery_line(result)
+        for result in report.final_attribution_recovery_results
+    )
+
+
+def _final_attribution_recovery_line(result: dict[str, object]) -> str:
+    target_id = str(result.get("target_id", "unknown"))
+    category = str(result.get("category", "unknown"))
+    status = str(result.get("result", "unknown"))
+    recovery_job_id = str(result.get("recovery_job_id", ""))
+    success_rate = result.get("success_rate", 0.0)
+    success_rate_percent = round(float(success_rate) * 100) if isinstance(success_rate, int | float) else 0
+    summary = str(result.get("summary", ""))
+    line = f"{target_id}/{category}/{status}：{summary}"
+    if recovery_job_id:
+        line = f"{line}\n恢复任务：{recovery_job_id}"
     line = f"{line}\n通过率：{success_rate_percent}%"
     return line

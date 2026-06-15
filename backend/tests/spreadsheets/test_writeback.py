@@ -274,6 +274,17 @@ def test_build_report_writeback_fields_includes_targeted_probe_guardrails() -> N
                     "summary": "Final attribution verification for multimodal:conflict:1 resolved the issue.",
                 }
             ],
+            "final_attribution_recovery_results": [
+                {
+                    "source": "final_attribution_recovery",
+                    "target_id": "multimodal:conflict:1",
+                    "category": "prompt_issue",
+                    "recovery_job_id": "job-final-attribution-recovery",
+                    "result": "closed",
+                    "success_rate": 1.0,
+                    "summary": "Final attribution recovery for multimodal:conflict:1 closed the attribution loop.",
+                }
+            ],
         }
     )
 
@@ -300,6 +311,9 @@ def test_build_report_writeback_fields_includes_targeted_probe_guardrails() -> N
     assert "multimodal:conflict:1/prompt_issue/resolved" in fields["评估问题反馈"]
     assert "验证任务：job-final-attribution-verify" in fields["评估问题反馈"]
     assert "通过率：100%" in fields["评估问题反馈"]
+    assert "最终归因恢复：" in fields["评估问题反馈"]
+    assert "multimodal:conflict:1/prompt_issue/closed" in fields["评估问题反馈"]
+    assert "恢复任务：job-final-attribution-recovery" in fields["评估问题反馈"]
 
 
 def test_write_report_to_spreadsheet_row_updates_client_with_payload() -> None:
