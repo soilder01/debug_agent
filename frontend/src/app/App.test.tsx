@@ -48,6 +48,15 @@ describe("App", () => {
     expect(screen.getByLabelText("Writeback operations")).toHaveAttribute("id", "writeback");
   });
 
+  it("keeps primary controls accessible when reduced motion is preferred", () => {
+    vi.spyOn(window, "matchMedia").mockReturnValue({ matches: true } as MediaQueryList);
+
+    render(<App />);
+
+    expect(screen.getByRole("main")).toHaveAttribute("data-motion-scope", "debug-console");
+    expect(screen.getByRole("button", { name: "Submit debug job" })).toBeVisible();
+  });
+
   it("renders the logical agent topology", () => {
     render(<App />);
 

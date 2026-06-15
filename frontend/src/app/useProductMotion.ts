@@ -9,6 +9,32 @@ function prefersReducedMotion() {
   return typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 }
 
+export function runProductMotion(scope: HTMLElement) {
+  if (prefersReducedMotion()) {
+    return undefined;
+  }
+
+  gsap.from(scope.querySelectorAll("[data-gsap-reveal]"), {
+    duration: 0.55,
+    ease: "power3.out",
+    opacity: 0,
+    stagger: 0.08,
+    y: 18
+  });
+
+  const animeFlow = animate(scope.querySelectorAll("[data-anime-flow]"), {
+    opacity: [0, 1],
+    translateY: [12, 0],
+    delay: stagger(45),
+    duration: 520,
+    easing: "out(3)"
+  });
+
+  return () => {
+    animeFlow.revert();
+  };
+}
+
 export function useProductMotion() {
   const scopeRef = useRef<HTMLElement | null>(null);
 
@@ -19,25 +45,7 @@ export function useProductMotion() {
         return;
       }
 
-      gsap.from(scope.querySelectorAll("[data-gsap-reveal]"), {
-        duration: 0.55,
-        ease: "power3.out",
-        opacity: 0,
-        stagger: 0.08,
-        y: 18
-      });
-
-      const animeFlow = animate(scope.querySelectorAll("[data-anime-flow]"), {
-        opacity: [0, 1],
-        translateY: [12, 0],
-        delay: stagger(45),
-        duration: 520,
-        easing: "out(3)"
-      });
-
-      return () => {
-        animeFlow.revert();
-      };
+      return runProductMotion(scope);
     },
     { scope: scopeRef }
   );

@@ -321,18 +321,18 @@ Commit only after the focused tests and full verification pass.
 - Modify: `frontend/src/styles/product.css`
 - Modify: `frontend/src/app/App.test.tsx`
 
-- [ ] Add RED tests for reduced motion:
+- [x] Add RED tests for reduced motion:
   - Mock `window.matchMedia("(prefers-reduced-motion: reduce)")`.
   - Assert app still renders shell and controls.
   - Assert motion hook does not hide primary controls.
-- [ ] Add tests proving motion selectors are scoped to `data-motion-scope="debug-console"`.
-- [ ] Harden `useProductMotion` so animations never set `visibility:hidden` or disable pointer access.
-- [ ] Add CSS motion tokens and reduce-motion overrides for transitions.
-- [ ] Run:
+- [x] Add tests proving motion selectors are scoped to `data-motion-scope="debug-console"`.
+- [x] Harden `useProductMotion` so animations never set `visibility:hidden` or disable pointer access.
+- [x] Add CSS motion tokens and reduce-motion overrides for transitions.
+- [x] Run:
   ```powershell
   npx --yes pnpm@9.15.4 --dir frontend test -- --run src/app/useProductMotion.test.tsx src/app/App.test.tsx
   ```
-- [ ] Commit:
+- [x] Commit:
   ```powershell
   git add frontend/src/app/useProductMotion.ts frontend/src/app/useProductMotion.test.tsx frontend/src/app/App.test.tsx frontend/src/styles/product.css
   git commit -m "feat: harden frontend motion system"
