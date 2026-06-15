@@ -134,6 +134,16 @@ describe("ObservabilitySummaryPanel", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Observability" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Observability" })).toHaveClass("observability-dashboard");
+    expect(screen.getByLabelText("Job queue metrics")).toHaveClass("metric-strip");
+    expect(screen.getByLabelText("Worker runtime metrics")).toHaveClass("metric-strip");
+    expect(screen.getByLabelText("Evidence quality metrics")).toHaveClass("metric-strip");
+    expect(screen.getByLabelText("Usage budget metrics")).toHaveClass("metric-strip");
+    expect(screen.getByLabelText("Strategy and targeted feedback metrics")).toHaveClass("metric-strip");
+    expect(screen.getByLabelText("Attribution verification and recovery metrics")).toHaveClass("metric-strip");
+    expect(screen.getByLabelText("Health actions")).toHaveClass("action-row");
+    expect(screen.getByText("critical")).toHaveClass("status-badge--critical");
+    expect(screen.getByText("over_budget")).toHaveClass("status-badge--critical");
     expect(screen.getByText("Observed jobs total：19")).toBeInTheDocument();
     expect(screen.getByText("Observed jobs pending：4")).toBeInTheDocument();
     expect(screen.getByText("Observed jobs running：1")).toBeInTheDocument();

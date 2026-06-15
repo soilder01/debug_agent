@@ -207,7 +207,7 @@ Commit only after the focused tests and full verification pass.
 - Modify: `frontend/src/observability/ObservabilitySummaryPanel.test.tsx`
 - Modify: `frontend/src/styles/product.css`
 
-- [ ] Add RED tests requiring grouped observability sections:
+- [x] Add RED tests requiring grouped observability sections:
   - Job queue
   - Worker runtime
   - Evidence quality
@@ -215,14 +215,14 @@ Commit only after the focused tests and full verification pass.
   - Strategy and targeted feedback
   - Attribution verification and recovery
   - Health actions
-- [ ] Convert flat paragraphs into metric strips and status sections.
-- [ ] Use `StatusBadge` for health level and budget status.
-- [ ] Preserve existing text assertions or update tests to assert both old values and new grouped labels.
-- [ ] Run:
+- [x] Convert flat paragraphs into metric strips and status sections.
+- [x] Use `StatusBadge` for health level and budget status.
+- [x] Preserve existing text assertions or update tests to assert both old values and new grouped labels.
+- [x] Run:
   ```powershell
   npx --yes pnpm@9.15.4 --dir frontend test -- --run src/observability/ObservabilitySummaryPanel.test.tsx
   ```
-- [ ] Commit:
+- [x] Commit:
   ```powershell
   git add frontend/src/observability frontend/src/styles/product.css
   git commit -m "feat: productize observability dashboard"

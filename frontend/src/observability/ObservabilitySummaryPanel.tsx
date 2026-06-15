@@ -1,4 +1,5 @@
 import type { ObservabilitySummary } from "../api/client";
+import { ActionRow, MetricStrip, ProductSurface, StatusBadge } from "../ui/ProductPrimitives";
 
 type ObservabilitySummaryPanelProps = {
   summary: ObservabilitySummary;
@@ -50,9 +51,111 @@ export function ObservabilitySummaryPanel({
     reopen_count: 0,
     inconclusive_count: 0
   };
+  const hasActions = Boolean(onLoadFailedJobs || onLoadFailedWritebacks || onStartWorker);
+
   return (
-    <section>
-      <h2>Observability</h2>
+    <ProductSurface
+      title="Observability"
+      eyebrow="Operations"
+      description="Monitor queue health, evidence quality, budget pressure, writeback risk, and escalation loops."
+      className="observability-dashboard"
+    >
+      <section className="observability-section" aria-label="Job queue health">
+        <MetricStrip
+          label="Job queue metrics"
+          metrics={[
+            { label: "Total", value: summary.jobs.total_count, helper: "All debug jobs" },
+            { label: "Pending", value: summary.jobs.pending_count, helper: "Waiting for workers" },
+            { label: "Running", value: summary.jobs.running_count, helper: "In progress" },
+            { label: "Completed", value: summary.jobs.completed_count, helper: "Report-ready" },
+            { label: "Failed", value: summary.jobs.failed_count, helper: "Needs triage" }
+          ]}
+        />
+      </section>
+      <section className="observability-section" aria-label="Worker runtime health">
+        <StatusBadge tone={summary.worker.running ? "success" : "neutral"}>
+          {summary.worker.running ? "Running" : "Stopped"}
+        </StatusBadge>
+        <MetricStrip
+          label="Worker runtime metrics"
+          metrics={[
+            { label: "Processed", value: summary.worker.processed_count, helper: "Completed jobs" },
+            { label: "Errors", value: summary.worker.error_count, helper: "Runtime failures" },
+            {
+              label: "Auto writeback",
+              value: summary.worker.auto_writeback_enabled ? "On" : "Off",
+              helper: "Spreadsheet completion hook"
+            }
+          ]}
+        />
+      </section>
+      <section className="observability-section" aria-label="Evidence quality health">
+        <MetricStrip
+          label="Evidence quality metrics"
+          metrics={[
+            { label: "Evidence", value: summary.evidence.total_evidence, helper: "Captured records" },
+            { label: "Failed judge", value: summary.evidence.failed_judgements, helper: "Scoring failures" },
+            { label: "Parse errors", value: summary.evidence.response_parse_errors, helper: "Malformed responses" },
+            { label: "Model errors", value: summary.evidence.model_call_errors, helper: "Provider failures" },
+            { label: "Avg latency", value: `${summary.evidence.average_latency_ms}ms`, helper: "Model response time" }
+          ]}
+        />
+      </section>
+      <section className="observability-section" aria-label="Usage budget health">
+        <StatusBadge tone={budgetTone(summary.usage.budget_status)}>{summary.usage.budget_status}</StatusBadge>
+        <MetricStrip
+          label="Usage budget metrics"
+          metrics={[
+            { label: "Calls", value: summary.usage.model_call_count, helper: "Model invocations" },
+            { label: "Prompt chars", value: summary.usage.prompt_character_count, helper: "Prompt volume" },
+            { label: "Cost units", value: summary.usage.estimated_cost_units, helper: "Estimated usage" },
+            { label: "Budget", value: summary.usage.budget_units, helper: "Configured limit" },
+            { label: "Utilization", value: summary.usage.budget_utilization, helper: "Budget ratio" }
+          ]}
+        />
+      </section>
+      <section className="observability-section" aria-label="Strategy and targeted feedback health">
+        <MetricStrip
+          label="Strategy and targeted feedback metrics"
+          metrics={[
+            { label: "Follow-ups", value: strategyFeedback.total_follow_ups, helper: "Strategy loops" },
+            { label: "Escalations", value: strategyFeedback.needs_escalation_count, helper: "Needs deeper probes" },
+            { label: "Targeted probes", value: targetedProbeFeedback.total_probes, helper: "Probe attempts" },
+            { label: "Still failing", value: targetedProbeFeedback.target_still_failing_count, helper: "Open targets" },
+            { label: "Max depth", value: targetedProbeFeedback.max_depth_reached_count, helper: "Guardrail hits" }
+          ]}
+        />
+      </section>
+      <section className="observability-section" aria-label="Attribution verification and recovery health">
+        <MetricStrip
+          label="Attribution verification and recovery metrics"
+          metrics={[
+            {
+              label: "Verifications",
+              value: finalAttributionVerificationFeedback.total_verifications,
+              helper: "Final attribution checks"
+            },
+            {
+              label: "Not resolved",
+              value: finalAttributionVerificationFeedback.not_resolved_count,
+              helper: "Failed verification"
+            },
+            {
+              label: "Recoveries",
+              value: finalAttributionRecoveryFeedback.total_recoveries,
+              helper: "Recovery jobs"
+            },
+            {
+              label: "Reopened",
+              value: finalAttributionRecoveryFeedback.reopen_count,
+              helper: "Needs reinvestigation"
+            }
+          ]}
+        />
+      </section>
+      <section className="observability-section" aria-label="Health action summary">
+        <StatusBadge tone={healthTone(summary.health.level)}>{summary.health.level}</StatusBadge>
+      </section>
       <p>Observed jobs total：{summary.jobs.total_count}</p>
       <p>Observed jobs pending：{summary.jobs.pending_count}</p>
       <p>Observed jobs running：{summary.jobs.running_count}</p>
@@ -114,21 +217,45 @@ export function ObservabilitySummaryPanel({
       {summary.health.actions.map((action) => (
         <p key={action}>Recommended action：{action}</p>
       ))}
-      {onLoadFailedJobs ? (
-        <button type="button" onClick={onLoadFailedJobs}>
-          Open failed jobs from observability
-        </button>
+      {hasActions ? (
+        <ActionRow label="Health actions">
+          {onLoadFailedJobs ? (
+            <button type="button" onClick={onLoadFailedJobs}>
+              Open failed jobs from observability
+            </button>
+          ) : null}
+          {onLoadFailedWritebacks ? (
+            <button type="button" onClick={onLoadFailedWritebacks}>
+              Open failed writebacks from observability
+            </button>
+          ) : null}
+          {onStartWorker ? (
+            <button type="button" onClick={onStartWorker}>
+              Start worker from observability
+            </button>
+          ) : null}
+        </ActionRow>
       ) : null}
-      {onLoadFailedWritebacks ? (
-        <button type="button" onClick={onLoadFailedWritebacks}>
-          Open failed writebacks from observability
-        </button>
-      ) : null}
-      {onStartWorker ? (
-        <button type="button" onClick={onStartWorker}>
-          Start worker from observability
-        </button>
-      ) : null}
-    </section>
+    </ProductSurface>
   );
+}
+
+function budgetTone(status: ObservabilitySummary["usage"]["budget_status"]): "critical" | "warning" | "success" | "neutral" {
+  if (status === "over_budget") {
+    return "critical";
+  }
+  if (status === "within_budget") {
+    return "success";
+  }
+  return "neutral";
+}
+
+function healthTone(level: ObservabilitySummary["health"]["level"]): "critical" | "warning" | "success" | "neutral" {
+  if (level === "critical") {
+    return "critical";
+  }
+  if (level === "degraded") {
+    return "warning";
+  }
+  return "success";
 }

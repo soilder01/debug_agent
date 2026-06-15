@@ -384,6 +384,12 @@ textarea:focus-visible {
   align-items: center;
 }
 
+.observability-dashboard,
+.observability-section {
+  display: grid;
+  gap: 0.85rem;
+}
+
 @media (max-width: 1180px) {
   .agent-shell__grid {
     grid-template-columns: 1fr 1fr;
