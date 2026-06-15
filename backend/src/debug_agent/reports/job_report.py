@@ -230,6 +230,7 @@ def _build_targeted_escalation_follow_up_experiments(
             "source": "targeted_probe_outcome",
             "target_id": str(result.get("target_id", "unknown")),
             "result": str(result.get("outcome", "unknown")),
+            "parent_probe_job_id": str(result.get("probe_job_id", "")),
             "planned_steps": step.name,
             "summary": (
                 f"Targeted probe job {result.get('probe_job_id')} for {result.get('target_id')} 未满足停止条件，"

@@ -889,6 +889,9 @@ def create_targeted_probe_job(
         target_id=target_id,
         planned_steps=str(follow_up.get("planned_steps", "")),
         probe_job_id=probe_job.job_id,
+        source=str(follow_up.get("source", "targeted_probe")),
+        parent_probe_job_id=str(follow_up.get("parent_probe_job_id", "")),
+        trigger_outcome=str(follow_up.get("result", "")),
         actor=actor,
         note=request.note,
     )
@@ -1095,7 +1098,10 @@ def _strategy_follow_up_from_report(report: DebugReport, stage: str) -> dict[str
 
 def _targeted_probe_from_report(report: DebugReport, target_id: str) -> dict[str, str] | None:
     for follow_up in report.follow_up_experiments:
-        if follow_up.get("source") in {"targeted_probe", "targeted_probe_outcome"} and follow_up.get("target_id") == target_id:
+        if follow_up.get("source") == "targeted_probe_outcome" and follow_up.get("target_id") == target_id:
+            return follow_up
+    for follow_up in report.follow_up_experiments:
+        if follow_up.get("source") == "targeted_probe" and follow_up.get("target_id") == target_id:
             return follow_up
     return None
 

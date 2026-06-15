@@ -429,6 +429,27 @@
 - [x] Allow targeted outcome follow-up experiments to create another targeted probe job.
 - [x] Preserve cleared targeted probes as terminal outcomes with no escalation follow-up.
 
+### Task 27: Targeted Probe Escalation Job Lineage
+
+**Files:**
+- Modify: `backend/src/debug_agent/api/routes.py`
+- Modify: `backend/src/debug_agent/reports/job_report.py`
+- Modify: `backend/src/debug_agent/storage/database.py`
+- Modify: `backend/src/debug_agent/storage/models.py`
+- Modify: `backend/src/debug_agent/storage/repository.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/app/App.tsx`
+- Test: `backend/tests/api/test_recommended_action_status.py`
+- Test: `backend/tests/reports/test_job_report.py`
+- Test: `frontend/src/app/App.test.tsx`
+- Test: `frontend/src/reports/DebugReportWorkspace.test.tsx`
+
+- [x] Add lineage fields for targeted probe source, parent probe job, and trigger outcome.
+- [x] Persist normal targeted probes as `source=targeted_probe`.
+- [x] Persist escalation targeted probes as `source=targeted_probe_outcome`.
+- [x] Prefer targeted outcome follow-up entries when creating another probe for an already-failed target.
+- [x] Keep frontend targeted probe history and report loading compatible with escalation follow-up sources.
+
 ## Verification Policy
 
 Every task must follow:

@@ -532,7 +532,9 @@ export function App() {
       }
       if (
         loadedReport.job_id &&
-        (loadedReport.follow_up_experiments ?? []).some((followUp) => followUp.source === "targeted_probe")
+        (loadedReport.follow_up_experiments ?? []).some((followUp) =>
+          followUp.source === "targeted_probe" || followUp.source === "targeted_probe_outcome"
+        )
       ) {
         const probes = await fetchTargetedProbeJobs(loadedReport.job_id);
         setTargetedProbes(probes.probes ?? []);

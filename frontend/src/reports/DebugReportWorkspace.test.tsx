@@ -111,9 +111,12 @@ function makeStrategyFollowUp(): StrategyFollowUpJob {
 function makeTargetedProbe(): TargetedProbeJob {
   return {
     source_job_id: "job-1",
+    source: "targeted_probe",
     target_id: "multimodal:conflict:1",
     planned_steps: "targeted_multimodal_conflict_probe",
     probe_job_id: "job-targeted-probe-1",
+    parent_probe_job_id: "",
+    trigger_outcome: "",
     actor: "targeted-operator",
     note: "probe conflict target",
     created_at: "2026-06-15T00:00:02+00:00",

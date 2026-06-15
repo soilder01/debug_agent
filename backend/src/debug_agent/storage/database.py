@@ -137,6 +137,24 @@ def ensure_database_schema(engine: Engine) -> None:
                         },
                     )
 
+    inspector = inspect(engine)
+    if "targeted_probe_jobs" in inspector.get_table_names():
+        targeted_probe_columns = {column["name"] for column in inspector.get_columns("targeted_probe_jobs")}
+        missing_columns = [
+            ("source", "VARCHAR(80)", "'targeted_probe'"),
+            ("parent_probe_job_id", "VARCHAR(80)", "''"),
+            ("trigger_outcome", "VARCHAR(80)", "''"),
+        ]
+        with engine.begin() as connection:
+            for column_name, column_type, default_value in missing_columns:
+                if column_name not in targeted_probe_columns:
+                    connection.execute(
+                        text(
+                            f"ALTER TABLE targeted_probe_jobs ADD COLUMN {column_name} "
+                            f"{column_type} NOT NULL DEFAULT {default_value}"
+                        )
+                    )
+
 
 def _count_box_regions(case_json: str) -> int:
     try:

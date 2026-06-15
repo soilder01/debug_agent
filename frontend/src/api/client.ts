@@ -115,6 +115,7 @@ export type DebugReport = {
     source: string;
     stage?: string;
     target_id?: string;
+    parent_probe_job_id?: string;
     verification_job_id?: string;
     result?: string;
     planned_steps: string;
@@ -178,9 +179,12 @@ export type StrategyFollowUpJobResponse = StrategyFollowUpJob & {
 
 export type TargetedProbeJob = {
   source_job_id: string;
+  source: string;
   target_id: string;
   planned_steps: string;
   probe_job_id: string;
+  parent_probe_job_id: string;
+  trigger_outcome: string;
   actor: string;
   note: string;
   created_at: string;

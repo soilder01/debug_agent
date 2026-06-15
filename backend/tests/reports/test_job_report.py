@@ -343,9 +343,12 @@ def test_build_report_for_job_includes_targeted_probe_results() -> None:
     assert report.targeted_probe_results == [
         {
             "source_job_id": "job-source",
+            "source": "targeted_probe",
             "target_id": "multimodal:conflict:1",
             "planned_steps": "targeted_multimodal_conflict_probe",
             "probe_job_id": "job-targeted-probe",
+            "parent_probe_job_id": "",
+            "trigger_outcome": "",
             "actor": "targeted-operator",
             "note": "probe conflict target",
             "created_at": report.targeted_probe_results[0]["created_at"],
@@ -432,6 +435,7 @@ def test_build_report_for_job_adds_escalation_follow_up_for_failed_targeted_prob
         "source": "targeted_probe_outcome",
         "target_id": "multimodal:conflict:1",
         "result": "target_still_failing",
+        "parent_probe_job_id": "job-targeted-probe",
         "planned_steps": "targeted_escalation_multimodal_conflict_probe",
         "summary": (
             "Targeted probe job job-targeted-probe for multimodal:conflict:1 未满足停止条件，"

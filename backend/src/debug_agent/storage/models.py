@@ -103,8 +103,11 @@ class TargetedProbeJobRow(Base):
     __tablename__ = "targeted_probe_jobs"
 
     source_job_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    source: Mapped[str] = mapped_column(String(80), default="targeted_probe", server_default="targeted_probe")
     target_id: Mapped[str] = mapped_column(String(160), primary_key=True)
     probe_job_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    parent_probe_job_id: Mapped[str] = mapped_column(String(80), default="", server_default="")
+    trigger_outcome: Mapped[str] = mapped_column(String(80), default="", server_default="")
     planned_steps: Mapped[str] = mapped_column(Text, default="", server_default="")
     actor: Mapped[str] = mapped_column(String(120), default="", server_default="")
     note: Mapped[str] = mapped_column(Text, default="", server_default="")

@@ -86,9 +86,12 @@ class StrategyFollowUpJob(BaseModel):
 
 class TargetedProbeJob(BaseModel):
     source_job_id: str
+    source: str
     target_id: str
     planned_steps: str
     probe_job_id: str
+    parent_probe_job_id: str
+    trigger_outcome: str
     actor: str
     note: str
     created_at: str
@@ -484,6 +487,9 @@ class DebugJobRepository:
         target_id: str,
         planned_steps: str,
         probe_job_id: str,
+        source: str = "targeted_probe",
+        parent_probe_job_id: str = "",
+        trigger_outcome: str = "",
         actor: str = "",
         note: str = "",
     ) -> TargetedProbeJob:
@@ -492,9 +498,12 @@ class DebugJobRepository:
                 now = _utc_now_iso()
                 row = TargetedProbeJobRow(
                     source_job_id=source_job_id,
+                    source=source,
                     target_id=target_id,
                     planned_steps=planned_steps,
                     probe_job_id=probe_job_id,
+                    parent_probe_job_id=parent_probe_job_id,
+                    trigger_outcome=trigger_outcome,
                     actor=actor,
                     note=note,
                     created_at=now,
@@ -888,9 +897,12 @@ def _strategy_follow_up_job_from_row(row: StrategyFollowUpJobRow) -> StrategyFol
 def _targeted_probe_job_from_row(row: TargetedProbeJobRow) -> TargetedProbeJob:
     return TargetedProbeJob(
         source_job_id=row.source_job_id,
+        source=row.source,
         target_id=row.target_id,
         planned_steps=row.planned_steps,
         probe_job_id=row.probe_job_id,
+        parent_probe_job_id=row.parent_probe_job_id,
+        trigger_outcome=row.trigger_outcome,
         actor=row.actor,
         note=row.note,
         created_at=row.created_at,
