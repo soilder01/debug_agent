@@ -289,6 +289,40 @@ def test_strategy_follow_up_api_rejects_unknown_stage() -> None:
     assert response.json()["detail"] == "Strategy follow-up stage not found: missing_stage"
 
 
+def test_targeted_probe_api_creates_traceable_debug_job() -> None:
+    client = TestClient(app)
+    job_id = _create_job_with_cross_modal_strategy()
+
+    response = client.post(
+        f"/jobs/{job_id}/targeted-probes/multimodal:conflict:1/debug-jobs",
+        json={"actor": "targeted-operator", "note": "probe conflict target"},
+    )
+
+    assert response.status_code == 202
+    body = response.json()
+    assert body["source_job_id"] == job_id
+    assert body["target_id"] == "multimodal:conflict:1"
+    assert body["planned_steps"] == "targeted_multimodal_conflict_probe"
+    assert body["actor"] == "targeted-operator"
+    assert body["note"] == "probe conflict target"
+    assert body["probe_job_id"] == body["probe_job"]["job_id"]
+    assert body["probe_job"]["status"] == "created"
+    routes.job_repository.mark_failed(body["probe_job_id"], "test cleanup")
+
+
+def test_targeted_probe_api_rejects_unknown_target() -> None:
+    client = TestClient(app)
+    job_id = _create_job_with_cross_modal_strategy()
+
+    response = client.post(
+        f"/jobs/{job_id}/targeted-probes/multimodal:conflict:missing/debug-jobs",
+        json={"actor": "targeted-operator", "note": ""},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Targeted probe not found: multimodal:conflict:missing"
+
+
 def test_recommended_action_status_api_evaluates_resolved_verification_job() -> None:
     client = TestClient(app)
     job_id = _create_job_with_recommended_actions()

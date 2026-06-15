@@ -40,6 +40,7 @@ from debug_agent.storage.repository import (
     RecommendedActionVerification,
     SpreadsheetWritebackAudit,
     StrategyFollowUpJob,
+    TargetedProbeJob,
 )
 
 settings = DebugAgentSettings.from_env()
@@ -219,12 +220,21 @@ class StrategyFollowUpJobRequest(BaseModel):
     note: str = ""
 
 
+class TargetedProbeJobRequest(BaseModel):
+    actor: str = ""
+    note: str = ""
+
+
 class RecommendedActionVerificationResponse(RecommendedActionVerification):
     verification_job: SubmittedDebugJob
 
 
 class StrategyFollowUpJobResponse(StrategyFollowUpJob):
     follow_up_job: SubmittedDebugJob
+
+
+class TargetedProbeJobResponse(TargetedProbeJob):
+    probe_job: SubmittedDebugJob
 
 
 class StrategyFollowUpJobWithOutcome(StrategyFollowUpJob):
@@ -829,6 +839,41 @@ def list_strategy_follow_up_jobs(job_id: str) -> StrategyFollowUpJobListResponse
     )
 
 
+@router.post(
+    "/jobs/{job_id}/targeted-probes/{target_id}/debug-jobs",
+    status_code=202,
+)
+def create_targeted_probe_job(
+    job_id: str,
+    target_id: str,
+    request: TargetedProbeJobRequest,
+) -> TargetedProbeJobResponse:
+    job = job_repository.get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail=f"Debug job not found: {job_id}")
+    report = build_report_for_job(job_repository, job_id)
+    if report is None:
+        raise HTTPException(status_code=404, detail=f"Debug report not found for job: {job_id}")
+    follow_up = _targeted_probe_from_report(report, target_id)
+    if follow_up is None:
+        raise HTTPException(status_code=404, detail=f"Targeted probe not found: {target_id}")
+    actor = _resolved_actor(request.actor)
+    _raise_if_usage_budget_blocks_submission()
+    probe_job = job_service.submit_case_debug(job.case_id, baseline_trials=job.baseline_trials)
+    lineage = job_repository.save_targeted_probe_job(
+        source_job_id=job_id,
+        target_id=target_id,
+        planned_steps=str(follow_up.get("planned_steps", "")),
+        probe_job_id=probe_job.job_id,
+        actor=actor,
+        note=request.note,
+    )
+    return TargetedProbeJobResponse(
+        **lineage.model_dump(),
+        probe_job=probe_job,
+    )
+
+
 @router.get("/jobs/{job_id}/recommended-actions/statuses")
 def list_recommended_action_statuses(job_id: str) -> RecommendedActionStatusListResponse:
     if job_repository.get_job(job_id) is None:
@@ -990,6 +1035,13 @@ def _strategy_follow_up_from_report(report: DebugReport, stage: str) -> dict[str
             return follow_up
     for follow_up in report.follow_up_experiments:
         if follow_up.get("source") == "debug_strategy" and follow_up.get("stage") == stage:
+            return follow_up
+    return None
+
+
+def _targeted_probe_from_report(report: DebugReport, target_id: str) -> dict[str, str] | None:
+    for follow_up in report.follow_up_experiments:
+        if follow_up.get("source") == "targeted_probe" and follow_up.get("target_id") == target_id:
             return follow_up
     return None
 

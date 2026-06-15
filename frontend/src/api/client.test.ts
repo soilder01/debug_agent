@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createRecommendedActionVerificationJob,
   createStrategyFollowUpJob,
+  createTargetedProbeJob,
   fetchRecommendedActionStatuses,
   fetchStrategyFollowUpJobs,
   updateRecommendedActionStatus
@@ -213,5 +214,42 @@ describe("api client recommended action status", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1/strategy-follow-ups");
     expect(response.follow_ups[0].follow_up_job_id).toBe("job-follow-up-1");
     expect(response.follow_ups[0].outcome).toBe("needs_escalation");
+  });
+
+  it("creates targeted probe jobs with operator context", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          source_job_id: "job-1",
+          target_id: "multimodal:conflict:1",
+          planned_steps: "targeted_multimodal_conflict_probe",
+          probe_job_id: "job-targeted-probe-1",
+          actor: "targeted-operator",
+          note: "probe conflict target",
+          created_at: "2026-06-15T00:00:02+00:00",
+          probe_job: {
+            job_id: "job-targeted-probe-1",
+            case_id: "case-1",
+            status: "created"
+          }
+        }),
+        { status: 202, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    const response = await createTargetedProbeJob("job-1", "multimodal:conflict:1", {
+      actor: "targeted-operator",
+      note: "probe conflict target"
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1/targeted-probes/multimodal%3Aconflict%3A1/debug-jobs", {
+      body: JSON.stringify({
+        actor: "targeted-operator",
+        note: "probe conflict target"
+      }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST"
+    });
+    expect(response.probe_job.job_id).toBe("job-targeted-probe-1");
   });
 });

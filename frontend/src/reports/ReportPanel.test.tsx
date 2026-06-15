@@ -681,6 +681,45 @@ describe("ReportPanel", () => {
     expect(onCreateStrategyFollowUp).toHaveBeenCalledWith("ablation_expansion");
   });
 
+  it("delegates targeted probe follow-up creation", async () => {
+    const onCreateTargetedProbe = vi.fn();
+    const report: DebugReport = {
+      job_id: "job-targeted",
+      case_id: "case-targeted",
+      status: "needs_human_review",
+      observed_failure: {
+        type: "cross_modal_alignment_failure",
+        summary: "cross-modal compare failed",
+        affected_box_ids: []
+      },
+      planned_experiments: ["modality_ablation_check"],
+      experiment_summary: null,
+      root_cause: {
+        label: "cross_modal_alignment_failure",
+        confidence: "high",
+        evidence_summary: "cross-modal variant failed."
+      },
+      follow_up_experiments: [
+        {
+          source: "targeted_probe",
+          target_id: "multimodal:conflict:1",
+          planned_steps: "targeted_multimodal_conflict_probe",
+          summary: "围绕目标 multimodal:conflict:1 生成 targeted probing：targeted_multimodal_conflict_probe。"
+        }
+      ],
+      suggested_sheet_fields: {
+        错误原因: "跨模态对齐问题"
+      }
+    };
+
+    render(<ReportPanel report={report} onCreateTargetedProbe={onCreateTargetedProbe} />);
+
+    expect(screen.getByText("targeted_probe/unknown：targeted_multimodal_conflict_probe")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Run targeted probe multimodal:conflict:1" }));
+
+    expect(onCreateTargetedProbe).toHaveBeenCalledWith("multimodal:conflict:1");
+  });
+
   it("delegates verification reruns for applied recommended actions", async () => {
     const onVerifyRecommendedAction = vi.fn();
     const report: DebugReport = {

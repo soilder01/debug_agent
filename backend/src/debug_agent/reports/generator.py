@@ -599,7 +599,24 @@ def _target_ids_from_evidence(evidence: ExperimentEvidence) -> list[str]:
             for delta in evidence.judge.deltas
             if isinstance(delta.get("target_id"), str) and str(delta.get("target_id")).strip()
         }
+        | {
+            token
+            for reason in evidence.judge.reasons
+            for token in _target_id_tokens_from_reason(reason)
+        }
     )
+
+
+def _target_id_tokens_from_reason(reason: str) -> set[str]:
+    return {
+        token.strip(".,;，；。()[]{}")
+        for token in reason.split()
+        if _looks_like_target_id(token.strip(".,;，；。()[]{}"))
+    }
+
+
+def _looks_like_target_id(value: str) -> bool:
+    return value.startswith(("image:region:", "video:segment:", "multimodal:conflict:", "box:"))
 
 
 def _string_from_request_summary(value: object) -> str:
@@ -723,14 +740,7 @@ def _ablation_variants_by_score(evidence: list[ExperimentEvidence], *, score: in
 
 
 def _step_target_ids(evidence: list[ExperimentEvidence]) -> list[str]:
-    return sorted(
-        {
-            str(delta["target_id"])
-            for item in evidence
-            for delta in item.judge.deltas
-            if isinstance(delta.get("target_id"), str) and str(delta.get("target_id")).strip()
-        }
-    )
+    return sorted({target_id for item in evidence for target_id in _target_ids_from_evidence(item)})
 
 
 def _step_request_summary_strings(evidence: list[ExperimentEvidence], key: str) -> list[str]:

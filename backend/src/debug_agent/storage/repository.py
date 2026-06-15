@@ -20,6 +20,7 @@ from debug_agent.storage.models import (
     SpreadsheetRowMappingRow,
     SpreadsheetWritebackAuditRow,
     StrategyFollowUpJobRow,
+    TargetedProbeJobRow,
 )
 
 
@@ -78,6 +79,16 @@ class StrategyFollowUpJob(BaseModel):
     stage: str
     planned_steps: str
     follow_up_job_id: str
+    actor: str
+    note: str
+    created_at: str
+
+
+class TargetedProbeJob(BaseModel):
+    source_job_id: str
+    target_id: str
+    planned_steps: str
+    probe_job_id: str
     actor: str
     note: str
     created_at: str
@@ -466,6 +477,45 @@ class DebugJobRepository:
                 )
                 return [_strategy_follow_up_job_from_row(row) for row in rows]
 
+    def save_targeted_probe_job(
+        self,
+        *,
+        source_job_id: str,
+        target_id: str,
+        planned_steps: str,
+        probe_job_id: str,
+        actor: str = "",
+        note: str = "",
+    ) -> TargetedProbeJob:
+        with self._lock:
+            with self._session_factory() as session:
+                now = _utc_now_iso()
+                row = TargetedProbeJobRow(
+                    source_job_id=source_job_id,
+                    target_id=target_id,
+                    planned_steps=planned_steps,
+                    probe_job_id=probe_job_id,
+                    actor=actor,
+                    note=note,
+                    created_at=now,
+                )
+                session.add(row)
+                session.commit()
+                return _targeted_probe_job_from_row(row)
+
+    def list_targeted_probe_jobs(self, source_job_id: str) -> list[TargetedProbeJob]:
+        with self._lock:
+            with self._session_factory() as session:
+                rows = session.scalars(
+                    select(TargetedProbeJobRow)
+                    .where(TargetedProbeJobRow.source_job_id == source_job_id)
+                    .order_by(
+                        TargetedProbeJobRow.created_at,
+                        TargetedProbeJobRow.probe_job_id,
+                    )
+                )
+                return [_targeted_probe_job_from_row(row) for row in rows]
+
     def list_cases(self, has_regions: bool = False, limit: int | None = None, offset: int = 0) -> list[DebugCase]:
         with self._lock:
             with self._session_factory() as session:
@@ -804,6 +854,18 @@ def _strategy_follow_up_job_from_row(row: StrategyFollowUpJobRow) -> StrategyFol
         stage=row.stage,
         planned_steps=row.planned_steps,
         follow_up_job_id=row.follow_up_job_id,
+        actor=row.actor,
+        note=row.note,
+        created_at=row.created_at,
+    )
+
+
+def _targeted_probe_job_from_row(row: TargetedProbeJobRow) -> TargetedProbeJob:
+    return TargetedProbeJob(
+        source_job_id=row.source_job_id,
+        target_id=row.target_id,
+        planned_steps=row.planned_steps,
+        probe_job_id=row.probe_job_id,
         actor=row.actor,
         note=row.note,
         created_at=row.created_at,

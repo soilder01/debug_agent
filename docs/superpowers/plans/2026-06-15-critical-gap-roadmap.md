@@ -335,6 +335,29 @@
 - [x] Include targeted probe follow-up experiments in generated reports.
 - [x] Preserve existing debug strategy follow-ups while appending target-level probes.
 
+### Task 22: Targeted Probe Job Submission
+
+**Files:**
+- Modify: `backend/src/debug_agent/api/routes.py`
+- Modify: `backend/src/debug_agent/reports/generator.py`
+- Modify: `backend/src/debug_agent/storage/models.py`
+- Modify: `backend/src/debug_agent/storage/repository.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/app/App.tsx`
+- Modify: `frontend/src/reports/DebugReportWorkspace.tsx`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `backend/tests/api/test_recommended_action_status.py`
+- Test: `backend/tests/reports/test_generator.py`
+- Test: `frontend/src/api/client.test.ts`
+- Test: `frontend/src/app/App.test.tsx`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Add targeted probe job lineage persistence for source job, target id, planned steps, actor, and note.
+- [x] Add API endpoint to create traceable targeted probe debug jobs from report follow-up entries.
+- [x] Extract target ids from both structured judge deltas and semi-structured judge reasons.
+- [x] Add frontend API/client support and runnable targeted probe buttons.
+- [x] Wire targeted probe creation into the main app flow and show the created job.
+
 ## Verification Policy
 
 Every task must follow:

@@ -99,6 +99,18 @@ class StrategyFollowUpJobRow(Base):
     created_at: Mapped[str] = mapped_column(String(40), default="", server_default="", index=True)
 
 
+class TargetedProbeJobRow(Base):
+    __tablename__ = "targeted_probe_jobs"
+
+    source_job_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    target_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    probe_job_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    planned_steps: Mapped[str] = mapped_column(Text, default="", server_default="")
+    actor: Mapped[str] = mapped_column(String(120), default="", server_default="")
+    note: Mapped[str] = mapped_column(Text, default="", server_default="")
+    created_at: Mapped[str] = mapped_column(String(40), default="", server_default="", index=True)
+
+
 class EvidenceRow(Base):
     __tablename__ = "evidence"
 

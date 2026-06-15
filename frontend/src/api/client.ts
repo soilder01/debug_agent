@@ -101,6 +101,7 @@ export type DebugReport = {
   follow_up_experiments?: Array<{
     source: string;
     stage?: string;
+    target_id?: string;
     verification_job_id?: string;
     result?: string;
     planned_steps: string;
@@ -160,6 +161,20 @@ export type StrategyFollowUpJob = {
 
 export type StrategyFollowUpJobResponse = StrategyFollowUpJob & {
   follow_up_job: SubmittedDebugJob;
+};
+
+export type TargetedProbeJob = {
+  source_job_id: string;
+  target_id: string;
+  planned_steps: string;
+  probe_job_id: string;
+  actor: string;
+  note: string;
+  created_at: string;
+};
+
+export type TargetedProbeJobResponse = TargetedProbeJob & {
+  probe_job: SubmittedDebugJob;
 };
 
 export type StrategyFollowUpJobListResponse = {
@@ -750,6 +765,31 @@ export async function fetchStrategyFollowUpJobs(jobId: string): Promise<Strategy
     throw new Error(`Failed to fetch strategy follow-up jobs for ${jobId}: ${response.status}`);
   }
   return (await response.json()) as StrategyFollowUpJobListResponse;
+}
+
+export async function createTargetedProbeJob(
+  jobId: string,
+  targetId: string,
+  request: {
+    actor?: string;
+    note?: string;
+  }
+): Promise<TargetedProbeJobResponse> {
+  const response = await fetch(
+    `/api/jobs/${encodeURIComponent(jobId)}/targeted-probes/${encodeURIComponent(targetId)}/debug-jobs`,
+    {
+      body: JSON.stringify({
+        actor: request.actor ?? "",
+        note: request.note ?? ""
+      }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST"
+    }
+  );
+  if (!response.ok) {
+    throw new Error(`Failed to create targeted probe job ${targetId} for ${jobId}: ${response.status}`);
+  }
+  return (await response.json()) as TargetedProbeJobResponse;
 }
 
 export async function fetchSpreadsheetWritebackAudit(jobId: string): Promise<SpreadsheetWritebackAudit> {
