@@ -478,7 +478,7 @@ def test_generate_report_infers_cross_modal_alignment_from_ablation_results() ->
             "escalation": "若 verification 为 not_resolved/regressed，自动生成 follow-up probing plan。",
         },
     ]
-    assert report.follow_up_experiments == [
+    expected_strategy_follow_ups = [
         {
             "source": "debug_strategy",
             "stage": "evidence_audit",
@@ -498,6 +498,14 @@ def test_generate_report_infers_cross_modal_alignment_from_ablation_results() ->
             "summary": "策略阶段 verification_gate 已转为 follow-up experiment：strategy_verification_gate_probe。",
         },
     ]
+    for follow_up in expected_strategy_follow_ups:
+        assert follow_up in report.follow_up_experiments
+    assert {
+        "source": "targeted_probe",
+        "target_id": "multimodal:conflict:1",
+        "planned_steps": "targeted_multimodal_conflict_probe",
+        "summary": "围绕目标 multimodal:conflict:1 生成 targeted probing：targeted_multimodal_conflict_probe。",
+    } in report.follow_up_experiments
 
 
 def test_generate_report_infers_single_modality_gap_from_ablation_results() -> None:
@@ -701,6 +709,12 @@ def test_generate_report_builds_ablation_root_cause_trace() -> None:
             "next_probe": "围绕 multimodal:conflict:1 执行 targeted evidence replay，并对比 image/text 单模态结果。",
         }
     ]
+    assert {
+        "source": "targeted_probe",
+        "target_id": "multimodal:conflict:1",
+        "planned_steps": "targeted_multimodal_conflict_probe",
+        "summary": "围绕目标 multimodal:conflict:1 生成 targeted probing：targeted_multimodal_conflict_probe。",
+    } in report.follow_up_experiments
 
 
 def test_generate_report_includes_verification_follow_up_plan_summary() -> None:

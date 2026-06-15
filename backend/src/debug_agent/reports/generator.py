@@ -5,6 +5,7 @@ from debug_agent.experiments.planner import (
     ExperimentPlan,
     plan_experiments,
     plan_strategy_follow_up_experiments,
+    plan_targeted_probe_experiments,
     plan_verification_follow_up_experiments,
 )
 from debug_agent.experiments.runner import ExperimentEvidence, ExperimentRunResult
@@ -110,6 +111,7 @@ def generate_initial_report(
         follow_up_experiments=[
             *_build_follow_up_experiments(case, verification_results or []),
             *_build_strategy_follow_up_experiments(case=case, debug_strategy=debug_strategy),
+            *_build_targeted_probe_follow_up_experiments(case=case, root_cause_trace=root_cause_trace),
         ],
         confidence_reasons=_build_confidence_reasons(
             run_result=run_result,
@@ -458,6 +460,46 @@ def _build_strategy_follow_up_experiments(
         for step in follow_up_steps
         if (stage := step.name.removeprefix("strategy_").removesuffix("_probe"))
     ]
+
+
+def _build_targeted_probe_follow_up_experiments(
+    *,
+    case: DebugCase,
+    root_cause_trace: list[dict[str, object]],
+) -> list[dict[str, str]]:
+    base_step_names = {step.name for step in plan_experiments(case).steps}
+    targeted_plan = plan_targeted_probe_experiments(case, root_cause_trace)
+    targeted_steps = [step for step in targeted_plan.steps if step.name not in base_step_names]
+    targeted_step_names = {step.name for step in targeted_steps}
+    target_ids: list[str] = []
+    for trace in root_cause_trace:
+        trace_target_ids = trace.get("target_ids")
+        if not isinstance(trace_target_ids, list):
+            continue
+        target_ids.extend(
+            target_id
+            for target_id in trace_target_ids
+            if isinstance(target_id, str) and _targeted_step_name(target_id) in targeted_step_names
+        )
+    return [
+        {
+            "source": "targeted_probe",
+            "target_id": target_id,
+            "planned_steps": step.name,
+            "summary": f"围绕目标 {target_id} 生成 targeted probing：{step.name}。",
+        }
+        for target_id, step in zip(target_ids, targeted_steps, strict=False)
+    ]
+
+
+def _targeted_step_name(target_id: str) -> str:
+    if target_id.startswith("image:region:"):
+        return "targeted_image_region_probe"
+    if target_id.startswith("video:segment:"):
+        return "targeted_video_segment_probe"
+    if target_id.startswith("multimodal:conflict:"):
+        return "targeted_multimodal_conflict_probe"
+    return ""
 
 
 def _build_confidence_reasons(

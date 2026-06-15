@@ -119,6 +119,61 @@ def plan_strategy_escalation_follow_up_experiments(
     )
 
 
+def plan_targeted_probe_experiments(
+    case: DebugCase,
+    root_cause_trace: list[dict[str, object]],
+    baseline_trials: int | None = None,
+) -> ExperimentPlan:
+    base_plan = plan_experiments(case, baseline_trials=baseline_trials)
+    target_ids = _target_ids_from_trace(root_cause_trace)
+    targeted_steps = [
+        step
+        for target_id in target_ids
+        if (step := _targeted_probe_step(target_id)) is not None
+    ]
+    if not targeted_steps:
+        return base_plan
+    return ExperimentPlan(
+        case_id=base_plan.case_id,
+        max_model_calls=base_plan.max_model_calls,
+        steps=[*base_plan.steps, *targeted_steps],
+    )
+
+
+def _target_ids_from_trace(root_cause_trace: list[dict[str, object]]) -> list[str]:
+    target_ids: list[str] = []
+    for trace in root_cause_trace:
+        values = trace.get("target_ids")
+        if not isinstance(values, list):
+            continue
+        for value in values:
+            if isinstance(value, str) and value and value not in target_ids:
+                target_ids.append(value)
+    return target_ids
+
+
+def _targeted_probe_step(target_id: str) -> ExperimentStep | None:
+    if target_id.startswith("image:region:"):
+        return ExperimentStep(
+            name="targeted_image_region_probe",
+            description=f"Probe image region target {target_id} with localized evidence replay.",
+            trials=1,
+        )
+    if target_id.startswith("video:segment:"):
+        return ExperimentStep(
+            name="targeted_video_segment_probe",
+            description=f"Probe video segment target {target_id} with temporal evidence replay.",
+            trials=1,
+        )
+    if target_id.startswith("multimodal:conflict:"):
+        return ExperimentStep(
+            name="targeted_multimodal_conflict_probe",
+            description=f"Probe multimodal conflict target {target_id} with cross-modal evidence replay.",
+            trials=1,
+        )
+    return None
+
+
 def _strategy_escalation_probe_name(stage: str) -> str:
     if stage == "ablation_expansion":
         return "strategy_escalation_single_modality_probe"

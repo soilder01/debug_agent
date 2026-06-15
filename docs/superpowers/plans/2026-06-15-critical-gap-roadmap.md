@@ -322,6 +322,19 @@
 - [x] Surface `needs_escalation` as a degraded health reason with an operator action.
 - [x] Render strategy feedback metrics in the observability panel.
 
+### Task 21: Targeted Region/Segment Probe Planner
+
+**Files:**
+- Modify: `backend/src/debug_agent/experiments/planner.py`
+- Modify: `backend/src/debug_agent/reports/generator.py`
+- Test: `backend/tests/experiments/test_planner.py`
+- Test: `backend/tests/reports/test_generator.py`
+
+- [x] Generate targeted probe steps from root cause trace target ids.
+- [x] Add image region, video segment, and multimodal conflict targeted probe types.
+- [x] Include targeted probe follow-up experiments in generated reports.
+- [x] Preserve existing debug strategy follow-ups while appending target-level probes.
+
 ## Verification Policy
 
 Every task must follow:
