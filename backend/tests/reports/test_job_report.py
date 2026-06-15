@@ -630,6 +630,84 @@ def test_build_report_for_job_stops_targeted_escalation_at_max_depth() -> None:
     ]
 
 
+def test_build_report_for_job_recovers_unresolved_final_attribution_verification() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    case = load_fixture_case("handwrite233").model_copy(update={"case_id": "job-report-attribution-recovery-case"})
+    repository.save_case(case)
+    repository.create_job(job_id="job-attribution-source", case_id=case.case_id, baseline_trials=1)
+    repository.save_evidence(
+        job_id="job-attribution-source",
+        case_id=case.case_id,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="job-attribution-source:baseline",
+                step_name="baseline_replay",
+                trial=0,
+                raw_output=case.predictions[0].raw_output,
+                judge=JudgeResult(score=0, reasons=["image:region:1 still failing"]),
+            )
+        ],
+    )
+    repository.save_human_handoff_status(
+        job_id="job-attribution-source",
+        target_id="image:region:1",
+        status="resolved",
+        actor="human-debugger",
+        note="Final attribution: prompt needs stricter region reading instructions.",
+    )
+    repository.create_job(job_id="job-final-attribution-recovery-verify", case_id=case.case_id, baseline_trials=1)
+    repository.save_evidence(
+        job_id="job-final-attribution-recovery-verify",
+        case_id=case.case_id,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="job-final-attribution-recovery-verify:fail",
+                step_name="final_attribution_prompt_verification",
+                trial=0,
+                raw_output=case.predictions[0].raw_output,
+                judge=JudgeResult(score=0, reasons=["image:region:1 still failing"]),
+            )
+        ],
+    )
+    repository.mark_completed("job-final-attribution-recovery-verify")
+    repository.save_strategy_follow_up_job(
+        source_job_id="job-attribution-source",
+        stage="final_attribution:image:region:1",
+        planned_steps="final_attribution_prompt_verification",
+        follow_up_job_id="job-final-attribution-recovery-verify",
+        actor="final-attribution-operator",
+        note="verification still fails",
+    )
+
+    report = build_report_for_job(repository, "job-attribution-source")
+
+    assert report is not None
+    assert {
+        "category": "attribution_recovery",
+        "priority": "critical",
+        "status": "pending",
+        "summary": "Recover unresolved final attribution verification for image:region:1.",
+        "detail": (
+            "Final attribution verification job job-final-attribution-recovery-verify returned not_resolved. "
+            "Re-open the attribution, inspect verification evidence, and run final_attribution_recovery_probe."
+        ),
+    } in report.recommended_actions
+    assert {
+        "source": "final_attribution_verification_outcome",
+        "target_id": "image:region:1",
+        "category": "prompt_issue",
+        "result": "not_resolved",
+        "verification_job_id": "job-final-attribution-recovery-verify",
+        "planned_steps": "final_attribution_recovery_probe",
+        "summary": (
+            "Final attribution verification for image:region:1 is not_resolved; "
+            "run final_attribution_recovery_probe to reassess the root cause before closure."
+        ),
+    } in report.follow_up_experiments
+
+
 def test_build_report_for_job_adds_escalation_follow_up_for_failed_strategy_outcome() -> None:
     session_factory, engine = create_sqlite_memory_session_factory()
     Base.metadata.create_all(engine)

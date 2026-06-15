@@ -650,6 +650,18 @@
 - [x] Add an operator action for unresolved final-attribution verification results.
 - [x] Render final-attribution verification observability metrics in the frontend panel.
 
+### Task 40: Final Attribution Verification Recovery Loop
+
+**Files:**
+- Modify: `backend/src/debug_agent/reports/job_report.py`
+- Test: `backend/tests/reports/test_job_report.py`
+
+- [x] Convert unresolved final-attribution verification outcomes into recovery recommended actions.
+- [x] Generate follow-up recovery probes when final attribution verification remains not resolved.
+- [x] Generate evidence-audit recovery steps when final attribution verification is inconclusive.
+- [x] Preserve resolved and pending verification outcomes without unnecessary recovery actions.
+- [x] Keep recovery entries attached to target id, category, result, and verification job lineage.
+
 ## Verification Policy
 
 Every task must follow:

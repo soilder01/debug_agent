@@ -59,10 +59,16 @@ def build_report_for_job(repository: DebugJobRepository, job_id: str) -> DebugRe
         report.recommended_actions = [
             *report.recommended_actions,
             *_build_final_attribution_recommended_actions(report.final_attributions),
+            *_build_final_attribution_verification_recovery_actions(
+                report.final_attribution_verification_results
+            ),
         ]
         report.follow_up_experiments = [
             *report.follow_up_experiments,
             *_build_final_attribution_follow_up_experiments(report.final_attributions),
+            *_build_final_attribution_verification_recovery_follow_up_experiments(
+                report.final_attribution_verification_results
+            ),
         ]
     return _merge_recommended_action_statuses(repository, job_id, report)
 
@@ -412,6 +418,26 @@ def _recommended_action_category_for_attribution(category: str) -> str:
     return "human_confirmed_action"
 
 
+def _build_final_attribution_verification_recovery_actions(
+    final_attribution_verification_results: list[dict[str, object]],
+) -> list[dict[str, str]]:
+    return [
+        {
+            "category": "attribution_recovery",
+            "priority": "critical" if result.get("result") == "not_resolved" else "high",
+            "status": "pending",
+            "summary": f"Recover unresolved final attribution verification for {result.get('target_id', 'unknown')}.",
+            "detail": (
+                f"Final attribution verification job {result.get('verification_job_id', '')} "
+                f"returned {result.get('result', 'unknown')}. Re-open the attribution, inspect verification "
+                f"evidence, and run {_final_attribution_verification_recovery_step(str(result.get('result', '')))}."
+            ),
+        }
+        for result in final_attribution_verification_results
+        if result.get("result") in {"not_resolved", "inconclusive"}
+    ]
+
+
 def _build_final_attribution_follow_up_experiments(final_attributions: list[dict[str, str]]) -> list[dict[str, str]]:
     return [
         {
@@ -428,6 +454,35 @@ def _build_final_attribution_follow_up_experiments(final_attributions: list[dict
         }
         for attribution in final_attributions
     ]
+
+
+def _build_final_attribution_verification_recovery_follow_up_experiments(
+    final_attribution_verification_results: list[dict[str, object]],
+) -> list[dict[str, str]]:
+    return [
+        {
+            "source": "final_attribution_verification_outcome",
+            "target_id": str(result.get("target_id", "unknown")),
+            "category": str(result.get("category", "unknown")),
+            "result": str(result.get("result", "unknown")),
+            "verification_job_id": str(result.get("verification_job_id", "")),
+            "planned_steps": _final_attribution_verification_recovery_step(str(result.get("result", ""))),
+            "summary": (
+                f"Final attribution verification for {result.get('target_id', 'unknown')} is "
+                f"{result.get('result', 'unknown')}; run "
+                f"{_final_attribution_verification_recovery_step(str(result.get('result', '')))} "
+                "to reassess the root cause before closure."
+            ),
+        }
+        for result in final_attribution_verification_results
+        if result.get("result") in {"not_resolved", "inconclusive"}
+    ]
+
+
+def _final_attribution_verification_recovery_step(result: str) -> str:
+    if result == "inconclusive":
+        return "final_attribution_evidence_audit"
+    return "final_attribution_recovery_probe"
 
 
 def _final_attribution_verification_step(category: str) -> str:
