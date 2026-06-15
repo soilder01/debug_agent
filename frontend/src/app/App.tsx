@@ -71,6 +71,7 @@ import { AgentTopologyPanel } from "../orchestration/AgentTopologyPanel";
 import { DebugReportWorkspace } from "../reports/DebugReportWorkspace";
 import { SpreadsheetSyncPanel } from "../spreadsheets/SpreadsheetSyncPanel";
 import { parseLarkSpreadsheetUrl } from "../spreadsheets/larkUrl";
+import { useProductMotion } from "./useProductMotion";
 
 const jobListLimit = 50;
 const caseListLimit = 50;
@@ -80,6 +81,7 @@ const defaultSheetId = "qJAomX";
 const localDevActor = "local-dev-operator";
 
 export function App() {
+  const motionScopeRef = useProductMotion();
   const [report, setReport] = useState<DebugReport | null>(null);
   const [submittedJob, setSubmittedJob] = useState<SubmittedDebugJob | null>(null);
   const [jobStatus, setJobStatus] = useState<DebugJobStatus | null>(null);
@@ -803,132 +805,154 @@ export function App() {
   }
 
   return (
-    <main>
-      <h1>Debug Detection Agent</h1>
-      <button type="button" onClick={submitJob}>
-        Submit debug job
-      </button>
-      <WorkerControlsPanel status={workerStatus} onStart={startWorkerLoop} onStop={stopWorkerLoop} />
-      <section>
-        <h2>Operational Monitoring</h2>
-        <button type="button" onClick={() => void loadObservabilitySummary()}>
-          Load observability summary
+    <main ref={motionScopeRef} className="agent-shell" data-motion-scope="debug-console">
+      <header className="agent-shell__hero" data-gsap-reveal>
+        <p className="agent-shell__eyebrow">Harness Debug Console</p>
+        <h1>Debug Detection Agent</h1>
+        <p className="agent-shell__summary">Evidence-first operations for model badcase triage.</p>
+        <button className="agent-shell__primary-action" type="button" onClick={submitJob}>
+          Submit debug job
         </button>
-      </section>
-      <AgentTopologyPanel />
-      {observabilitySummary ? (
-        <ObservabilitySummaryPanel
-          summary={observabilitySummary}
-          onLoadFailedJobs={() => void loadDebugJobs("failed")}
-          onLoadFailedWritebacks={() => void loadWritebackAudits("failed")}
-          onStartWorker={() => void startWorkerLoop()}
-        />
-      ) : null}
-      <ImportWorkspace
-        jsonlCases={jsonlCases}
-        jsonlImportResult={jsonlImportResult}
-        csvCases={csvCases}
-        csvImportResult={csvImportResult}
-        spreadsheetRowsJson={spreadsheetRowsJson}
-        spreadsheetImportResult={spreadsheetImportResult}
-        onJsonlChange={setJsonlCases}
-        onCsvChange={setCsvCases}
-        onSpreadsheetRowsJsonChange={setSpreadsheetRowsJson}
-        onImportJsonl={importJsonl}
-        onImportCsv={importCsv}
-        onImportSpreadsheetRowsJson={importSpreadsheetRowsJson}
-      />
-      <SpreadsheetSyncPanel
-        spreadsheetUrl={spreadsheetUrl}
-        spreadsheetId={spreadsheetId}
-        sheetId={sheetId}
-        larkSpreadsheetStatus={larkSpreadsheetStatus}
-        syncResult={spreadsheetSyncResult}
-        writebackAuditSummary={spreadsheetWritebackAuditSummary}
-        writebackAuditList={spreadsheetWritebackAuditList}
-        activeWritebackAuditStatus={activeWritebackAuditStatus ?? null}
-        writebackResult={spreadsheetWritebackResult}
-        onSpreadsheetUrlChange={setSpreadsheetUrl}
-        onSpreadsheetIdChange={setSpreadsheetId}
-        onSheetIdChange={setSheetId}
-        onUseSpreadsheetUrl={useSpreadsheetUrl}
-        onCheckLarkStatus={() => void checkLarkStatus()}
-        onSyncSpreadsheet={() => void syncSpreadsheet()}
-        onLoadWritebackAuditSummary={() => void loadWritebackAuditSummary()}
-        onLoadWritebackAudits={(status) => void loadWritebackAudits(status)}
-        onOpenAuditJob={(jobId) => void openWritebackAuditJob(jobId)}
-        onRetryAudit={(auditToRetry) => void retryWritebackAudit(auditToRetry)}
-        onLoadMoreWritebackAudits={() => void loadMoreWritebackAudits()}
-      />
-      <ImportedCasesPanel
-        cases={visibleImportedCases}
-        totalCount={importedCaseTotalCount}
-        effectiveCount={effectiveImportedCaseCount}
-        unloadedCount={unloadedCaseCount}
-        selectedCaseDetail={selectedCaseDetail}
-        onLoadImportedCases={() => void loadImportedCases(false)}
-        onLoadWithRegions={() => void loadImportedCases(true)}
-        onLoadAll={() => void loadImportedCases(false)}
-        onLoadMore={() => void loadMoreImportedCases()}
-        onUseForBatch={useImportedCasesForBatch}
-        onViewCaseDetail={(caseId) => void loadCaseDetail(caseId)}
-        onCreateDebugJob={(caseId) => void submitSelectedCaseJob(caseId)}
-      />
-      <BatchJobsPanel
-        caseIds={batchCaseIds}
-        batchResult={batchResult}
-        jobs={batchJobs}
-        summaryLabel={jobListSummaryLabel}
-        totalCount={jobListTotalCount ?? loadedJobCount}
-        unloadedCount={unloadedJobCount}
-        completedCount={completedBatchJobs}
-        onCaseIdsChange={setBatchCaseIds}
-        onSubmit={submitBatchJobs}
-        onLoadJobs={(status, sort) => void loadDebugJobs(status, sort)}
-        onStartWorker={startWorkerLoop}
-        onLoadMore={() => void loadMoreDebugJobs()}
-        onOpenJob={openBatchJob}
-        onSelectEvidence={(jobId, evidenceId) => void selectBatchJobEvidence(jobId, evidenceId)}
-      />
-      {error ? <p role="alert">{error}</p> : null}
-      {submittedJob ? (
-        <CurrentJobPanel
-          job={jobStatus ?? submittedJob}
-          selectedEvidence={selectedEvidence}
-          onSelectEvidence={selectJobEvidence}
-          onLoadReport={() => void loadCurrentJobReport()}
-        />
-      ) : null}
-      {report ? (
-        <DebugReportWorkspace
-          report={report}
-          selectedEvidence={selectedEvidence}
-          recommendedActionStatusEvents={recommendedActionStatusEvents}
-          recommendedActionVerifications={recommendedActionVerifications}
-          recommendedActionVerificationResults={recommendedActionVerificationResults}
-          strategyFollowUps={strategyFollowUps}
-          targetedProbes={targetedProbes}
-          humanHandoffStatuses={humanHandoffStatuses}
-          writebackResult={spreadsheetWritebackResult}
-          writebackAudit={spreadsheetWritebackAudit}
-          onSelectEvidence={selectEvidence}
-          onWriteReport={() => void writeCurrentReportToSpreadsheet()}
-          onLoadWritebackAudit={() => void loadCurrentWritebackAudit()}
-          onUpdateRecommendedActionStatus={(actionIndex, status) =>
-            void updateCurrentRecommendedActionStatus(actionIndex, status)
-          }
-          onUpdateHumanHandoffStatus={(targetId, status) => void updateCurrentHumanHandoffStatus(targetId, status)}
-          onVerifyRecommendedAction={(actionIndex) => void verifyCurrentRecommendedAction(actionIndex)}
-          onCreateStrategyFollowUp={(stage) => void createCurrentStrategyFollowUp(stage)}
-          onCreateTargetedProbe={(targetId) => void createCurrentTargetedProbe(targetId)}
-          onCreateFinalAttributionFollowUp={(targetId) => void createCurrentFinalAttributionFollowUp(targetId)}
-          onCreateFinalAttributionRecovery={(targetId) => void createCurrentFinalAttributionRecovery(targetId)}
-          onOpenStrategyFollowUp={(jobId) => void openStrategyFollowUpJob(jobId)}
-          onOpenTargetedProbe={(jobId) => void openStrategyFollowUpJob(jobId)}
-        />
-      ) : submittedJob ? null : (
-        <p>点击按钮运行第一条可验证 debug 闭环。</p>
-      )}
+      </header>
+
+      <div className="agent-shell__grid">
+        <aside className="agent-shell__rail" aria-label="Operations rail" data-testid="motion-panel" data-anime-flow>
+          <WorkerControlsPanel status={workerStatus} onStart={startWorkerLoop} onStop={stopWorkerLoop} />
+          <section>
+            <h2>Operational Monitoring</h2>
+            <button type="button" onClick={() => void loadObservabilitySummary()}>
+              Load observability summary
+            </button>
+          </section>
+          <AgentTopologyPanel />
+        </aside>
+
+        <section className="agent-shell__intake" aria-label="Case intake" data-testid="motion-panel" data-anime-flow>
+          <ImportWorkspace
+            jsonlCases={jsonlCases}
+            jsonlImportResult={jsonlImportResult}
+            csvCases={csvCases}
+            csvImportResult={csvImportResult}
+            spreadsheetRowsJson={spreadsheetRowsJson}
+            spreadsheetImportResult={spreadsheetImportResult}
+            onJsonlChange={setJsonlCases}
+            onCsvChange={setCsvCases}
+            onSpreadsheetRowsJsonChange={setSpreadsheetRowsJson}
+            onImportJsonl={importJsonl}
+            onImportCsv={importCsv}
+            onImportSpreadsheetRowsJson={importSpreadsheetRowsJson}
+          />
+          <SpreadsheetSyncPanel
+            spreadsheetUrl={spreadsheetUrl}
+            spreadsheetId={spreadsheetId}
+            sheetId={sheetId}
+            larkSpreadsheetStatus={larkSpreadsheetStatus}
+            syncResult={spreadsheetSyncResult}
+            writebackAuditSummary={spreadsheetWritebackAuditSummary}
+            writebackAuditList={spreadsheetWritebackAuditList}
+            activeWritebackAuditStatus={activeWritebackAuditStatus ?? null}
+            writebackResult={spreadsheetWritebackResult}
+            onSpreadsheetUrlChange={setSpreadsheetUrl}
+            onSpreadsheetIdChange={setSpreadsheetId}
+            onSheetIdChange={setSheetId}
+            onUseSpreadsheetUrl={useSpreadsheetUrl}
+            onCheckLarkStatus={() => void checkLarkStatus()}
+            onSyncSpreadsheet={() => void syncSpreadsheet()}
+            onLoadWritebackAuditSummary={() => void loadWritebackAuditSummary()}
+            onLoadWritebackAudits={(status) => void loadWritebackAudits(status)}
+            onOpenAuditJob={(jobId) => void openWritebackAuditJob(jobId)}
+            onRetryAudit={(auditToRetry) => void retryWritebackAudit(auditToRetry)}
+            onLoadMoreWritebackAudits={() => void loadMoreWritebackAudits()}
+          />
+          <ImportedCasesPanel
+            cases={visibleImportedCases}
+            totalCount={importedCaseTotalCount}
+            effectiveCount={effectiveImportedCaseCount}
+            unloadedCount={unloadedCaseCount}
+            selectedCaseDetail={selectedCaseDetail}
+            onLoadImportedCases={() => void loadImportedCases(false)}
+            onLoadWithRegions={() => void loadImportedCases(true)}
+            onLoadAll={() => void loadImportedCases(false)}
+            onLoadMore={() => void loadMoreImportedCases()}
+            onUseForBatch={useImportedCasesForBatch}
+            onViewCaseDetail={(caseId) => void loadCaseDetail(caseId)}
+            onCreateDebugJob={(caseId) => void submitSelectedCaseJob(caseId)}
+          />
+        </section>
+
+        <section
+          className="agent-shell__workspace"
+          aria-label="Investigation workspace"
+          data-testid="motion-panel"
+          data-anime-flow
+        >
+          {observabilitySummary ? (
+            <ObservabilitySummaryPanel
+              summary={observabilitySummary}
+              onLoadFailedJobs={() => void loadDebugJobs("failed")}
+              onLoadFailedWritebacks={() => void loadWritebackAudits("failed")}
+              onStartWorker={() => void startWorkerLoop()}
+            />
+          ) : null}
+          <BatchJobsPanel
+            caseIds={batchCaseIds}
+            batchResult={batchResult}
+            jobs={batchJobs}
+            summaryLabel={jobListSummaryLabel}
+            totalCount={jobListTotalCount ?? loadedJobCount}
+            unloadedCount={unloadedJobCount}
+            completedCount={completedBatchJobs}
+            onCaseIdsChange={setBatchCaseIds}
+            onSubmit={submitBatchJobs}
+            onLoadJobs={(status, sort) => void loadDebugJobs(status, sort)}
+            onStartWorker={startWorkerLoop}
+            onLoadMore={() => void loadMoreDebugJobs()}
+            onOpenJob={openBatchJob}
+            onSelectEvidence={(jobId, evidenceId) => void selectBatchJobEvidence(jobId, evidenceId)}
+          />
+          {error ? <p role="alert">{error}</p> : null}
+          <div className="agent-shell__investigation" data-testid="motion-panel" data-gsap-reveal>
+            {submittedJob ? (
+              <CurrentJobPanel
+                job={jobStatus ?? submittedJob}
+                selectedEvidence={selectedEvidence}
+                onSelectEvidence={selectJobEvidence}
+                onLoadReport={() => void loadCurrentJobReport()}
+              />
+            ) : null}
+            {report ? (
+              <DebugReportWorkspace
+                report={report}
+                selectedEvidence={selectedEvidence}
+                recommendedActionStatusEvents={recommendedActionStatusEvents}
+                recommendedActionVerifications={recommendedActionVerifications}
+                recommendedActionVerificationResults={recommendedActionVerificationResults}
+                strategyFollowUps={strategyFollowUps}
+                targetedProbes={targetedProbes}
+                humanHandoffStatuses={humanHandoffStatuses}
+                writebackResult={spreadsheetWritebackResult}
+                writebackAudit={spreadsheetWritebackAudit}
+                onSelectEvidence={selectEvidence}
+                onWriteReport={() => void writeCurrentReportToSpreadsheet()}
+                onLoadWritebackAudit={() => void loadCurrentWritebackAudit()}
+                onUpdateRecommendedActionStatus={(actionIndex, status) =>
+                  void updateCurrentRecommendedActionStatus(actionIndex, status)
+                }
+                onUpdateHumanHandoffStatus={(targetId, status) => void updateCurrentHumanHandoffStatus(targetId, status)}
+                onVerifyRecommendedAction={(actionIndex) => void verifyCurrentRecommendedAction(actionIndex)}
+                onCreateStrategyFollowUp={(stage) => void createCurrentStrategyFollowUp(stage)}
+                onCreateTargetedProbe={(targetId) => void createCurrentTargetedProbe(targetId)}
+                onCreateFinalAttributionFollowUp={(targetId) => void createCurrentFinalAttributionFollowUp(targetId)}
+                onCreateFinalAttributionRecovery={(targetId) => void createCurrentFinalAttributionRecovery(targetId)}
+                onOpenStrategyFollowUp={(jobId) => void openStrategyFollowUpJob(jobId)}
+                onOpenTargetedProbe={(jobId) => void openStrategyFollowUpJob(jobId)}
+              />
+            ) : submittedJob ? null : (
+              <p className="agent-shell__empty">点击按钮运行第一条可验证 debug 闭环。</p>
+            )}
+          </div>
+        </section>
+      </div>
     </main>
   );
 }

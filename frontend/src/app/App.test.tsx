@@ -17,6 +17,20 @@ describe("App", () => {
     expect(screen.queryByText("Handwriting OCR Debug Agent")).not.toBeInTheDocument();
   });
 
+  it("renders a productized debug console shell with motion hooks", () => {
+    render(<App />);
+
+    const shell = screen.getByRole("main");
+    expect(shell).toHaveClass("agent-shell");
+    expect(shell).toHaveAttribute("data-motion-scope", "debug-console");
+    expect(screen.getByText("Harness Debug Console")).toBeInTheDocument();
+    expect(screen.getByText("Evidence-first operations for model badcase triage.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Operations rail")).toHaveClass("agent-shell__rail");
+    expect(screen.getByLabelText("Case intake")).toHaveClass("agent-shell__intake");
+    expect(screen.getByLabelText("Investigation workspace")).toHaveClass("agent-shell__workspace");
+    expect(screen.getAllByTestId("motion-panel").length).toBeGreaterThanOrEqual(4);
+  });
+
   it("renders the logical agent topology", () => {
     render(<App />);
 

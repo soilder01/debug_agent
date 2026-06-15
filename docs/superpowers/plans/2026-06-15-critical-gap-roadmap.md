@@ -740,6 +740,23 @@
 - Keep the existing backend roadmap state intact; do not continue backend feature work until frontend productization is resumed or explicitly reprioritized.
 - Preserve current verification discipline: frontend changes still need focused Vitest coverage, full `verify.ps1`, diff check, and secret scan before commit.
 
+### Task 45: Frontend Productized Console Shell
+
+**Files:**
+- Modify: `frontend/package.json`
+- Modify: `frontend/pnpm-lock.yaml`
+- Modify: `frontend/src/main.tsx`
+- Modify: `frontend/src/app/App.tsx`
+- Add: `frontend/src/app/useProductMotion.ts`
+- Add: `frontend/src/styles/product.css`
+- Test: `frontend/src/app/App.test.tsx`
+
+- [x] Add a productized debug console shell with a hero, operations rail, case intake column, and investigation workspace.
+- [x] Add GSAP React motion for primary reveal sequencing with scoped cleanup.
+- [x] Add Anime.js stagger motion for workspace panel flow while respecting reduced motion.
+- [x] Add a restrained visual system for typography, spacing, surfaces, buttons, and responsive layouts.
+- [x] Preserve existing app workflows and interaction tests after layout restructuring.
+
 ## Verification Policy
 
 Every task must follow:
