@@ -236,6 +236,46 @@ def test_strategy_follow_up_api_evaluates_completed_follow_up_outcome() -> None:
     assert follow_up["escalation"] == ""
 
 
+def test_strategy_follow_up_api_creates_escalation_debug_job_from_failed_strategy_outcome() -> None:
+    client = TestClient(app)
+    job_id = _create_job_with_cross_modal_strategy()
+    create_response = client.post(
+        f"/jobs/{job_id}/strategy-follow-ups/ablation_expansion/debug-jobs",
+        json={"actor": "strategy-operator", "note": "run ablation expansion"},
+    )
+    assert create_response.status_code == 202
+    failed_follow_up_job_id = create_response.json()["follow_up_job_id"]
+    source_job = routes.job_repository.get_job(job_id)
+    assert source_job is not None
+    routes.job_repository.save_evidence(
+        job_id=failed_follow_up_job_id,
+        case_id=source_job.case_id,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id=f"{failed_follow_up_job_id}:strategy-fail",
+                step_name="strategy_ablation_expansion_probe",
+                trial=0,
+                raw_output="{\"conflicts\":[]}",
+                judge=JudgeResult(score=0, reasons=["multimodal:conflict:1 conflict_actual_mismatch"]),
+            )
+        ],
+    )
+    routes.job_repository.mark_completed(failed_follow_up_job_id)
+
+    response = client.post(
+        f"/jobs/{job_id}/strategy-follow-ups/ablation_expansion/debug-jobs",
+        json={"actor": "strategy-operator", "note": "run escalation probe"},
+    )
+
+    assert response.status_code == 202
+    body = response.json()
+    assert body["stage"] == "ablation_expansion"
+    assert body["planned_steps"] == "strategy_escalation_single_modality_probe"
+    assert body["note"] == "run escalation probe"
+    routes.job_repository.mark_failed(failed_follow_up_job_id, "test cleanup after completed follow-up")
+    routes.job_repository.mark_failed(body["follow_up_job_id"], "test cleanup")
+
+
 def test_strategy_follow_up_api_rejects_unknown_stage() -> None:
     client = TestClient(app)
     job_id = _create_job_with_recommended_actions()
@@ -416,6 +456,66 @@ def _create_job_with_recommended_actions() -> str:
                 request_summary={"ablation_variant": "text_only", "ablation_modalities": ["text"]},
                 raw_output="{\"conflicts\":[]}",
                 judge=JudgeResult(score=1, reasons=[]),
+            ),
+        ],
+    )
+    return job_id
+
+
+def _create_job_with_cross_modal_strategy() -> str:
+    job_id = f"job-cross-modal-strategy-{uuid4()}"
+    case = DebugCase.model_validate(
+        {
+            "case_id": f"case-cross-modal-strategy-{uuid4()}",
+            "task_type": "multimodal_detection",
+            "image_uri": "file:///tmp/multimodal.mp4",
+            "prompt": "Compare image and caption, then return cross-modal conflict JSON.",
+            "golden_answer": {"answers": []},
+            "expected_output": {
+                "conflicts": [
+                    {
+                        "target_id": "multimodal:conflict:1",
+                        "conflict_type": "visual_text_conflict",
+                        "modalities": ["image", "text"],
+                        "expected": "caption matches image",
+                        "actual": "caption says cat but image shows dog",
+                    }
+                ]
+            },
+            "scoring_standard": "cross-modal claims must agree.",
+            "predictions": [{"trial": 0, "raw_output": "{\"conflicts\":[]}", "score": 0}],
+            "avg_score": 0.0,
+        }
+    )
+    routes.job_repository.save_case(case)
+    routes.job_repository.create_job(job_id=job_id, case_id=case.case_id)
+    routes.job_repository.save_evidence(
+        job_id=job_id,
+        case_id=case.case_id,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id=f"{job_id}:image-only",
+                step_name="modality_ablation_check",
+                trial=0,
+                request_summary={"ablation_variant": "image_only", "ablation_modalities": ["image"]},
+                raw_output="{\"conflicts\":[]}",
+                judge=JudgeResult(score=1, reasons=[]),
+            ),
+            ExperimentEvidence(
+                evidence_id=f"{job_id}:text-only",
+                step_name="modality_ablation_check",
+                trial=1,
+                request_summary={"ablation_variant": "text_only", "ablation_modalities": ["text"]},
+                raw_output="{\"conflicts\":[]}",
+                judge=JudgeResult(score=1, reasons=[]),
+            ),
+            ExperimentEvidence(
+                evidence_id=f"{job_id}:cross-modal",
+                step_name="modality_ablation_check",
+                trial=2,
+                request_summary={"ablation_variant": "cross_modal_compare", "ablation_modalities": ["image", "text"]},
+                raw_output=case.predictions[0].raw_output,
+                judge=JudgeResult(score=0, reasons=["multimodal:conflict:1 conflict_actual_mismatch"]),
             ),
         ],
     )

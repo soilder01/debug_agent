@@ -282,6 +282,19 @@
 - [x] Append escalation-driven follow-up experiments to rebuilt reports.
 - [x] Preserve base recipe routing while adding escalation probes only when stop conditions fail.
 
+### Task 18: Escalation Follow-Up Job Submission
+
+**Files:**
+- Modify: `backend/src/debug_agent/api/routes.py`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `backend/tests/api/test_recommended_action_status.py`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Allow `strategy_outcome` escalation follow-up experiments to create debug jobs.
+- [x] Prefer escalation-derived planned steps over original debug strategy planned steps when both share the same stage.
+- [x] Render runnable controls for escalation follow-up experiments in the report panel.
+- [x] Preserve existing debug strategy follow-up submission behavior.
+
 ## Verification Policy
 
 Every task must follow:

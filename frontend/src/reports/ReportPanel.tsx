@@ -239,7 +239,7 @@ export function ReportPanel({
                   {followUp.source}/{followUp.stage ?? followUp.result ?? "unknown"}：{followUp.planned_steps}
                 </p>
                 <p>{followUp.summary}</p>
-                {onCreateStrategyFollowUp && followUp.source === "debug_strategy" && followUp.stage ? (
+                {onCreateStrategyFollowUp && isRunnableStrategyFollowUp(followUp.source) && followUp.stage ? (
                   <p>
                     <button type="button" onClick={() => onCreateStrategyFollowUp(followUp.stage!)}>
                       Run strategy follow-up {followUp.stage}
@@ -396,6 +396,10 @@ function CitationCoverage({ artifactIds = "", evidenceIds = "", traceRefs = "" }
       {traceRefs ? <p>Trace：{traceRefs}</p> : null}
     </>
   );
+}
+
+function isRunnableStrategyFollowUp(source: string) {
+  return source === "debug_strategy" || source === "strategy_outcome";
 }
 
 type ArtifactEvidenceButtonsProps = {

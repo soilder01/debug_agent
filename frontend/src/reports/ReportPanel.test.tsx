@@ -638,6 +638,49 @@ describe("ReportPanel", () => {
     expect(onUpdateRecommendedActionStatus).toHaveBeenNthCalledWith(3, 0, "applied");
   });
 
+  it("delegates strategy outcome escalation follow-up creation", async () => {
+    const onCreateStrategyFollowUp = vi.fn();
+    const report: DebugReport = {
+      job_id: "job-strategy-outcome",
+      case_id: "case-strategy-outcome",
+      status: "needs_human_review",
+      observed_failure: {
+        type: "cross_modal_alignment_failure",
+        summary: "cross-modal compare failed",
+        affected_box_ids: []
+      },
+      planned_experiments: ["modality_ablation_check"],
+      experiment_summary: null,
+      root_cause: {
+        label: "cross_modal_alignment_failure",
+        confidence: "high",
+        evidence_summary: "cross-modal variant failed."
+      },
+      follow_up_experiments: [
+        {
+          source: "strategy_outcome",
+          stage: "ablation_expansion",
+          result: "needs_escalation",
+          planned_steps: "strategy_escalation_single_modality_probe",
+          summary:
+            "策略阶段 ablation_expansion 的 follow-up job job-strategy-follow-up 未满足停止条件，已生成升级 probing：strategy_escalation_single_modality_probe。"
+        }
+      ],
+      suggested_sheet_fields: {
+        错误原因: "跨模态对齐问题"
+      }
+    };
+
+    render(<ReportPanel report={report} onCreateStrategyFollowUp={onCreateStrategyFollowUp} />);
+
+    expect(
+      screen.getByText("strategy_outcome/ablation_expansion：strategy_escalation_single_modality_probe")
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Run strategy follow-up ablation_expansion" }));
+
+    expect(onCreateStrategyFollowUp).toHaveBeenCalledWith("ablation_expansion");
+  });
+
   it("delegates verification reruns for applied recommended actions", async () => {
     const onVerifyRecommendedAction = vi.fn();
     const report: DebugReport = {

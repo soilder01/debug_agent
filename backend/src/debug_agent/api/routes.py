@@ -958,6 +958,9 @@ def _raise_if_usage_budget_blocks_submission() -> None:
 
 def _strategy_follow_up_from_report(report: DebugReport, stage: str) -> dict[str, str] | None:
     for follow_up in report.follow_up_experiments:
+        if follow_up.get("source") == "strategy_outcome" and follow_up.get("stage") == stage:
+            return follow_up
+    for follow_up in report.follow_up_experiments:
         if follow_up.get("source") == "debug_strategy" and follow_up.get("stage") == stage:
             return follow_up
     return None
