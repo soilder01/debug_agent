@@ -410,6 +410,13 @@ export type ObservabilitySummary = {
     passed_stop_condition_count: number;
     needs_escalation_count: number;
   };
+  targeted_probe_feedback?: {
+    total_probes: number;
+    pending_count: number;
+    target_cleared_count: number;
+    target_still_failing_count: number;
+    inconclusive_count: number;
+  };
   usage: {
     model_call_count: number;
     prompt_character_count: number;

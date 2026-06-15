@@ -350,12 +350,21 @@ class ObservabilityStrategyFeedbackSummary(BaseModel):
     needs_escalation_count: int
 
 
+class ObservabilityTargetedProbeFeedbackSummary(BaseModel):
+    total_probes: int
+    pending_count: int
+    target_cleared_count: int
+    target_still_failing_count: int
+    inconclusive_count: int
+
+
 class ObservabilitySummaryResponse(BaseModel):
     jobs: ObservabilityJobSummary
     worker: WorkerRuntimeStatus
     writeback_audits: SpreadsheetWritebackAuditSummaryResponse
     evidence: ObservabilityEvidenceSummary
     strategy_feedback: ObservabilityStrategyFeedbackSummary
+    targeted_probe_feedback: ObservabilityTargetedProbeFeedbackSummary
     health: ObservabilityHealthSummary
     usage: ObservabilityUsageSummary
 
@@ -392,6 +401,7 @@ def get_observability_summary() -> ObservabilitySummaryResponse:
         budget_enforcement_enabled=settings.enforce_usage_budget,
     )
     strategy_feedback_summary = _build_strategy_feedback_summary()
+    targeted_probe_feedback_summary = _build_targeted_probe_feedback_summary()
     job_summary = ObservabilityJobSummary(
         by_status=job_counts,
         total_count=sum(job_counts.values()),
@@ -410,6 +420,7 @@ def get_observability_summary() -> ObservabilitySummaryResponse:
         writeback_audits=writeback_summary,
         evidence=evidence_summary,
         strategy_feedback=strategy_feedback_summary,
+        targeted_probe_feedback=targeted_probe_feedback_summary,
         health=_build_observability_health(
             jobs=job_summary,
             worker=worker_status,
@@ -417,6 +428,7 @@ def get_observability_summary() -> ObservabilitySummaryResponse:
             evidence=evidence_summary,
             usage=usage_summary,
             strategy_feedback=strategy_feedback_summary,
+            targeted_probe_feedback=targeted_probe_feedback_summary,
         ),
         usage=usage_summary,
     )
@@ -1041,6 +1053,24 @@ def _build_strategy_feedback_summary() -> ObservabilityStrategyFeedbackSummary:
     )
 
 
+def _build_targeted_probe_feedback_summary() -> ObservabilityTargetedProbeFeedbackSummary:
+    outcomes = [
+        TargetedProbeJobWithOutcome.model_validate(probe)
+        for source_job_id in {
+            probe.source_job_id
+            for probe in job_repository.list_all_targeted_probe_jobs()
+        }
+        for probe in build_targeted_probe_results(job_repository, source_job_id)
+    ]
+    return ObservabilityTargetedProbeFeedbackSummary(
+        total_probes=len(outcomes),
+        pending_count=sum(1 for item in outcomes if item.outcome == "pending"),
+        target_cleared_count=sum(1 for item in outcomes if item.outcome == "target_cleared"),
+        target_still_failing_count=sum(1 for item in outcomes if item.outcome == "target_still_failing"),
+        inconclusive_count=sum(1 for item in outcomes if item.outcome == "inconclusive"),
+    )
+
+
 def _raise_if_usage_budget_blocks_submission() -> None:
     if not settings.enforce_usage_budget:
         return
@@ -1078,6 +1108,7 @@ def _build_observability_health(
     evidence: ObservabilityEvidenceSummary,
     usage: ObservabilityUsageSummary,
     strategy_feedback: ObservabilityStrategyFeedbackSummary,
+    targeted_probe_feedback: ObservabilityTargetedProbeFeedbackSummary,
 ) -> ObservabilityHealthSummary:
     critical_reasons: list[str] = []
     degraded_reasons: list[str] = []
@@ -1101,6 +1132,8 @@ def _build_observability_health(
         degraded_reasons.append("skipped spreadsheet writebacks present")
     if strategy_feedback.needs_escalation_count > 0:
         degraded_reasons.append("strategy follow-ups need escalation")
+    if targeted_probe_feedback.target_still_failing_count > 0:
+        degraded_reasons.append("targeted probes still failing")
     if critical_reasons:
         reasons = critical_reasons + degraded_reasons
         return ObservabilityHealthSummary(level="critical", reasons=reasons, actions=_observability_actions(reasons))
@@ -1127,6 +1160,7 @@ def _observability_actions(reasons: list[str]) -> list[str]:
         "response parse errors present": "Inspect prompts and parser assumptions for malformed model outputs.",
         "skipped spreadsheet writebacks present": "Check spreadsheet row mappings before retrying writeback.",
         "strategy follow-ups need escalation": "Open strategy follow-up history and run escalation probes.",
+        "targeted probes still failing": "Open targeted probe history and escalate unresolved targets.",
     }
     actions: list[str] = []
     for reason in reasons:

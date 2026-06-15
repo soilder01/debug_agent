@@ -395,6 +395,23 @@
 - [x] Automatically rebuild and write back the source job report when a targeted probe job completes.
 - [x] Keep strategy follow-up writeback behavior unchanged.
 
+### Task 25: Targeted Probe Feedback Observability
+
+**Files:**
+- Modify: `backend/src/debug_agent/api/routes.py`
+- Modify: `backend/src/debug_agent/storage/repository.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/observability/ObservabilitySummaryPanel.tsx`
+- Test: `backend/tests/api/test_observability_summary.py`
+- Test: `frontend/src/observability/ObservabilitySummaryPanel.test.tsx`
+- Test: `frontend/src/app/App.test.tsx`
+
+- [x] Add targeted probe feedback counts to observability summary.
+- [x] Track total, pending, target cleared, target still failing, and inconclusive counts.
+- [x] Surface target still failing probes as a degraded health reason with an operator action.
+- [x] Render targeted probe metrics in the observability panel.
+- [x] Preserve compatibility with older frontend summary mocks through fallback defaults.
+
 ## Verification Policy
 
 Every task must follow:

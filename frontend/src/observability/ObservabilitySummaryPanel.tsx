@@ -19,6 +19,13 @@ export function ObservabilitySummaryPanel({
     passed_stop_condition_count: 0,
     needs_escalation_count: 0
   };
+  const targetedProbeFeedback = summary.targeted_probe_feedback ?? {
+    total_probes: 0,
+    pending_count: 0,
+    target_cleared_count: 0,
+    target_still_failing_count: 0,
+    inconclusive_count: 0
+  };
   return (
     <section>
       <h2>Observability</h2>
@@ -53,6 +60,11 @@ export function ObservabilitySummaryPanel({
       <p>Observed strategy pending：{strategyFeedback.pending_count}</p>
       <p>Observed strategy passed stop condition：{strategyFeedback.passed_stop_condition_count}</p>
       <p>Observed strategy needs escalation：{strategyFeedback.needs_escalation_count}</p>
+      <p>Observed targeted probes：{targetedProbeFeedback.total_probes}</p>
+      <p>Observed targeted pending：{targetedProbeFeedback.pending_count}</p>
+      <p>Observed targeted cleared：{targetedProbeFeedback.target_cleared_count}</p>
+      <p>Observed targeted still failing：{targetedProbeFeedback.target_still_failing_count}</p>
+      <p>Observed targeted inconclusive：{targetedProbeFeedback.inconclusive_count}</p>
       <p>Observed health：{summary.health.level}</p>
       {summary.health.reasons.map((reason) => (
         <p key={reason}>Observed health reason：{reason}</p>
