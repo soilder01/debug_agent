@@ -615,6 +615,50 @@ def test_generate_report_builds_ablation_root_cause_trace() -> None:
     ]
 
 
+def test_generate_report_includes_verification_follow_up_plan_summary() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "report-verification-follow-up",
+            "task_type": "video_detection",
+            "image_uri": "file:///tmp/video.mp4",
+            "prompt": "Detect events and return temporal segment JSON.",
+            "golden_answer": {"answers": []},
+            "expected_output": {
+                "temporal_segments": [
+                    {"target_id": "video:segment:1", "start_ms": 1000, "end_ms": 2500, "label": "person_enters"}
+                ]
+            },
+            "scoring_standard": "temporal segment target ids and labels must match.",
+            "predictions": [{"trial": 0, "raw_output": "{\"temporal_segments\":[]}", "score": 0}],
+            "avg_score": 0.0,
+        }
+    )
+    plan = plan_experiments(case)
+
+    report = generate_initial_report(
+        case,
+        plan,
+        verification_results=[
+            {
+                "verification_job_id": "job-verify-video",
+                "result": "regressed",
+            }
+        ],
+    )
+
+    assert report.follow_up_experiments == [
+        {
+            "source": "verification_result",
+            "verification_job_id": "job-verify-video",
+            "result": "regressed",
+            "planned_steps": (
+                "baseline_replay, temporal_schema_check, temporal_grounding_check, verification_regression_probe"
+            ),
+            "summary": "验证任务 job-verify-video 结果为 regressed，建议执行 4 个后续 probing 步骤。",
+        }
+    ]
+
+
 def test_generate_report_uses_generic_output_mismatch_for_non_ocr_structured_deltas() -> None:
     case = DebugCase.model_validate(
         {

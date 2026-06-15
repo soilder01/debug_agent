@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 
 from debug_agent.cases.models import DebugCase
-from debug_agent.experiments.planner import ExperimentPlan
+from debug_agent.experiments.planner import ExperimentPlan, plan_verification_follow_up_experiments
 from debug_agent.experiments.runner import ExperimentEvidence, ExperimentRunResult
 from debug_agent.reports.taxonomy import taxonomy_for_task_type
 
@@ -42,6 +42,7 @@ class DebugReport(BaseModel):
     evidence_citations: list[dict[str, object]] = Field(default_factory=list)
     root_cause_trace: list[dict[str, object]] = Field(default_factory=list)
     recommended_actions: list[dict[str, str]] = Field(default_factory=list)
+    follow_up_experiments: list[dict[str, str]] = Field(default_factory=list)
     suggested_sheet_fields: dict[str, str]
 
 
@@ -50,6 +51,7 @@ def generate_initial_report(
     plan: ExperimentPlan,
     run_result: ExperimentRunResult | None = None,
     job_id: str | None = None,
+    verification_results: list[dict[str, object]] | None = None,
 ) -> DebugReport:
     experiment_summary = None
     if run_result is not None:
@@ -86,6 +88,7 @@ def generate_initial_report(
         evidence_citations=_build_evidence_citations(run_result),
         root_cause_trace=_build_root_cause_trace(run_result),
         recommended_actions=_build_recommended_actions(root_cause),
+        follow_up_experiments=_build_follow_up_experiments(case, verification_results or []),
         suggested_sheet_fields=suggested_sheet_fields,
     )
 
@@ -226,6 +229,33 @@ def _build_recommended_actions(root_cause: RootCause) -> list[dict[str, str]]:
             },
         ]
     return []
+
+
+def _build_follow_up_experiments(
+    case: DebugCase,
+    verification_results: list[dict[str, object]],
+) -> list[dict[str, str]]:
+    follow_ups: list[dict[str, str]] = []
+    for verification_result in verification_results:
+        result = verification_result.get("result")
+        verification_job_id = verification_result.get("verification_job_id")
+        if result not in {"not_resolved", "regressed"} or not isinstance(verification_job_id, str):
+            continue
+        follow_up_plan = plan_verification_follow_up_experiments(case, verification_result)
+        planned_steps = ", ".join(step.name for step in follow_up_plan.steps)
+        follow_ups.append(
+            {
+                "source": "verification_result",
+                "verification_job_id": verification_job_id,
+                "result": str(result),
+                "planned_steps": planned_steps,
+                "summary": (
+                    f"验证任务 {verification_job_id} 结果为 {result}，"
+                    f"建议执行 {len(follow_up_plan.steps)} 个后续 probing 步骤。"
+                ),
+            }
+        )
+    return follow_ups
 
 
 def _modality_from_root_cause_summary(summary: str) -> str:

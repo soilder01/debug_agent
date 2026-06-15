@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 from debug_agent.cases.models import DebugCase
-from debug_agent.experiments.planner import plan_experiments
+from debug_agent.experiments.planner import plan_experiments, plan_verification_follow_up_experiments
 from debug_agent.recipes.classification import ClassificationRecipe
 from debug_agent.recipes.handwriting_ocr import HandwritingOcrRecipe
 from debug_agent.recipes.image_detection import ImageDetectionRecipe
@@ -287,3 +287,91 @@ def test_plan_experiments_adds_multimodal_ablation_variants() -> None:
     assert ablation_step.ablation_variants[1].modalities == ["text"]
     assert "Ignore visual" in ablation_step.ablation_variants[1].prompt_instructions
     assert ablation_step.ablation_variants[2].modalities == ["image", "text"]
+
+
+def test_plan_verification_follow_up_experiments_for_unresolved_multimodal_result() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "multimodal-verification-unresolved",
+            "task_type": "multimodal_detection",
+            "image_uri": "file:///tmp/multimodal-input.mp4",
+            "prompt": "Compare the image and caption, then return cross-modal conflict JSON.",
+            "golden_answer": {"answers": []},
+            "expected_output": {
+                "conflicts": [
+                    {
+                        "target_id": "multimodal:conflict:1",
+                        "conflict_type": "visual_text_conflict",
+                        "modalities": ["image", "text"],
+                        "expected": "caption matches the visual subject",
+                        "actual": "image and caption both describe a cat",
+                    }
+                ]
+            },
+            "scoring_standard": "cross-modal claims must agree.",
+            "predictions": [{"trial": 0, "raw_output": "{\"conflicts\":[]}", "score": 0}],
+            "avg_score": 0.0,
+        }
+    )
+
+    plan = plan_verification_follow_up_experiments(
+        case,
+        {
+            "verification_job_id": "job-verify-1",
+            "result": "not_resolved",
+        },
+        baseline_trials=2,
+    )
+
+    assert plan.case_id == "multimodal-verification-unresolved"
+    assert [step.name for step in plan.steps] == [
+        "baseline_replay",
+        "cross_modal_schema_check",
+        "modality_ablation_check",
+        "conflict_grounding_check",
+        "verification_unresolved_probe",
+    ]
+    follow_up_step = plan.steps[-1]
+    assert follow_up_step.trials == 1
+    assert follow_up_step.description == (
+        "Probe unresolved verification job job-verify-1 with a targeted follow-up experiment."
+    )
+
+
+def test_plan_verification_follow_up_experiments_for_regressed_video_result() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "video-verification-regressed",
+            "task_type": "video_detection",
+            "image_uri": "file:///tmp/video-input.mp4",
+            "prompt": "Detect events and return temporal segment JSON.",
+            "golden_answer": {"answers": []},
+            "expected_output": {
+                "temporal_segments": [
+                    {"target_id": "video:segment:1", "start_ms": 1000, "end_ms": 2500, "label": "person_enters"}
+                ]
+            },
+            "scoring_standard": "temporal segment target ids and labels must match.",
+            "predictions": [{"trial": 0, "raw_output": "{\"temporal_segments\":[]}", "score": 0}],
+            "avg_score": 0.0,
+        }
+    )
+
+    plan = plan_verification_follow_up_experiments(
+        case,
+        {
+            "verification_job_id": "job-verify-video",
+            "result": "regressed",
+        },
+        baseline_trials=1,
+    )
+
+    assert [step.name for step in plan.steps] == [
+        "baseline_replay",
+        "temporal_schema_check",
+        "temporal_grounding_check",
+        "verification_regression_probe",
+    ]
+    assert plan.steps[-1].description == (
+        "Probe regressed verification job job-verify-video with a targeted follow-up experiment."
+    )

@@ -80,9 +80,9 @@
 - Test: `backend/tests/experiments/test_planner.py`
 - Test: `backend/tests/reports/test_generator.py`
 
-- [ ] Add follow-up experiment recommendations for unresolved or regressed verification results.
-- [ ] Preserve task-native recipe routing for image, video, text, and multimodal tasks.
-- [ ] Include follow-up plan summary in reports.
+- [x] Add follow-up experiment recommendations for unresolved or regressed verification results.
+- [x] Preserve task-native recipe routing for image, video, text, and multimodal tasks.
+- [x] Include follow-up plan summary in reports.
 
 ### Task 4: Root Cause Confidence Reasons
 
