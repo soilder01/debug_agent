@@ -1,4 +1,5 @@
 import type { DebugCaseDetail, DebugCaseSummary } from "../api/client";
+import { ActionRow, EmptyState, ProductSurface } from "../ui/ProductPrimitives";
 import { ImportedCaseDetailPanel } from "./ImportedCaseDetailPanel";
 import { ImportedCaseListPanel } from "./ImportedCaseListPanel";
 
@@ -32,11 +33,17 @@ export function ImportedCasesPanel({
   onCreateDebugJob
 }: ImportedCasesPanelProps) {
   return (
-    <section>
-      <h2>Imported Cases</h2>
-      <button type="button" onClick={onLoadImportedCases}>
-        Load imported cases
-      </button>
+    <ProductSurface
+      title="Imported Cases"
+      eyebrow="Queue"
+      description="Load imported cases before starting targeted debug jobs."
+      className="case-queue"
+    >
+      <ActionRow label="Imported case actions">
+        <button type="button" onClick={onLoadImportedCases}>
+          Load imported cases
+        </button>
+      </ActionRow>
       {cases.length > 0 ? (
         <>
           <ImportedCaseListPanel
@@ -54,7 +61,9 @@ export function ImportedCasesPanel({
             <ImportedCaseDetailPanel caseDetail={selectedCaseDetail} onCreateDebugJob={onCreateDebugJob} />
           ) : null}
         </>
-      ) : null}
-    </section>
+      ) : (
+        <EmptyState title="No imported cases loaded" description="Load cases from local imports or spreadsheet sync." />
+      )}
+    </ProductSurface>
   );
 }

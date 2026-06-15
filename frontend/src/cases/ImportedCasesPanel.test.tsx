@@ -54,6 +54,9 @@ describe("ImportedCasesPanel", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Imported Cases" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Imported Cases" })).toHaveClass("case-queue");
+    expect(screen.getByText("Load imported cases before starting targeted debug jobs.")).toBeInTheDocument();
+    expect(screen.getByText("No imported cases loaded")).toBeInTheDocument();
     expect(screen.queryByLabelText("Imported case summaries")).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Load imported cases" }));
@@ -80,6 +83,7 @@ describe("ImportedCasesPanel", () => {
     );
 
     expect(screen.getByText("已导入样本：1")).toBeInTheDocument();
+    expect(screen.getByLabelText("Imported case queue metrics")).toBeInTheDocument();
     expect(screen.getByText("case-1｜avg_score 0.5｜regions 1｜未标记｜未归因")).toBeInTheDocument();
     expect(screen.getByText("样本详情：case-1")).toBeInTheDocument();
   });

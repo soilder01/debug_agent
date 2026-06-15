@@ -1,4 +1,5 @@
 import type { DebugCaseSummary } from "../api/client";
+import { ActionRow, MetricStrip } from "../ui/ProductPrimitives";
 
 type ImportedCaseListPanelProps = {
   cases: DebugCaseSummary[];
@@ -23,27 +24,46 @@ export function ImportedCaseListPanel({
   onUseForBatch,
   onViewCaseDetail
 }: ImportedCaseListPanelProps) {
+  const safeTotalCount = Number.isFinite(totalCount) ? totalCount : cases.length;
+  const safeEffectiveCount = Number.isFinite(effectiveCount) ? effectiveCount : cases.length;
+  const safeUnloadedCount = Number.isFinite(unloadedCount) ? unloadedCount : 0;
+
   return (
     <>
-      <p>已导入样本：{totalCount}</p>
+      <MetricStrip
+        label="Imported case queue metrics"
+        metrics={[
+          { label: "Imported", value: safeTotalCount, helper: "All loaded case rows" },
+          { label: "Displayed", value: `${cases.length}/${safeEffectiveCount}`, helper: "Current filtered window" },
+          { label: "Unloaded", value: safeUnloadedCount, helper: "Available for pagination" },
+          {
+            label: "Regions",
+            value: cases.reduce((total, caseSummary) => total + (caseSummary.box_region_count ?? 0), 0),
+            helper: "Targetable boxes"
+          }
+        ]}
+      />
+      <p>已导入样本：{safeTotalCount}</p>
       <p>
-        已显示样本：{cases.length}/{effectiveCount}
+        已显示样本：{cases.length}/{safeEffectiveCount}
       </p>
-      <p>未加载样本：{unloadedCount}</p>
-      <button type="button" onClick={onLoadWithRegions}>
-        Only cases with regions
-      </button>
-      <button type="button" onClick={onLoadAll}>
-        Show all imported cases
-      </button>
-      {unloadedCount > 0 ? (
-        <button type="button" onClick={onLoadMore}>
-          Load more imported cases
+      <p>未加载样本：{safeUnloadedCount}</p>
+      <ActionRow label="Case queue actions">
+        <button type="button" onClick={onLoadWithRegions}>
+          Only cases with regions
         </button>
-      ) : null}
-      <button type="button" onClick={onUseForBatch}>
-        Use imported cases for batch
-      </button>
+        <button type="button" onClick={onLoadAll}>
+          Show all imported cases
+        </button>
+        {safeUnloadedCount > 0 ? (
+          <button type="button" onClick={onLoadMore}>
+            Load more imported cases
+          </button>
+        ) : null}
+        <button type="button" onClick={onUseForBatch}>
+          Use imported cases for batch
+        </button>
+      </ActionRow>
       <ul aria-label="Imported case summaries">
         {cases.map((caseSummary) => (
           <li key={caseSummary.case_id}>

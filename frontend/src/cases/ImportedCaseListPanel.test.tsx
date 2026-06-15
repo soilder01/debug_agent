@@ -42,6 +42,8 @@ describe("ImportedCaseListPanel", () => {
     expect(screen.getByText("已导入样本：5")).toBeInTheDocument();
     expect(screen.getByText("已显示样本：1/3")).toBeInTheDocument();
     expect(screen.getByText("未加载样本：2")).toBeInTheDocument();
+    expect(screen.getByLabelText("Imported case queue metrics")).toHaveClass("metric-strip");
+    expect(screen.getByLabelText("Case queue actions")).toHaveClass("action-row");
     expect(screen.getByText("case-1｜avg_score 0.4｜regions 2｜未标记｜未归因")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Only cases with regions" }));
@@ -73,5 +75,26 @@ describe("ImportedCaseListPanel", () => {
     );
 
     expect(screen.queryByRole("button", { name: "Load more imported cases" })).not.toBeInTheDocument();
+  });
+
+  it("falls back to safe count values when upstream totals are unavailable", () => {
+    render(
+      <ImportedCaseListPanel
+        cases={[makeCase({ case_id: "case-safe" })]}
+        totalCount={undefined as unknown as number}
+        effectiveCount={undefined as unknown as number}
+        unloadedCount={undefined as unknown as number}
+        onLoadWithRegions={vi.fn()}
+        onLoadAll={vi.fn()}
+        onLoadMore={vi.fn()}
+        onUseForBatch={vi.fn()}
+        onViewCaseDetail={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByText("NaN")).not.toBeInTheDocument();
+    expect(screen.getByText("已导入样本：1")).toBeInTheDocument();
+    expect(screen.getByText("已显示样本：1/1")).toBeInTheDocument();
+    expect(screen.getByText("未加载样本：0")).toBeInTheDocument();
   });
 });

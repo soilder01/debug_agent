@@ -1,4 +1,5 @@
 import type { DebugCaseDetail } from "../api/client";
+import { ActionRow } from "../ui/ProductPrimitives";
 
 type ImportedCaseDetailPanelProps = {
   caseDetail: DebugCaseDetail;
@@ -10,11 +11,13 @@ export function ImportedCaseDetailPanel({ caseDetail, onCreateDebugJob }: Import
   const hasOutputSchema = caseDetail.output_schema && Object.keys(caseDetail.output_schema).length > 0;
 
   return (
-    <section aria-label="Selected case detail">
+    <section aria-label="Selected case detail" className="case-detail">
       <h3>样本详情：{caseDetail.case_id}</h3>
-      <button type="button" onClick={() => onCreateDebugJob(caseDetail.case_id)}>
-        Create debug job for {caseDetail.case_id}
-      </button>
+      <ActionRow label="Selected case actions">
+        <button type="button" onClick={() => onCreateDebugJob(caseDetail.case_id)}>
+          Create debug job for {caseDetail.case_id}
+        </button>
+      </ActionRow>
       <p>图片：{caseDetail.image_uri}</p>
       <p>Prompt：{caseDetail.prompt}</p>
       <p>评分标准：{caseDetail.scoring_standard}</p>

@@ -136,7 +136,7 @@ Commit only after the focused tests and full verification pass.
   ```powershell
   npx --yes pnpm@9.15.4 --dir frontend test -- --run src/app/App.test.tsx
   ```
-- [ ] Commit:
+- [x] Commit:
   ```powershell
   git add frontend/src/app/App.tsx frontend/src/app/App.test.tsx frontend/src/styles/product.css
   git commit -m "feat: add console navigation anchors"
@@ -155,11 +155,11 @@ Commit only after the focused tests and full verification pass.
 - Modify: `frontend/src/cases/ImportedCaseDetailPanel.test.tsx`
 - Modify: `frontend/src/styles/product.css`
 
-- [ ] Add RED tests requiring intake panels to expose clear headings, helper copy, and consistent empty states.
-- [ ] Replace plain stacked import panels with product surfaces using `ProductSurface`, `SectionHeader`, and `EmptyState`.
-- [ ] Add case queue density improvements: case count, filtered count, region count, and primary action row.
-- [ ] Add CSS for `intake-stack`, `case-queue`, `case-detail`, and `import-panel`.
-- [ ] Run focused tests:
+- [x] Add RED tests requiring intake panels to expose clear headings, helper copy, and consistent empty states.
+- [x] Replace plain stacked import panels with product surfaces using `ProductSurface`, `SectionHeader`, and `EmptyState`.
+- [x] Add case queue density improvements: case count, filtered count, region count, and primary action row.
+- [x] Add CSS for `intake-stack`, `case-queue`, `case-detail`, and `import-panel`.
+- [x] Run focused tests:
   ```powershell
   npx --yes pnpm@9.15.4 --dir frontend test -- --run src/imports/ImportWorkspace.test.tsx src/cases/ImportedCasesPanel.test.tsx src/cases/ImportedCaseListPanel.test.tsx src/cases/ImportedCaseDetailPanel.test.tsx
   ```

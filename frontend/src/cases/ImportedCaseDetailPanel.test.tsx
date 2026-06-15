@@ -41,6 +41,8 @@ describe("ImportedCaseDetailPanel", () => {
 
     render(<ImportedCaseDetailPanel caseDetail={makeCaseDetail()} onCreateDebugJob={onCreateDebugJob} />);
 
+    expect(screen.getByRole("region", { name: "Selected case detail" })).toHaveClass("case-detail");
+    expect(screen.getByLabelText("Selected case actions")).toHaveClass("action-row");
     expect(screen.getByText("样本详情：case-detail-1")).toBeInTheDocument();
     expect(screen.getByText("图片：https://debug-agent.local/case-detail-1.png")).toBeInTheDocument();
     expect(screen.getByText("Prompt：Read the handwritten answer")).toBeInTheDocument();
