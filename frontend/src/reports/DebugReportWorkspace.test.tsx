@@ -145,6 +145,7 @@ describe("DebugReportWorkspace", () => {
       />
     );
 
+    expect(screen.getByRole("region", { name: "Debug report workspace" })).toHaveClass("report-workspace");
     expect(screen.getByText("Job ID：job-1")).toBeInTheDocument();
     expect(screen.getByText("样本 ID：case-1")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Experiment Plan" })).toBeInTheDocument();
@@ -415,6 +416,7 @@ describe("DebugReportWorkspace", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Strategy Follow-Up Job History" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Strategy follow-up job history")).toHaveClass("evidence-spine");
     expect(screen.getByText("ablation_expansion：strategy_ablation_expansion_probe")).toBeInTheDocument();
     expect(screen.getByText("任务：job-follow-up-1")).toBeInTheDocument();
     expect(screen.getByText("Outcome：needs_escalation")).toBeInTheDocument();
@@ -447,6 +449,7 @@ describe("DebugReportWorkspace", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Targeted Probe Job History" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Targeted probe job history")).toHaveClass("evidence-spine");
     expect(screen.getByText("multimodal:conflict:1：targeted_multimodal_conflict_probe")).toBeInTheDocument();
     expect(screen.getByText("任务：job-targeted-probe-1")).toBeInTheDocument();
     expect(screen.getByText("Outcome：target_still_failing")).toBeInTheDocument();

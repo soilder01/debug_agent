@@ -259,7 +259,7 @@ Commit only after the focused tests and full verification pass.
 - Modify: `frontend/src/reports/ReportPanel.test.tsx`
 - Modify: `frontend/src/styles/product.css`
 
-- [ ] Add RED tests for report workspace regions:
+- [x] Add RED tests for report workspace regions:
   - Root cause
   - Evidence spine
   - Evaluation diagnostics
@@ -270,14 +270,14 @@ Commit only after the focused tests and full verification pass.
   - Human handoff
   - Final attribution
   - Recovery and reinvestigation
-- [ ] Replace dense paragraph stacks with section headers, metric strips, lineage rows, and action rows.
-- [ ] Preserve all existing buttons and callbacks.
-- [ ] Add stable classes: `report-workspace`, `root-cause-panel`, `lineage-row`, `evidence-spine`, `action-console`.
-- [ ] Run:
+- [x] Replace dense paragraph stacks with section headers, metric strips, lineage rows, and action rows.
+- [x] Preserve all existing buttons and callbacks.
+- [x] Add stable classes: `report-workspace`, `root-cause-panel`, `lineage-row`, `evidence-spine`, `action-console`.
+- [x] Run:
   ```powershell
   npx --yes pnpm@9.15.4 --dir frontend test -- --run src/reports/DebugReportWorkspace.test.tsx src/reports/ReportPanel.test.tsx
   ```
-- [ ] Commit:
+- [x] Commit:
   ```powershell
   git add frontend/src/reports frontend/src/styles/product.css
   git commit -m "feat: productize debug report workspace"

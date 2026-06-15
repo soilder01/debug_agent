@@ -68,7 +68,7 @@ export function DebugReportWorkspace({
   onOpenTargetedProbe
 }: DebugReportWorkspaceProps) {
   return (
-    <>
+    <section aria-label="Debug report workspace" className="report-workspace">
       <CaseDetail jobId={report.job_id} caseId={report.case_id} status={report.status} />
       <ExperimentTimeline
         experiments={report.planned_experiments}
@@ -106,7 +106,7 @@ export function DebugReportWorkspace({
           onLoadAudit={onLoadWritebackAudit}
         />
       ) : null}
-    </>
+    </section>
   );
 }
 
@@ -121,11 +121,11 @@ function StrategyFollowUpHistory({ followUps, onOpenStrategyFollowUp }: Strategy
   }
 
   return (
-    <section aria-label="Strategy follow-up job history">
+    <section aria-label="Strategy follow-up job history" className="evidence-spine">
       <h2>Strategy Follow-Up Job History</h2>
       <ul>
         {followUps.map((followUp) => (
-          <li key={`${followUp.stage}:${followUp.follow_up_job_id}`}>
+          <li className="lineage-row" key={`${followUp.stage}:${followUp.follow_up_job_id}`}>
             <p>
               {followUp.stage}：{followUp.planned_steps}
             </p>
@@ -160,12 +160,12 @@ function TargetedProbeHistory({ probes, onOpenTargetedProbe }: TargetedProbeHist
   }
 
   return (
-    <section aria-label="Targeted probe job history">
+    <section aria-label="Targeted probe job history" className="evidence-spine">
       <h2>Targeted Probe Job History</h2>
       <TargetedProbeEscalationChain probes={probes} />
       <ul>
         {probes.map((probe) => (
-          <li key={`${probe.target_id}:${probe.probe_job_id}`}>
+          <li className="lineage-row" key={`${probe.target_id}:${probe.probe_job_id}`}>
             <p>
               {probe.target_id}：{probe.planned_steps}
             </p>

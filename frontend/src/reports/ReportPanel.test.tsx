@@ -52,6 +52,8 @@ describe("ReportPanel", () => {
 
     render(<ReportPanel report={report} />);
 
+    expect(screen.getByRole("region", { name: "Root Cause" })).toHaveClass("root-cause-panel");
+    expect(screen.getByLabelText("Evidence artifact spine")).toHaveClass("evidence-spine");
     expect(screen.getByText("Evidence Artifacts")).toBeInTheDocument();
     expect(screen.getByText("证据产物：1")).toBeInTheDocument();
     expect(screen.getByText("case-1:localized_observation_request:0:input-snapshot")).toBeInTheDocument();
@@ -108,6 +110,7 @@ describe("ReportPanel", () => {
 
     render(<ReportPanel report={report} />);
 
+    expect(screen.getByLabelText("Evaluation asset diagnostics")).toHaveClass("evidence-spine");
     expect(screen.getByText("Evaluation Asset Diagnostics")).toBeInTheDocument();
     expect(screen.getByText("prompt/pass/info")).toBeInTheDocument();
     expect(screen.getByText("Prompt 已要求结构化 JSON 输出。")).toBeInTheDocument();
@@ -557,6 +560,7 @@ describe("ReportPanel", () => {
       diagnosis.getByText("单模态变体 image_only, text_only 可通过，但跨模态变体 cross_modal_compare 失败。")
     ).toBeInTheDocument();
     expect(screen.getByText("Root Cause Trace")).toBeInTheDocument();
+    expect(screen.getByLabelText("Root cause trace")).toHaveClass("evidence-spine");
     expect(screen.getByText("变体：cross_modal_compare")).toBeInTheDocument();
     expect(screen.getByText("模态：image, text")).toBeInTheDocument();
     expect(screen.getByText("证据：e-cross-modal")).toBeInTheDocument();
@@ -574,13 +578,16 @@ describe("ReportPanel", () => {
     expect(screen.getAllByText("状态：pending")[0]).toBeInTheDocument();
     expect(screen.getByText("要求模型先分别列出 image/text 证据，再输出冲突结论。")).toBeInTheDocument();
     expect(screen.getByText("model_capability/high：将跨模态融合短板纳入模型能力归因。")).toBeInTheDocument();
+    expect(screen.getByLabelText("Recommended actions")).toHaveClass("action-console");
     expect(screen.getByText("Debug Strategy")).toBeInTheDocument();
+    expect(screen.getByLabelText("Debug strategy")).toHaveClass("evidence-spine");
     expect(screen.getByText("ablation_expansion：验证跨模态失败是否稳定复现，且不是单模态感知失败。")).toBeInTheDocument();
     expect(screen.getByText("触发：trace_refs=modality_ablation_check:cross_modal_compare")).toBeInTheDocument();
     expect(screen.getByText("探测：对比 image/text 单模态结果与 cross_modal_compare 结果。")).toBeInTheDocument();
     expect(screen.getByText("停止条件：单模态通过且 cross-modal probe 失败时，确认跨模态对齐/融合链路为主因。")).toBeInTheDocument();
     expect(screen.getByText("升级：如果单模态也失败，切换到 single_modality_capability_gap 策略。")).toBeInTheDocument();
     expect(screen.getByText("Follow-up Experiments")).toBeInTheDocument();
+    expect(screen.getByLabelText("Follow-up experiments")).toHaveClass("evidence-spine");
     expect(screen.getByText("debug_strategy/ablation_expansion：strategy_ablation_expansion_probe")).toBeInTheDocument();
     expect(screen.getByText("策略阶段 ablation_expansion 已转为 follow-up experiment：strategy_ablation_expansion_probe。")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Run strategy follow-up ablation_expansion" }));
@@ -887,6 +894,7 @@ describe("ReportPanel", () => {
     expect(screen.getByText("targeted_probe_guardrail/target_still_failing：")).toBeInTheDocument();
     expect(screen.getByText("Stop condition：max_targeted_probe_depth_reached")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Human Handoff Requests" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Human handoff requests")).toHaveClass("action-console");
     expect(screen.getByText("Handoff target：multimodal:conflict:1")).toBeInTheDocument();
     expect(screen.getByText("Handoff priority：high")).toBeInTheDocument();
     expect(screen.getByText("Handoff reason：max_targeted_probe_depth_reached")).toBeInTheDocument();
@@ -894,6 +902,7 @@ describe("ReportPanel", () => {
     expect(screen.getByText("Handoff actor：human-debugger")).toBeInTheDocument();
     expect(screen.getByText("Handoff note：reviewing full probe chain")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Final Attributions" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Final attributions")).toHaveClass("evidence-spine");
     expect(screen.getByText("Attribution target：multimodal:conflict:1")).toBeInTheDocument();
     expect(screen.getByText("Attribution category：prompt_issue")).toBeInTheDocument();
     expect(screen.getByText("Attribution status：resolved")).toBeInTheDocument();
@@ -909,6 +918,7 @@ describe("ReportPanel", () => {
     expect(screen.getByText("Attribution verification job：job-final-attribution-verify")).toBeInTheDocument();
     expect(screen.getByText("Attribution verification success rate：100%")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Final Attribution Recovery Results" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Final attribution recovery results")).toHaveClass("evidence-spine");
     expect(screen.getByText("Attribution recovery target：multimodal:conflict:1")).toBeInTheDocument();
     expect(screen.getByText("Attribution recovery result：closed")).toBeInTheDocument();
     expect(screen.getByText("Attribution recovery job：job-final-attribution-recovery")).toBeInTheDocument();

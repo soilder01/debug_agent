@@ -7,6 +7,7 @@ import type {
   RecommendedActionVerification,
   RecommendedActionVerificationResult
 } from "../api/client";
+import { MetricStrip } from "../ui/ProductPrimitives";
 
 type ReportPanelProps = {
   report: DebugReport;
@@ -67,8 +68,17 @@ export function ReportPanel({
   const humanHandoffStatusByTargetId = new Map(resolvedHumanHandoffStatuses.map((status) => [status.target_id, status]));
 
   return (
-    <section>
+    <section aria-label="Root Cause" className="root-cause-panel">
       <h2>Root Cause</h2>
+      <MetricStrip
+        label="Root cause metrics"
+        metrics={[
+          { label: "Confidence", value: report.root_cause.confidence, helper: report.root_cause.label },
+          { label: "Failed trials", value: failedTrialCount, helper: "Replay failures" },
+          { label: "Artifacts", value: artifactIds.length, helper: "Evidence spine" },
+          { label: "Actions", value: recommendedActions.length, helper: "Recommended next steps" }
+        ]}
+      />
       <p>类型：{report.root_cause.label}</p>
       <p>置信度：{report.root_cause.confidence}</p>
       <p>{report.root_cause.evidence_summary}</p>
@@ -131,9 +141,9 @@ export function ReportPanel({
       {evaluationAssetDiagnostics.length > 0 ? (
         <>
           <h3>Evaluation Asset Diagnostics</h3>
-          <ul aria-label="Evaluation asset diagnostics">
+          <ul aria-label="Evaluation asset diagnostics" className="evidence-spine">
             {evaluationAssetDiagnostics.map((diagnostic) => (
-              <li key={`${diagnostic.source}:${diagnostic.status}:${diagnostic.summary}`}>
+              <li className="lineage-row" key={`${diagnostic.source}:${diagnostic.status}:${diagnostic.summary}`}>
                 <p>
                   {diagnostic.source}/{diagnostic.status}/{diagnostic.severity}
                 </p>
@@ -152,9 +162,9 @@ export function ReportPanel({
       {rootCauseTrace.length > 0 ? (
         <>
           <h3>Root Cause Trace</h3>
-          <ul aria-label="Root cause trace">
+          <ul aria-label="Root cause trace" className="evidence-spine">
             {rootCauseTrace.map((trace) => (
-              <li key={`${trace.evidence_id}:${trace.variant}`}>
+              <li className="lineage-row" key={`${trace.evidence_id}:${trace.variant}`}>
                 <p>步骤：{trace.step_name}</p>
                 <p>变体：{trace.variant}</p>
                 <p>模态：{trace.modalities.length > 0 ? trace.modalities.join(", ") : "无"}</p>
@@ -182,9 +192,9 @@ export function ReportPanel({
       {recommendedActions.length > 0 ? (
         <>
           <h3>Recommended Actions</h3>
-          <ul aria-label="Recommended actions">
+          <ul aria-label="Recommended actions" className="action-console">
             {recommendedActions.map((action, actionIndex) => (
-              <li key={`${action.category}:${action.summary}`}>
+              <li className="lineage-row" key={`${action.category}:${action.summary}`}>
                 <p>
                   {action.category}/{action.priority}：{action.summary}
                 </p>
@@ -232,9 +242,9 @@ export function ReportPanel({
       {debugStrategy.length > 0 ? (
         <>
           <h3>Debug Strategy</h3>
-          <ul aria-label="Debug strategy">
+          <ul aria-label="Debug strategy" className="evidence-spine">
             {debugStrategy.map((strategy) => (
-              <li key={`${strategy.stage}:${strategy.objective}`}>
+              <li className="lineage-row" key={`${strategy.stage}:${strategy.objective}`}>
                 <p>
                   {strategy.stage}：{strategy.objective}
                 </p>
@@ -250,9 +260,12 @@ export function ReportPanel({
       {followUpExperiments.length > 0 ? (
         <>
           <h3>Follow-up Experiments</h3>
-          <ul aria-label="Follow-up experiments">
+          <ul aria-label="Follow-up experiments" className="evidence-spine">
             {followUpExperiments.map((followUp) => (
-              <li key={`${followUp.source}:${followUp.stage ?? followUp.verification_job_id ?? followUp.planned_steps}`}>
+              <li
+                className="lineage-row"
+                key={`${followUp.source}:${followUp.stage ?? followUp.verification_job_id ?? followUp.planned_steps}`}
+              >
                 <p>
                   {followUp.source}/{followUp.stage ?? followUp.result ?? "unknown"}：{followUp.planned_steps}
                 </p>
@@ -296,9 +309,9 @@ export function ReportPanel({
       {humanHandoffRequests.length > 0 ? (
         <>
           <h3>Human Handoff Requests</h3>
-          <ul aria-label="Human handoff requests">
+          <ul aria-label="Human handoff requests" className="action-console">
             {humanHandoffRequests.map((request) => (
-              <li key={`${request.source}:${request.target_id}:${request.reason}`}>
+              <li className="lineage-row" key={`${request.source}:${request.target_id}:${request.reason}`}>
                 <p>Handoff target：{request.target_id}</p>
                 <p>Handoff priority：{request.priority}</p>
                 <p>Handoff reason：{request.reason}</p>
@@ -329,9 +342,9 @@ export function ReportPanel({
       {finalAttributions.length > 0 ? (
         <>
           <h3>Final Attributions</h3>
-          <ul aria-label="Final attributions">
+          <ul aria-label="Final attributions" className="evidence-spine">
             {finalAttributions.map((attribution) => (
-              <li key={`${attribution.source}:${attribution.target_id}:${attribution.category}`}>
+              <li className="lineage-row" key={`${attribution.source}:${attribution.target_id}:${attribution.category}`}>
                 <p>Attribution target：{attribution.target_id}</p>
                 <p>Attribution category：{attribution.category}</p>
                 <p>Attribution status：{attribution.status}</p>
@@ -346,9 +359,9 @@ export function ReportPanel({
       {finalAttributionVerificationResults.length > 0 ? (
         <>
           <h3>Final Attribution Verification Results</h3>
-          <ul aria-label="Final attribution verification results">
+          <ul aria-label="Final attribution verification results" className="evidence-spine">
             {finalAttributionVerificationResults.map((result) => (
-              <li key={`${result.target_id}:${result.verification_job_id}`}>
+              <li className="lineage-row" key={`${result.target_id}:${result.verification_job_id}`}>
                 <p>Attribution verification target：{result.target_id}</p>
                 <p>Attribution verification category：{result.category}</p>
                 <p>Attribution verification result：{result.result}</p>
@@ -363,9 +376,9 @@ export function ReportPanel({
       {confidenceReasons.length > 0 ? (
         <>
           <h3>Confidence Reasons</h3>
-          <ul aria-label="Confidence reasons">
+          <ul aria-label="Confidence reasons" className="evidence-spine">
             {confidenceReasons.map((reason) => (
-              <li key={`${reason.source}:${reason.level}:${reason.summary}`}>
+              <li className="lineage-row" key={`${reason.source}:${reason.level}:${reason.summary}`}>
                 {reason.source}/{reason.level}：{reason.summary}
                 <CitationCoverage
                   artifactIds={reason.artifact_ids}
@@ -380,9 +393,9 @@ export function ReportPanel({
       {recommendedActionStatusEvents.length > 0 ? (
         <>
           <h3>Recommended Action Status Events</h3>
-          <ul aria-label="Recommended action status events">
+          <ul aria-label="Recommended action status events" className="evidence-spine">
             {recommendedActionStatusEvents.map((event) => (
-              <li key={event.event_id}>
+              <li className="lineage-row" key={event.event_id}>
                 <p>
                   操作 {event.action_index + 1}：{event.status}
                 </p>
@@ -397,9 +410,9 @@ export function ReportPanel({
       {recommendedActionVerifications.length > 0 ? (
         <>
           <h3>Recommended Action Verification Jobs</h3>
-          <ul aria-label="Recommended action verification jobs">
+          <ul aria-label="Recommended action verification jobs" className="evidence-spine">
             {recommendedActionVerifications.map((verification) => (
-              <li key={`${verification.action_index}:${verification.verification_job_id}`}>
+              <li className="lineage-row" key={`${verification.action_index}:${verification.verification_job_id}`}>
                 <p>
                   操作 {verification.action_index + 1} 验证任务：{verification.verification_job_id}
                 </p>
@@ -417,9 +430,9 @@ export function ReportPanel({
       {finalAttributionRecoveryResults.length > 0 ? (
         <>
           <h3>Final Attribution Recovery Results</h3>
-          <ul aria-label="Final attribution recovery results">
+          <ul aria-label="Final attribution recovery results" className="evidence-spine">
             {finalAttributionRecoveryResults.map((result) => (
-              <li key={`${result.target_id}:${result.recovery_job_id}`}>
+              <li className="lineage-row" key={`${result.target_id}:${result.recovery_job_id}`}>
                 <p>Attribution recovery target：{result.target_id}</p>
                 <p>Attribution recovery category：{result.category}</p>
                 <p>Attribution recovery result：{result.result}</p>
@@ -434,11 +447,11 @@ export function ReportPanel({
       <h3>Evidence Artifacts</h3>
       <p>证据产物：{artifactIds.length}</p>
       {artifactIds.length > 0 ? (
-        <ul>
+        <ul aria-label="Evidence artifact spine" className="evidence-spine">
           {artifactIds.map((artifactId) => {
             const evidenceId = artifactEvidenceIdByArtifactId.get(artifactId);
             return (
-              <li key={artifactId}>
+              <li className="lineage-row" key={artifactId}>
                 {onSelectEvidence && evidenceId ? (
                   <button type="button" onClick={() => onSelectEvidence(evidenceId)}>
                     Open artifact {artifactId}
@@ -454,9 +467,9 @@ export function ReportPanel({
       {evidenceCitations.length > 0 ? (
         <>
           <h3>Evidence Citations</h3>
-          <ul>
+          <ul className="evidence-spine">
             {evidenceCitations.map((citation) => (
-              <li key={`${citation.evidence_id}:${citation.box_id ?? "global"}:${citation.reason}`}>
+              <li className="lineage-row" key={`${citation.evidence_id}:${citation.box_id ?? "global"}:${citation.reason}`}>
                 <p>引用证据：{citation.evidence_id}</p>
                 <p>引用步骤：{citation.step_name}</p>
                 <p>引用目标/区域：{citation.box_id ?? "global"}</p>
