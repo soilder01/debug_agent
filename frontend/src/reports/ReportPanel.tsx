@@ -38,6 +38,7 @@ export function ReportPanel({
   const ablationConclusion = report.suggested_sheet_fields["Ablation结论"];
   const rootCauseTrace = report.root_cause_trace ?? [];
   const recommendedActions = report.recommended_actions ?? [];
+  const evaluationAssetDiagnostics = report.evaluation_asset_diagnostics ?? [];
   const confidenceReasons = report.confidence_reasons ?? [];
   const verificationResultByJobId = new Map(
     recommendedActionVerificationResults.map((result) => [result.verification_job_id, result])
@@ -104,6 +105,22 @@ export function ReportPanel({
           <h3>Ablation Diagnosis</h3>
           <p>{ablationConclusion}</p>
         </section>
+      ) : null}
+      {evaluationAssetDiagnostics.length > 0 ? (
+        <>
+          <h3>Evaluation Asset Diagnostics</h3>
+          <ul aria-label="Evaluation asset diagnostics">
+            {evaluationAssetDiagnostics.map((diagnostic) => (
+              <li key={`${diagnostic.source}:${diagnostic.status}:${diagnostic.summary}`}>
+                <p>
+                  {diagnostic.source}/{diagnostic.status}/{diagnostic.severity}
+                </p>
+                <p>{diagnostic.summary}</p>
+                <p>建议：{diagnostic.recommendation}</p>
+              </li>
+            ))}
+          </ul>
+        </>
       ) : null}
       {rootCauseTrace.length > 0 ? (
         <>

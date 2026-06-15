@@ -62,6 +62,55 @@ describe("ReportPanel", () => {
     expect(screen.getByText("引用原因：student_answer_mismatch")).toBeInTheDocument();
   });
 
+  it("renders evaluation asset diagnostics", () => {
+    const report: DebugReport = {
+      job_id: "job-asset-diagnostics",
+      case_id: "case-asset-diagnostics",
+      status: "needs_human_review",
+      observed_failure: {
+        type: "evaluation_asset_issue",
+        summary: "评分标准缺失，当前 0/1 结论缺少可审计的判分依据。",
+        affected_box_ids: []
+      },
+      planned_experiments: ["baseline_replay"],
+      experiment_summary: null,
+      root_cause: {
+        label: "scoring_standard_issue",
+        confidence: "high",
+        evidence_summary: "评分标准缺失：请补充 exact match、可接受别字/格式、box_id 对齐等规则。"
+      },
+      evaluation_asset_diagnostics: [
+        {
+          source: "prompt",
+          status: "pass",
+          severity: "info",
+          summary: "Prompt 已要求结构化 JSON 输出。",
+          recommendation: "保持 prompt 中明确的输出 schema、证据引用和约束条件。"
+        },
+        {
+          source: "scoring_standard",
+          status: "fail",
+          severity: "high",
+          summary: "评分标准缺失，当前 0/1 结论缺少可审计的判分依据。",
+          recommendation: "补充 exact match、可接受别字/格式、box_id 对齐等评分规则。"
+        }
+      ],
+      suggested_sheet_fields: {
+        错误原因: "评测资产问题：评分标准缺失"
+      }
+    };
+
+    render(<ReportPanel report={report} />);
+
+    expect(screen.getByText("Evaluation Asset Diagnostics")).toBeInTheDocument();
+    expect(screen.getByText("prompt/pass/info")).toBeInTheDocument();
+    expect(screen.getByText("Prompt 已要求结构化 JSON 输出。")).toBeInTheDocument();
+    expect(screen.getByText("建议：保持 prompt 中明确的输出 schema、证据引用和约束条件。")).toBeInTheDocument();
+    expect(screen.getByText("scoring_standard/fail/high")).toBeInTheDocument();
+    expect(screen.getByText("评分标准缺失，当前 0/1 结论缺少可审计的判分依据。")).toBeInTheDocument();
+    expect(screen.getByText("建议：补充 exact match、可接受别字/格式、box_id 对齐等评分规则。")).toBeInTheDocument();
+  });
+
   it("selects evidence from citation artifact links", async () => {
     const onSelectEvidence = vi.fn();
     const report: DebugReport = {

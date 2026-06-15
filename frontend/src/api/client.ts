@@ -69,6 +69,13 @@ export type DebugReport = {
     detail: string;
   }>;
   verification_results?: RecommendedActionVerificationResult[];
+  evaluation_asset_diagnostics?: Array<{
+    source: string;
+    status: string;
+    severity: string;
+    summary: string;
+    recommendation: string;
+  }>;
   confidence_reasons?: Array<{
     source: string;
     level: string;

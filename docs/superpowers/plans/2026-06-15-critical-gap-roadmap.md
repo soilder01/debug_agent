@@ -137,6 +137,19 @@
 - [x] Keep evidence, target, delta, and artifact links attached to each reasoning step.
 - [x] Render the richer reasoning trace in the frontend report panel.
 
+### Task 8: Evaluation Asset Diagnostics
+
+**Files:**
+- Modify: `backend/src/debug_agent/reports/generator.py`
+- Modify: `frontend/src/api/client.ts`
+- Modify: `frontend/src/reports/ReportPanel.tsx`
+- Test: `backend/tests/reports/test_generator.py`
+- Test: `frontend/src/reports/ReportPanel.test.tsx`
+
+- [x] Add structured diagnostics for prompt, golden/expected output, and scoring standard issues.
+- [x] Generate recommended actions for evaluation asset root causes.
+- [x] Render evaluation asset diagnostics in the frontend report panel.
+
 ## Verification Policy
 
 Every task must follow:

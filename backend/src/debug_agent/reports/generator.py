@@ -43,6 +43,7 @@ class DebugReport(BaseModel):
     root_cause_trace: list[dict[str, object]] = Field(default_factory=list)
     recommended_actions: list[dict[str, str]] = Field(default_factory=list)
     verification_results: list[dict[str, object]] = Field(default_factory=list)
+    evaluation_asset_diagnostics: list[dict[str, str]] = Field(default_factory=list)
     follow_up_experiments: list[dict[str, str]] = Field(default_factory=list)
     confidence_reasons: list[dict[str, str]] = Field(default_factory=list)
     suggested_sheet_fields: dict[str, str]
@@ -91,6 +92,7 @@ def generate_initial_report(
         root_cause_trace=_build_root_cause_trace(run_result),
         recommended_actions=_build_recommended_actions(root_cause),
         verification_results=verification_results or [],
+        evaluation_asset_diagnostics=_build_evaluation_asset_diagnostics(case=case, run_result=run_result),
         follow_up_experiments=_build_follow_up_experiments(case, verification_results or []),
         confidence_reasons=_build_confidence_reasons(
             run_result=run_result,
@@ -236,6 +238,46 @@ def _trace_next_probe(*, target_ids: list[str], modalities: list[str]) -> str:
 
 
 def _build_recommended_actions(root_cause: RootCause) -> list[dict[str, str]]:
+    if root_cause.label == "scoring_standard_issue":
+        return [
+            {
+                "category": "evaluation_asset",
+                "priority": "high",
+                "status": "pending",
+                "summary": "补齐评分标准。",
+                "detail": "补充 exact match、可接受别字/格式、box_id 对齐等评分规则，避免 0/1 结论不可审计。",
+            }
+        ]
+    if root_cause.label == "golden_answer_issue":
+        return [
+            {
+                "category": "evaluation_asset",
+                "priority": "high",
+                "status": "pending",
+                "summary": "补齐标答。",
+                "detail": "补充至少一个可评分目标、区域或结构化字段，并确保 golden answer 与样本输入一致。",
+            }
+        ]
+    if root_cause.label == "expected_output_issue":
+        return [
+            {
+                "category": "evaluation_asset",
+                "priority": "high",
+                "status": "pending",
+                "summary": "补齐通用任务 expected_output。",
+                "detail": "补充 task-native expected_output_json，明确分类、检测、视频片段或多模态冲突的期望结构。",
+            }
+        ]
+    if root_cause.label == "prompt_schema_issue":
+        return [
+            {
+                "category": "prompt",
+                "priority": "high",
+                "status": "pending",
+                "summary": "明确结构化输出 schema。",
+                "detail": "要求模型只输出可解析 JSON，并声明关键字段、类型和禁止额外文本。",
+            }
+        ]
     if root_cause.label == "single_modality_capability_gap":
         modality = _modality_from_root_cause_summary(root_cause.evidence_summary)
         return [
@@ -727,6 +769,101 @@ def _evaluation_asset_issue(
             feedback="prompt 未明确 JSON/schema：请要求模型只输出 {\"answers\":[...]} 结构。",
         )
     return None
+
+
+def _build_evaluation_asset_diagnostics(
+    *,
+    case: DebugCase,
+    run_result: ExperimentRunResult | None,
+) -> list[dict[str, str]]:
+    return [
+        _prompt_diagnostic(case=case, run_result=run_result),
+        _golden_or_expected_output_diagnostic(case),
+        _scoring_standard_diagnostic(case),
+    ]
+
+
+def _prompt_diagnostic(
+    *,
+    case: DebugCase,
+    run_result: ExperimentRunResult | None,
+) -> dict[str, str]:
+    if run_result is not None and _has_response_parse_error(run_result.evidence) and not _prompt_requests_json(case.prompt):
+        return {
+            "source": "prompt",
+            "status": "warn",
+            "severity": "medium",
+            "summary": "Prompt 未明确要求 JSON/schema，且 evidence 出现解析失败。",
+            "recommendation": "要求模型只输出可解析 JSON，并声明关键字段、类型和禁止额外文本。",
+        }
+    if _prompt_requests_json(case.prompt):
+        return {
+            "source": "prompt",
+            "status": "pass",
+            "severity": "info",
+            "summary": "Prompt 已要求结构化 JSON 输出。",
+            "recommendation": "保持 prompt 中明确的输出 schema、证据引用和约束条件。",
+        }
+    return {
+        "source": "prompt",
+        "status": "warn",
+        "severity": "medium",
+        "summary": "Prompt 未明确要求结构化 JSON 输出。",
+        "recommendation": "补充 JSON/schema、关键字段和禁止额外文本等输出约束。",
+    }
+
+
+def _golden_or_expected_output_diagnostic(case: DebugCase) -> dict[str, str]:
+    if case.task_type == "handwriting_ocr":
+        answer_count = len(case.golden_answer.answers)
+        if answer_count == 0:
+            return {
+                "source": "golden_answer",
+                "status": "fail",
+                "severity": "high",
+                "summary": "标答为空，无法判断模型输出是否真正错误。",
+                "recommendation": "补充至少一个 box_id 与 student_answer。",
+            }
+        return {
+            "source": "golden_answer",
+            "status": "pass",
+            "severity": "info",
+            "summary": f"标答包含 {answer_count} 个 answer 项。",
+            "recommendation": "继续确保 golden answer 覆盖关键目标、区域或结构化字段。",
+        }
+    if not case.expected_output and not case.golden_answer.answers:
+        return {
+            "source": "expected_output",
+            "status": "fail",
+            "severity": "high",
+            "summary": "期望输出为空，无法判断 task-native 模型输出是否真正错误。",
+            "recommendation": "补充 expected_output_json 作为通用任务的评分依据。",
+        }
+    return {
+        "source": "expected_output",
+        "status": "pass",
+        "severity": "info",
+        "summary": "通用任务期望输出已配置。",
+        "recommendation": "继续确保 expected_output 覆盖关键目标、结构化字段和可接受差异。",
+    }
+
+
+def _scoring_standard_diagnostic(case: DebugCase) -> dict[str, str]:
+    if not case.scoring_standard.strip():
+        return {
+            "source": "scoring_standard",
+            "status": "fail",
+            "severity": "high",
+            "summary": "评分标准缺失，当前 0/1 结论缺少可审计的判分依据。",
+            "recommendation": "补充 exact match、可接受别字/格式、box_id 对齐等评分规则。",
+        }
+    return {
+        "source": "scoring_standard",
+        "status": "pass",
+        "severity": "info",
+        "summary": "评分标准已配置。",
+        "recommendation": "继续确保评分标准覆盖 exact match、容错规则和结构化字段对齐。",
+    }
 
 
 def _evaluation_asset_report(

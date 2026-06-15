@@ -962,6 +962,38 @@ def test_generate_report_flags_missing_scoring_standard_as_evaluation_asset_issu
     assert report.root_cause.confidence == "high"
     assert "评分标准缺失" in report.root_cause.evidence_summary
     assert report.suggested_sheet_fields["错误原因"].startswith("评测资产问题")
+    assert report.recommended_actions == [
+        {
+            "category": "evaluation_asset",
+            "priority": "high",
+            "status": "pending",
+            "summary": "补齐评分标准。",
+            "detail": "补充 exact match、可接受别字/格式、box_id 对齐等评分规则，避免 0/1 结论不可审计。",
+        }
+    ]
+    assert report.evaluation_asset_diagnostics == [
+        {
+            "source": "prompt",
+            "status": "pass",
+            "severity": "info",
+            "summary": "Prompt 已要求结构化 JSON 输出。",
+            "recommendation": "保持 prompt 中明确的输出 schema、证据引用和约束条件。",
+        },
+        {
+            "source": "golden_answer",
+            "status": "pass",
+            "severity": "info",
+            "summary": "标答包含 1 个 answer 项。",
+            "recommendation": "继续确保 golden answer 覆盖关键目标、区域或结构化字段。",
+        },
+        {
+            "source": "scoring_standard",
+            "status": "fail",
+            "severity": "high",
+            "summary": "评分标准缺失，当前 0/1 结论缺少可审计的判分依据。",
+            "recommendation": "补充 exact match、可接受别字/格式、box_id 对齐等评分规则。",
+        },
+    ]
 
 
 def test_generate_report_flags_empty_golden_answer_as_evaluation_asset_issue() -> None:
@@ -1002,6 +1034,13 @@ def test_generate_report_flags_prompt_schema_issue_when_parse_errors_repeat() ->
     assert report.root_cause.label == "prompt_schema_issue"
     assert report.root_cause.confidence == "medium"
     assert "prompt 未明确 JSON" in report.root_cause.evidence_summary
+    assert {
+        "source": "prompt",
+        "status": "warn",
+        "severity": "medium",
+        "summary": "Prompt 未明确要求 JSON/schema，且 evidence 出现解析失败。",
+        "recommendation": "要求模型只输出可解析 JSON，并声明关键字段、类型和禁止额外文本。",
+    } in report.evaluation_asset_diagnostics
 
 
 def _diagnostic_case(
