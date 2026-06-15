@@ -84,7 +84,7 @@ Commit only after the focused tests and full verification pass.
 - Create: `frontend/src/ui/ProductPrimitives.test.tsx`
 - Modify: `frontend/src/styles/product.css`
 
-- [ ] Add tests for shared primitives.
+- [x] Add tests for shared primitives.
   - Test that `ProductSurface` renders a labelled region.
   - Test that `MetricStrip` renders metric labels and values.
   - Test that `StatusBadge` maps `critical`, `warning`, `success`, and `neutral` to stable class names.
@@ -93,16 +93,16 @@ Commit only after the focused tests and full verification pass.
     npx --yes pnpm@9.15.4 --dir frontend test -- --run src/ui/ProductPrimitives.test.tsx
     ```
   - Expected RED: module `../ui/ProductPrimitives` cannot be resolved.
-- [ ] Implement `ProductSurface`, `MetricStrip`, `StatusBadge`, `ActionRow`, `EmptyState`, and `SectionHeader`.
+- [x] Implement `ProductSurface`, `MetricStrip`, `StatusBadge`, `ActionRow`, `EmptyState`, and `SectionHeader`.
   - Use semantic `section`, `header`, and `dl` where appropriate.
   - Keep props minimal and typed.
   - Add CSS classes: `product-surface`, `metric-strip`, `status-badge`, `action-row`, `empty-state`, `section-header`.
-- [ ] Re-run:
+- [x] Re-run:
   ```powershell
   npx --yes pnpm@9.15.4 --dir frontend test -- --run src/ui/ProductPrimitives.test.tsx
   ```
   - Expected GREEN: all primitive tests pass.
-- [ ] Run frontend typecheck:
+- [x] Run frontend typecheck:
   ```powershell
   npx --yes pnpm@9.15.4 --dir frontend typecheck
   ```
