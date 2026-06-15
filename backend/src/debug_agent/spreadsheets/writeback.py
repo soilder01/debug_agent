@@ -188,6 +188,9 @@ def _evaluation_feedback(report: DebugReport) -> str:
     final_attribution_recovery_results = _final_attribution_recovery_results(report)
     if final_attribution_recovery_results:
         lines.append(f"最终归因恢复：{final_attribution_recovery_results}")
+    final_attribution_reinvestigations = _final_attribution_reinvestigations(report)
+    if final_attribution_reinvestigations:
+        lines.append(f"最终归因重查：{final_attribution_reinvestigations}")
     if report.experiment_summary is not None:
         summary = report.experiment_summary
         lines.extend(
@@ -378,4 +381,27 @@ def _final_attribution_recovery_line(result: dict[str, object]) -> str:
     if recovery_job_id:
         line = f"{line}\n恢复任务：{recovery_job_id}"
     line = f"{line}\n通过率：{success_rate_percent}%"
+    return line
+
+
+def _final_attribution_reinvestigations(report: DebugReport) -> str:
+    return "\n".join(
+        _final_attribution_reinvestigation_line(follow_up)
+        for follow_up in report.follow_up_experiments
+        if follow_up.get("source") == "final_attribution_recovery_outcome"
+    )
+
+
+def _final_attribution_reinvestigation_line(follow_up: dict[str, str]) -> str:
+    target_id = follow_up.get("target_id", "unknown")
+    category = follow_up.get("category", "unknown")
+    result = follow_up.get("result", "unknown")
+    planned_steps = follow_up.get("planned_steps", "")
+    recovery_job_id = follow_up.get("recovery_job_id", "")
+    summary = follow_up.get("summary", "")
+    line = f"{target_id}/{category}/{result}：{summary}"
+    if recovery_job_id:
+        line = f"{line}\n恢复任务：{recovery_job_id}"
+    if planned_steps:
+        line = f"{line}\n重查步骤：{planned_steps}"
     return line

@@ -715,6 +715,22 @@
 - [x] Include final-attribution recovery results in spreadsheet `评估问题反馈`.
 - [x] Render final-attribution recovery observability metrics in the frontend panel.
 
+### Task 44: Recovery Reopen Reinvestigation Loop
+
+**Files:**
+- Modify: `backend/src/debug_agent/reports/job_report.py`
+- Modify: `backend/src/debug_agent/api/routes.py`
+- Modify: `backend/src/debug_agent/spreadsheets/writeback.py`
+- Test: `backend/tests/reports/test_job_report.py`
+- Test: `backend/tests/api/test_recommended_action_status.py`
+- Test: `backend/tests/spreadsheets/test_writeback.py`
+
+- [x] Convert reopened final-attribution recovery outcomes into critical reinvestigation recommended actions.
+- [x] Generate `final_attribution_recovery_outcome` follow-up entries with `final_attribution_reinvestigation_probe`.
+- [x] Add a backend API endpoint to create traceable final-attribution reinvestigation jobs.
+- [x] Persist reinvestigation jobs through strategy follow-up lineage with `final_attribution_reinvestigation:<target_id>`.
+- [x] Include final-attribution reinvestigation follow-ups in spreadsheet `评估问题反馈`.
+
 ## Verification Policy
 
 Every task must follow:

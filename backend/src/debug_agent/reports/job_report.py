@@ -69,12 +69,18 @@ def build_report_for_job(repository: DebugJobRepository, job_id: str) -> DebugRe
             *_build_final_attribution_recovery_closure_actions(
                 report.final_attribution_recovery_results
             ),
+            *_build_final_attribution_reinvestigation_actions(
+                report.final_attribution_recovery_results
+            ),
         ]
         report.follow_up_experiments = [
             *report.follow_up_experiments,
             *_build_final_attribution_follow_up_experiments(report.final_attributions),
             *_build_final_attribution_verification_recovery_follow_up_experiments(
                 report.final_attribution_verification_results
+            ),
+            *_build_final_attribution_reinvestigation_follow_up_experiments(
+                report.final_attribution_recovery_results
             ),
         ]
     return _merge_recommended_action_statuses(repository, job_id, report)
@@ -464,6 +470,25 @@ def _build_final_attribution_recovery_closure_actions(
     ]
 
 
+def _build_final_attribution_reinvestigation_actions(
+    final_attribution_recovery_results: list[dict[str, object]],
+) -> list[dict[str, str]]:
+    return [
+        {
+            "category": "attribution_reinvestigation",
+            "priority": "critical",
+            "status": "pending",
+            "summary": f"Reinvestigate reopened final attribution recovery for {result.get('target_id', 'unknown')}.",
+            "detail": (
+                f"Recovery job {result.get('recovery_job_id', '')} returned {result.get('result', 'unknown')}. "
+                "Rebuild the root-cause trace and run final_attribution_reinvestigation_probe."
+            ),
+        }
+        for result in final_attribution_recovery_results
+        if result.get("result") == "reopen"
+    ]
+
+
 def _build_final_attribution_follow_up_experiments(final_attributions: list[dict[str, str]]) -> list[dict[str, str]]:
     return [
         {
@@ -502,6 +527,28 @@ def _build_final_attribution_verification_recovery_follow_up_experiments(
         }
         for result in final_attribution_verification_results
         if result.get("result") in {"not_resolved", "inconclusive"}
+    ]
+
+
+def _build_final_attribution_reinvestigation_follow_up_experiments(
+    final_attribution_recovery_results: list[dict[str, object]],
+) -> list[dict[str, str]]:
+    return [
+        {
+            "source": "final_attribution_recovery_outcome",
+            "target_id": str(result.get("target_id", "unknown")),
+            "category": str(result.get("category", "unknown")),
+            "result": str(result.get("result", "unknown")),
+            "recovery_job_id": str(result.get("recovery_job_id", "")),
+            "planned_steps": "final_attribution_reinvestigation_probe",
+            "summary": (
+                f"Final attribution recovery for {result.get('target_id', 'unknown')} is "
+                f"{result.get('result', 'unknown')}; run final_attribution_reinvestigation_probe "
+                "to rebuild the root-cause trace."
+            ),
+        }
+        for result in final_attribution_recovery_results
+        if result.get("result") == "reopen"
     ]
 
 

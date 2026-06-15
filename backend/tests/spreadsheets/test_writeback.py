@@ -228,6 +228,18 @@ def test_build_report_writeback_fields_includes_targeted_probe_guardrails() -> N
                         "stop automatic escalation and require human review."
                     ),
                     "stop_condition": "max_targeted_probe_depth_reached",
+                },
+                {
+                    "source": "final_attribution_recovery_outcome",
+                    "target_id": "multimodal:conflict:1",
+                    "category": "prompt_issue",
+                    "result": "reopen",
+                    "recovery_job_id": "job-final-attribution-recovery",
+                    "planned_steps": "final_attribution_reinvestigation_probe",
+                    "summary": (
+                        "Final attribution recovery for multimodal:conflict:1 is reopen; "
+                        "run final_attribution_reinvestigation_probe to rebuild the root-cause trace."
+                    ),
                 }
             ],
             "human_handoff_requests": [
@@ -314,6 +326,9 @@ def test_build_report_writeback_fields_includes_targeted_probe_guardrails() -> N
     assert "最终归因恢复：" in fields["评估问题反馈"]
     assert "multimodal:conflict:1/prompt_issue/closed" in fields["评估问题反馈"]
     assert "恢复任务：job-final-attribution-recovery" in fields["评估问题反馈"]
+    assert "最终归因重查：" in fields["评估问题反馈"]
+    assert "multimodal:conflict:1/prompt_issue/reopen" in fields["评估问题反馈"]
+    assert "重查步骤：final_attribution_reinvestigation_probe" in fields["评估问题反馈"]
 
 
 def test_write_report_to_spreadsheet_row_updates_client_with_payload() -> None:
