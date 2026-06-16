@@ -345,15 +345,15 @@ Commit only after the focused tests and full verification pass.
 - Modify: `frontend/src/app/App.test.tsx`
 - Modify: component tests that need accessible label updates.
 
-- [ ] Add RED tests for accessible region labels and landmark structure.
-- [ ] Add keyboard focus styles for links, buttons, inputs, and action rows.
-- [ ] Add responsive breakpoints for desktop, tablet, and mobile.
-- [ ] Ensure all critical controls remain visible and reachable in the DOM without relying on hover.
-- [ ] Run complete frontend tests:
+- [x] Add RED tests for accessible region labels and landmark structure.
+- [x] Add keyboard focus styles for links, buttons, inputs, and action rows.
+- [x] Add responsive breakpoints for desktop, tablet, and mobile.
+- [x] Ensure all critical controls remain visible and reachable in the DOM without relying on hover.
+- [x] Run complete frontend tests:
   ```powershell
   npx --yes pnpm@9.15.4 --dir frontend test -- --run
   ```
-- [ ] Commit:
+- [x] Commit:
   ```powershell
   git add frontend/src frontend/package.json frontend/pnpm-lock.yaml
   git commit -m "feat: complete frontend accessibility and responsive polish"

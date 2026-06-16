@@ -57,6 +57,22 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Submit debug job" })).toBeVisible();
   });
 
+  it("keeps critical operator controls reachable without hover-only affordances", () => {
+    vi.spyOn(window, "matchMedia").mockReturnValue({ matches: true } as MediaQueryList);
+
+    render(<App />);
+
+    expect(screen.getByRole("main")).toHaveClass("agent-shell");
+    expect(screen.getByRole("navigation", { name: "Console navigation" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Submit debug job" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Start worker" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Load imported cases" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Sync spreadsheet rows" })).toBeVisible();
+    expect(screen.getByLabelText("Operations rail")).toBeVisible();
+    expect(screen.getByLabelText("Case intake")).toBeVisible();
+    expect(screen.getByLabelText("Investigation workspace")).toBeVisible();
+  });
+
   it("renders the logical agent topology", () => {
     render(<App />);
 
