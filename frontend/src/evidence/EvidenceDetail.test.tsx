@@ -371,6 +371,74 @@ describe("EvidenceDetail", () => {
     expect(within(artifacts[2]).getByText("冲突类型：visual_text_conflict → visual_text_conflict")).toBeInTheDocument();
   });
 
+  it("renders video timestamp delta metadata in a Chinese-friendly format", () => {
+    const evidence = {
+      evidence_id: "video-case:baseline_replay:0",
+      step_name: "baseline_replay",
+      trial: 0,
+      model_name: "ark-video",
+      model_provider: "ark",
+      model_id: "video-model",
+      request_summary: {
+        prompt_length: 128,
+        has_image: true,
+        image_uri_scheme: "file"
+      },
+      latency_ms: 1200,
+      response_parse_error: "",
+      model_call_error_type: "",
+      model_call_error_message: "",
+      artifacts: [
+        {
+          artifact_id: "video-case:baseline:0:video_segment_1_end_s_timestamp_end_out_of_range:delta",
+          kind: "video_segment_delta",
+          artifact_type: "video_segment",
+          source_uri: "file:///tmp/video.mp4",
+          derived_uri: "",
+          preview_url: "",
+          region: null,
+          metadata: {
+            target_id: "video:segment:1",
+            reason: "timestamp_end_out_of_range",
+            field: "end_s",
+            expected_end_s_range: "22.0-24.0",
+            actual_end_s: 34.0,
+            delta_seconds: 10.0,
+            expected_segment: { start_ms: 100, end_ms: 24000, label: "first action" },
+            actual_segment: { start_ms: 0, end_ms: 34000, label: "first action" }
+          }
+        }
+      ],
+      image_artifacts: [],
+      raw_output: "{\"video_action_segments\":[]}",
+      judge: {
+        score: 0,
+        reasons: ["video:segment:1 timestamp_end_out_of_range"],
+        deltas: [
+          {
+            target_id: "video:segment:1",
+            expected: "22.0-24.0s",
+            actual: "34.0s",
+            reason: "timestamp_end_out_of_range",
+            metadata: {
+              field: "end_s",
+              expected_end_s_range: "22.0-24.0",
+              actual_end_s: 34.0,
+              delta_seconds: 10.0
+            }
+          }
+        ]
+      }
+    } satisfies ExperimentEvidence;
+
+    render(<EvidenceDetail evidence={evidence} />);
+
+    expect(screen.getByText("时间窗字段：end_s")).toBeInTheDocument();
+    expect(screen.getByText("期望时间窗：22.0-24.0s")).toBeInTheDocument();
+    expect(screen.getByText("实际时间：34.0s")).toBeInTheDocument();
+    expect(screen.getByText("偏差：10.0s")).toBeInTheDocument();
+  });
+
   it("renders video segment manifest artifacts as audit links", () => {
     const evidence = {
       evidence_id: "video-case:baseline_replay:0",

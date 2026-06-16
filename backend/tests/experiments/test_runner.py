@@ -733,9 +733,7 @@ async def test_run_experiments_judges_video_detection_output_natively() -> None:
             },
         }
     ]
-    native_artifact = next(
-        artifact for artifact in result.evidence[0].artifacts if artifact.artifact_id.endswith(":video_segment_1:delta")
-    )
+    native_artifact = next(artifact for artifact in result.evidence[0].artifacts if artifact.kind == "video_segment_delta")
     assert native_artifact.kind == "video_segment_delta"
     assert native_artifact.artifact_type == "video_segment"
     assert native_artifact.source_uri == "file:///tmp/video-detection.mp4"
@@ -842,6 +840,140 @@ async def test_run_experiments_materializes_video_segment_delta_manifest() -> No
         }
         assert native_artifact.metadata["manifest_type"] == "video_segment_delta"
         assert native_artifact.metadata["keyframe_thumbnails"] == manifest["keyframe_thumbnails"]
+
+
+@pytest.mark.asyncio
+async def test_run_experiments_preserves_video_timestamp_delta_metadata() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "video-timestamp-delta",
+            "task_type": "video_detection",
+            "image_uri": "file:///tmp/video-timestamp.mp4",
+            "prompt": "Return video_action_segments JSON.",
+            "golden_answer": {"answers": []},
+            "expected_output": {
+                "temporal_segments": [
+                    {
+                        "target_id": "video:segment:1",
+                        "start_ms": 100,
+                        "end_ms": 24000,
+                        "label": "The right arm picks up the crab clamp and adjusts its position",
+                    }
+                ]
+            },
+            "scoring_standard": """
+            [
+              {
+                "op_name": "check_timestamp",
+                "format": "float",
+                "in_key": "video_action_segments",
+                "grids": [
+                  {
+                    "start_s": {"type": "range", "min": 0.0, "max": 1.0},
+                    "end_s": {"type": "range", "min": 22.0, "max": 24.0}
+                  }
+                ]
+              }
+            ]
+            """,
+            "predictions": [{"trial": 0, "raw_output": "{}", "score": 0}],
+            "avg_score": 0.0,
+        }
+    )
+    plan = ExperimentPlan(
+        case_id=case.case_id,
+        max_model_calls=1,
+        steps=[ExperimentStep(name="baseline_replay", description="Replay baseline.", trials=1)],
+    )
+    adapter = FakeModelAdapter(
+        outputs=[
+            """
+            {
+              "video_action_segments": [
+                {
+                  "subtask_label": "The right arm picks up the crab clamp and adjusts its position",
+                  "start_s": 0.0,
+                  "end_s": 34.0
+                }
+              ]
+            }
+            """
+        ]
+    )
+
+    result = await run_experiments(case=case, plan=plan, adapter=adapter)
+
+    native_artifact = next(artifact for artifact in result.evidence[0].artifacts if artifact.kind == "video_segment_delta")
+    assert native_artifact.metadata["reason"] == "timestamp_end_out_of_range"
+    assert native_artifact.metadata["expected_end_s_range"] == "22.0-24.0"
+    assert native_artifact.metadata["actual_end_s"] == 34.0
+    assert native_artifact.metadata["delta_seconds"] == 10.0
+
+
+@pytest.mark.asyncio
+async def test_run_experiments_uses_unique_artifacts_for_multiple_timestamp_deltas() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "video-timestamp-multi-delta",
+            "task_type": "video_detection",
+            "image_uri": "file:///tmp/video-timestamp.mp4",
+            "prompt": "Return video_action_segments JSON.",
+            "golden_answer": {"answers": []},
+            "expected_output": {
+                "temporal_segments": [
+                    {"target_id": "video:segment:1", "start_ms": 100, "end_ms": 24000, "label": "first"},
+                    {"target_id": "video:segment:2", "start_ms": 24100, "end_ms": 44000, "label": "second"},
+                ]
+            },
+            "scoring_standard": """
+            [
+              {
+                "op_name": "check_timestamp",
+                "grids": [
+                  {
+                    "start_s": {"type": "range", "min": 0.0, "max": 1.0},
+                    "end_s": {"type": "range", "min": 22.0, "max": 24.0}
+                  },
+                  {
+                    "start_s": {"type": "continue", "offset": 0.1},
+                    "end_s": {"type": "range", "min": 42.0, "max": 44.0}
+                  }
+                ]
+              }
+            ]
+            """,
+            "predictions": [{"trial": 0, "raw_output": "{}", "score": 0}],
+            "avg_score": 0.0,
+        }
+    )
+    plan = ExperimentPlan(
+        case_id=case.case_id,
+        max_model_calls=1,
+        steps=[ExperimentStep(name="baseline_replay", description="Replay baseline.", trials=1)],
+    )
+    adapter = FakeModelAdapter(
+        outputs=[
+            """
+            {
+              "video_action_segments": [
+                {"subtask_label": "first", "start_s": 0.0, "end_s": 23.0},
+                {"subtask_label": "second", "start_s": 24.0, "end_s": 48.0}
+              ]
+            }
+            """
+        ]
+    )
+
+    result = await run_experiments(case=case, plan=plan, adapter=adapter)
+
+    video_artifact_ids = [
+        artifact.artifact_id
+        for artifact in result.evidence[0].artifacts
+        if artifact.artifact_type == "video_segment"
+    ]
+    assert len(video_artifact_ids) == len(set(video_artifact_ids))
+    assert any("timestamp_start_not_continuous" in artifact_id for artifact_id in video_artifact_ids)
+    assert any("timestamp_end_out_of_range" in artifact_id for artifact_id in video_artifact_ids)
 
 
 @pytest.mark.asyncio

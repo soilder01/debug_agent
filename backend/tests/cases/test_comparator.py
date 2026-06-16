@@ -233,6 +233,34 @@ def test_parse_video_detection_output_reads_temporal_segments() -> None:
     assert parsed.temporal_segments[0].confidence == 0.84
 
 
+def test_parse_video_detection_output_reads_video_action_segments() -> None:
+    parsed = parse_video_detection_output(
+        """
+        {
+          "video_action_segments": [
+            {
+              "subtask_label": "The right arm picks up the crab clamp and adjusts its position",
+              "start_s": 0.0,
+              "end_s": 23.0
+            },
+            {
+              "subtask_label": "The right arm picks up the dishwashing sponge",
+              "start_s": 23.1,
+              "end_s": 43.5
+            }
+          ]
+        }
+        """
+    )
+
+    assert [segment.target_id for segment in parsed.temporal_segments] == ["video:segment:1", "video:segment:2"]
+    assert parsed.temporal_segments[0].label == "The right arm picks up the crab clamp and adjusts its position"
+    assert parsed.temporal_segments[0].start_ms == 0
+    assert parsed.temporal_segments[0].end_ms == 23000
+    assert parsed.temporal_segments[1].start_ms == 23100
+    assert parsed.temporal_segments[1].end_ms == 43500
+
+
 def test_compare_video_detection_outputs_detects_segment_label_delta() -> None:
     expected = VideoDetectionOutput.model_validate(
         {

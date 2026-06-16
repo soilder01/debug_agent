@@ -73,6 +73,10 @@ def parse_image_detection_output(raw_output: str) -> ImageDetectionOutput:
 
 def parse_video_detection_output(raw_output: str) -> VideoDetectionOutput:
     payload = json.loads(raw_output)
+    if isinstance(payload, dict) and "video_action_segments" in payload and "temporal_segments" not in payload:
+        return VideoDetectionOutput.model_validate(
+            {"temporal_segments": _video_action_segments_to_temporal_segments(payload["video_action_segments"])}
+        )
     return VideoDetectionOutput.model_validate(payload)
 
 
@@ -156,6 +160,29 @@ def compare_multimodal_detection_outputs(
             deltas.append(delta)
 
     return MultimodalDetectionDiff(has_differences=bool(deltas), detection_deltas=deltas)
+
+
+def _video_action_segments_to_temporal_segments(value: object) -> list[dict[str, object]]:
+    if not isinstance(value, list):
+        raise ValueError(f"Expected JSON list in video_action_segments: {value}")
+    segments: list[dict[str, object]] = []
+    for index, item in enumerate(value, start=1):
+        if not isinstance(item, dict):
+            raise ValueError(f"Expected JSON object in video_action_segments[{index - 1}]: {item}")
+        label = item.get("subtask_label")
+        start_s = item.get("start_s")
+        end_s = item.get("end_s")
+        if not isinstance(label, str) or not isinstance(start_s, int | float) or not isinstance(end_s, int | float):
+            raise ValueError(f"Invalid video_action_segments[{index - 1}] item: {item}")
+        segments.append(
+            {
+                "target_id": f"video:segment:{index}",
+                "start_ms": int(round(float(start_s) * 1000)),
+                "end_ms": int(round(float(end_s) * 1000)),
+                "label": label,
+            }
+        )
+    return segments
 
 
 def compare_answer_sets(expected: AnswerSet, predicted: AnswerSet) -> AnswerDiff:

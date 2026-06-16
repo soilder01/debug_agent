@@ -1,7 +1,11 @@
 import pytest
+from urllib.error import HTTPError
+from io import BytesIO
+import base64
+from pathlib import Path
 
 from debug_agent.settings import ArkSettings
-from debug_agent.models.ark import ArkModelAdapter, ArkRequest
+from debug_agent.models.ark import ArkModelAdapter, ArkRequest, UrllibArkTransport
 
 
 def test_ark_settings_reads_environment(monkeypatch) -> None:
@@ -63,6 +67,30 @@ def test_ark_adapter_builds_high_no_thinking_video_request() -> None:
     assert content[1] == {"type": "video_url", "video_url": {"url": "file:///tmp/case.mp4"}}
 
 
+def test_ark_adapter_converts_local_video_file_uri_to_base64_data_url() -> None:
+    video_path = Path(__file__).with_name(".ark-test-video.mp4")
+    video_path.write_bytes(b"fake-video")
+    adapter = ArkModelAdapter(
+        settings=ark_settings(),
+        model_id="video-model",
+        mode="high",
+        disable_thinking=True,
+    )
+
+    try:
+        request = adapter.build_request(prompt="segment this video", image_uri=video_path.as_uri())
+    finally:
+        video_path.unlink(missing_ok=True)
+
+    messages = request.json_body["messages"]
+    assert isinstance(messages, list)
+    content = messages[0]["content"]  # type: ignore[index]
+    video_url = content[1]["video_url"]["url"]  # type: ignore[index]
+    assert video_url.startswith("data:video/mp4;base64,")
+    encoded = video_url.split(",", 1)[1]
+    assert base64.b64decode(encoded) == b"fake-video"
+
+
 class FakeArkTransport:
     def __init__(self, response: dict[str, object]) -> None:
         self.response = response
@@ -120,3 +148,25 @@ async def test_ark_adapter_generate_rejects_malformed_response() -> None:
         assert "Unable to parse Ark response content" in str(exc)
     else:
         raise AssertionError("Expected malformed Ark response to raise ValueError")
+
+
+def test_urllib_ark_transport_includes_http_error_body(monkeypatch: pytest.MonkeyPatch) -> None:
+    def raise_http_error(*args: object, **kwargs: object) -> object:
+        del args, kwargs
+        raise HTTPError(
+            url="https://ark.example/api/v3/chat/completions",
+            code=400,
+            msg="Bad Request",
+            hdrs={},
+            fp=BytesIO(b'{"error":{"message":"invalid video url"}}'),
+        )
+
+    monkeypatch.setattr("debug_agent.models.ark.urllib_request.urlopen", raise_http_error)
+    request = ArkRequest(
+        url="https://ark.example/api/v3/chat/completions",
+        headers={"Authorization": "Bearer secret-value"},
+        json_body={"model": "video-model", "messages": []},
+    )
+
+    with pytest.raises(RuntimeError, match="invalid video url"):
+        UrllibArkTransport()._post_sync(request)

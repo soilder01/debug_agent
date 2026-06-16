@@ -1002,6 +1002,88 @@ def test_generate_report_adds_native_target_and_artifact_fields_for_multimodal_d
     assert report.suggested_sheet_fields["证据产物"] == "multimodal-writeback:baseline:0:input-snapshot"
 
 
+def test_generate_report_explains_video_timestamp_deltas_in_chinese() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "video-timestamp-report",
+            "task_type": "video_detection",
+            "image_uri": "file:///tmp/jszn-131.mp4",
+            "prompt": "Return video_action_segments JSON.",
+            "golden_answer": {"answers": []},
+            "expected_output": {
+                "temporal_segments": [
+                    {
+                        "target_id": "video:segment:1",
+                        "start_ms": 100,
+                        "end_ms": 24000,
+                        "label": "The right arm picks up the crab clamp and adjusts its position",
+                    }
+                ]
+            },
+            "scoring_standard": "check_timestamp",
+            "predictions": [{"trial": 0, "raw_output": "{}", "score": 0}],
+            "avg_score": 0.0,
+        }
+    )
+    plan = plan_experiments(case)
+    run_result = ExperimentRunResult(
+        case_id=case.case_id,
+        total_trials=1,
+        success_count=0,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="e-video-timestamp",
+                step_name="temporal_schema_check",
+                trial=0,
+                artifacts=[
+                    {
+                        "artifact_id": "video-timestamp-report:temporal_schema_check:0:video_segment_1:delta",
+                        "kind": "video_segment_delta",
+                        "artifact_type": "video_segment",
+                        "source_uri": "file:///tmp/jszn-131.mp4",
+                        "metadata": {
+                            "target_id": "video:segment:1",
+                            "reason": "timestamp_end_out_of_range",
+                            "expected_end_s_range": "22.0-24.0",
+                            "actual_end_s": 34.0,
+                            "delta_seconds": 10.0,
+                        },
+                    }
+                ],
+                raw_output="{}",
+                judge=JudgeResult(
+                    score=0,
+                    reasons=["video:segment:1 timestamp_end_out_of_range"],
+                    deltas=[
+                        {
+                            "target_id": "video:segment:1",
+                            "expected": "22.0-24.0s",
+                            "actual": "34.0s",
+                            "reason": "timestamp_end_out_of_range",
+                            "metadata": {
+                                "field": "end_s",
+                                "expected_end_s_range": "22.0-24.0",
+                                "actual_end_s": 34.0,
+                                "delta_seconds": 10.0,
+                            },
+                        }
+                    ],
+                ),
+            )
+        ],
+    )
+
+    report = generate_initial_report(case, plan, run_result)
+
+    assert report.root_cause.label == "video_timestamp_boundary_error"
+    assert report.root_cause_trace[0]["variant"] == "video_timestamp"
+    assert report.root_cause_trace[0]["target_ids"] == ["video:segment:1"]
+    assert "视频时间边界定位失败" in report.root_cause.evidence_summary
+    assert report.suggested_sheet_fields["错误原因"] == "视频时间边界定位失败：video:segment:1 end_s 超出期望窗口 22.0-24.0s，实际 34.0s，偏差 10.0s。"
+    assert "video:segment:1 end_s 超出期望窗口 22.0-24.0s，实际 34.0s，偏差 10.0s" in report.suggested_sheet_fields["结构化差异"]
+    assert report.recommended_actions[0]["summary"] == "补强视频时序边界定位。"
+
+
 def test_generate_report_prioritizes_runtime_failures_before_answer_mismatch() -> None:
     fixture_path = Path(__file__).parents[1] / "fixtures" / "handwrite233.json"
     case = DebugCase.model_validate(json.loads(fixture_path.read_text(encoding="utf-8")))

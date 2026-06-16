@@ -256,6 +256,7 @@ function ArtifactNativeContext({ metadata }: ArtifactNativeContextProps) {
   const actualRegion = regionValue(metadata.actual_region);
   const expectedSegment = segmentValue(metadata.expected_segment);
   const actualSegment = segmentValue(metadata.actual_segment);
+  const timestampDelta = timestampDeltaValue(metadata);
   const expectedModalities = stringArrayValue(metadata.expected_modalities);
   const actualModalities = stringArrayValue(metadata.actual_modalities);
   const expectedConflictType = stringValue(metadata.expected_conflict_type);
@@ -266,6 +267,7 @@ function ArtifactNativeContext({ metadata }: ArtifactNativeContextProps) {
     actualRegion ||
     expectedSegment ||
     actualSegment ||
+    timestampDelta ||
     expectedModalities.length > 0 ||
     actualModalities.length > 0 ||
     expectedConflictType ||
@@ -282,6 +284,14 @@ function ArtifactNativeContext({ metadata }: ArtifactNativeContextProps) {
       {actualRegion ? <p>实际区域：{formatRegion(actualRegion)}</p> : null}
       {expectedSegment ? <p>期望片段：{formatSegment(expectedSegment)}</p> : null}
       {actualSegment ? <p>实际片段：{formatSegment(actualSegment)}</p> : null}
+      {timestampDelta ? (
+        <section aria-label="Video timestamp delta">
+          <p>时间窗字段：{timestampDelta.field}</p>
+          <p>期望时间窗：{timestampDelta.expectedRange}s</p>
+          <p>实际时间：{timestampDelta.actualValue}s</p>
+          <p>偏差：{timestampDelta.deltaSeconds}s</p>
+        </section>
+      ) : null}
       {expectedModalities.length > 0 ? <p>期望模态：{expectedModalities.join(", ")}</p> : null}
       {actualModalities.length > 0 ? <p>实际模态：{actualModalities.join(", ")}</p> : null}
       {expectedConflictType || actualConflictType ? (
@@ -309,6 +319,13 @@ type SegmentMetadata = {
 type KeyframeThumbnailMetadata = {
   timestamp_ms: number;
   preview_url: string;
+};
+
+type TimestampDeltaMetadata = {
+  field: string;
+  expectedRange: string;
+  actualValue: string;
+  deltaSeconds: string;
 };
 
 function regionValue(value: unknown): RegionMetadata | null {
@@ -348,6 +365,26 @@ function segmentValue(value: unknown): SegmentMetadata | null {
   };
 }
 
+function timestampDeltaValue(metadata: Record<string, unknown>): TimestampDeltaMetadata | null {
+  const field = stringValue(metadata.field);
+  if (field !== "start_s" && field !== "end_s") {
+    return null;
+  }
+  const expectedRange =
+    field === "start_s" ? stringValue(metadata.expected_start_s_range) : stringValue(metadata.expected_end_s_range);
+  const actual = field === "start_s" ? numberValue(metadata.actual_start_s) : numberValue(metadata.actual_end_s);
+  const deltaSeconds = numberValue(metadata.delta_seconds);
+  if (!expectedRange || actual === null || deltaSeconds === null) {
+    return null;
+  }
+  return {
+    field,
+    expectedRange,
+    actualValue: formatSeconds(actual),
+    deltaSeconds: formatSeconds(deltaSeconds)
+  };
+}
+
 function keyframeThumbnailValues(value: unknown): KeyframeThumbnailMetadata[] {
   if (!Array.isArray(value)) {
     return [];
@@ -371,6 +408,10 @@ function formatRegion(region: RegionMetadata): string {
 
 function formatSegment(segment: SegmentMetadata): string {
   return `start=${segment.start_ms}ms, end=${segment.end_ms}ms, label=${segment.label}`;
+}
+
+function formatSeconds(value: number): string {
+  return Number.isInteger(value) ? value.toFixed(1) : String(value);
 }
 
 function stringArrayValue(value: unknown): string[] {

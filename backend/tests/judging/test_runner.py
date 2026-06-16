@@ -197,6 +197,123 @@ def test_judge_video_detection_output_returns_segment_delta() -> None:
     ]
 
 
+def test_judge_video_detection_output_applies_check_timestamp_ranges() -> None:
+    expected = VideoDetectionOutput.model_validate(
+        {
+            "temporal_segments": [
+                {
+                    "target_id": "video:segment:1",
+                    "start_ms": 100,
+                    "end_ms": 24000,
+                    "label": "The right arm picks up the crab clamp and adjusts its position",
+                }
+            ]
+        }
+    )
+    predicted = VideoDetectionOutput.model_validate(
+        {
+            "temporal_segments": [
+                {
+                    "target_id": "video:segment:1",
+                    "start_ms": 0,
+                    "end_ms": 34000,
+                    "label": "The right arm picks up the crab clamp and adjusts its position",
+                }
+            ]
+        }
+    )
+    scoring_standard = """
+    [
+      {
+        "op_name": "check_timestamp",
+        "format": "float",
+        "in_key": "video_action_segments",
+        "grids": [
+          {
+            "start_s": {"type": "range", "min": 0.0, "max": 1.0},
+            "end_s": {"type": "range", "min": 22.0, "max": 24.0}
+          }
+        ]
+      }
+    ]
+    """
+
+    result = judge_video_detection_output(expected, predicted, scoring_standard=scoring_standard)
+
+    assert result.score == 0
+    assert result.reasons == ["video:segment:1 timestamp_end_out_of_range"]
+    assert result.deltas == [
+        {
+            "target_id": "video:segment:1",
+            "expected": "22.0-24.0s",
+            "actual": "34.0s",
+            "reason": "timestamp_end_out_of_range",
+            "metadata": {
+                "field": "end_s",
+                "expected_start_s_range": "0.0-1.0",
+                "expected_end_s_range": "22.0-24.0",
+                "actual_start_s": 0.0,
+                "actual_end_s": 34.0,
+                "delta_seconds": 10.0,
+                "expected_segment": {
+                    "start_ms": 100,
+                    "end_ms": 24000,
+                    "label": "The right arm picks up the crab clamp and adjusts its position",
+                },
+                "actual_segment": {
+                    "start_ms": 0,
+                    "end_ms": 34000,
+                    "label": "The right arm picks up the crab clamp and adjusts its position",
+                },
+            },
+        }
+    ]
+
+
+def test_judge_video_detection_output_accepts_check_timestamp_continue_rules() -> None:
+    expected = VideoDetectionOutput.model_validate(
+        {
+            "temporal_segments": [
+                {"target_id": "video:segment:1", "start_ms": 100, "end_ms": 24000, "label": "first"},
+                {"target_id": "video:segment:2", "start_ms": 24100, "end_ms": 44000, "label": "second"},
+            ]
+        }
+    )
+    predicted = VideoDetectionOutput.model_validate(
+        {
+            "temporal_segments": [
+                {"target_id": "video:segment:1", "start_ms": 0, "end_ms": 23000, "label": "first"},
+                {"target_id": "video:segment:2", "start_ms": 23100, "end_ms": 43500, "label": "second"},
+            ]
+        }
+    )
+    scoring_standard = """
+    [
+      {
+        "op_name": "check_timestamp",
+        "format": "float",
+        "in_key": "video_action_segments",
+        "grids": [
+          {
+            "start_s": {"type": "range", "min": 0.0, "max": 1.0},
+            "end_s": {"type": "range", "min": 22.0, "max": 24.0}
+          },
+          {
+            "start_s": {"type": "continue", "offset": 0.1},
+            "end_s": {"type": "range", "min": 42.0, "max": 44.0}
+          }
+        ]
+      }
+    ]
+    """
+
+    result = judge_video_detection_output(expected, predicted, scoring_standard=scoring_standard)
+
+    assert result.score == 1
+    assert result.reasons == []
+    assert result.deltas == []
+
+
 def test_judge_multimodal_detection_output_returns_conflict_delta() -> None:
     expected = MultimodalDetectionOutput.model_validate(
         {

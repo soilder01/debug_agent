@@ -199,11 +199,18 @@ def _build_step_summary(step_name: str, evidence: list[ExperimentEvidence]) -> d
 def _build_root_cause_trace(run_result: ExperimentRunResult | None) -> list[dict[str, object]]:
     if run_result is None:
         return []
-    return [
-        _root_cause_trace_item(item=item, variant=variant)
-        for item in run_result.evidence
-        if (variant := _string_from_request_summary(item.request_summary.get("ablation_variant")))
-    ]
+    trace: list[dict[str, object]] = []
+    for item in run_result.evidence:
+        variant = _string_from_request_summary(item.request_summary.get("ablation_variant"))
+        if variant:
+            trace.append(_root_cause_trace_item(item=item, variant=variant))
+        elif _has_timestamp_delta(item):
+            trace.append(_root_cause_trace_item(item=item, variant="video_timestamp"))
+    return trace
+
+
+def _has_timestamp_delta(item: ExperimentEvidence) -> bool:
+    return any(str(delta.get("reason", "")).startswith("timestamp_") for delta in item.judge.deltas)
 
 
 def _root_cause_trace_item(item: ExperimentEvidence, variant: str) -> dict[str, object]:
@@ -233,6 +240,8 @@ def _root_cause_trace_item(item: ExperimentEvidence, variant: str) -> dict[str, 
 
 
 def _trace_hypothesis(variant: str) -> str:
+    if variant == "video_timestamp":
+        return "检查视频动作分段的 start_s/end_s 是否满足评分时间窗和连续性规则。"
     if variant == "cross_modal_compare":
         return "检查 cross_modal_compare 是否暴露跨模态对齐或融合问题。"
     return f"检查 {variant} 是否暴露该实验变体覆盖的能力问题。"
@@ -253,6 +262,8 @@ def _trace_observation(
 
 def _trace_conclusion(*, variant: str, judge_score: int) -> str:
     outcome = "失败" if judge_score == 0 else "通过"
+    if variant == "video_timestamp":
+        return f"video_timestamp {outcome}，当前证据支持围绕视频时间边界定位继续归因。"
     return f"{variant} {outcome}，当前证据支持继续定位该变体覆盖的能力链路。"
 
 
@@ -313,6 +324,30 @@ def _build_recommended_actions(
             },
             citation_context,
         )
+    if root_cause.label == "video_timestamp_boundary_error":
+        return _with_citations([
+            {
+                "category": "prompt",
+                "priority": "high",
+                "status": "pending",
+                "summary": "补强视频时序边界定位。",
+                "detail": "要求模型先逐段确认动作开始、结束事件和目标物释放/离开时刻，再输出 video_action_segments JSON。",
+            },
+            {
+                "category": "evaluation_asset",
+                "priority": "medium",
+                "status": "pending",
+                "summary": "复核 timestamp grids 与子任务标签一致性。",
+                "detail": "检查 check_timestamp 的 range/continue 规则是否与参考答案、prompt 子任务数量和动作定义严格对齐。",
+            },
+            {
+                "category": "model_capability",
+                "priority": "high",
+                "status": "pending",
+                "summary": "加入视频时序边界回归集。",
+                "detail": "将该样本纳入 temporal boundary regression，重点监控 end_s 是否持续落在期望窗口内。",
+            },
+        ], citation_context)
     if root_cause.label == "single_modality_capability_gap":
         modality = _modality_from_root_cause_summary(root_cause.evidence_summary)
         return _with_citations([
@@ -827,6 +862,14 @@ def _infer_report_findings(
         if ablation_issue is not None:
             return ablation_issue
         structured_deltas = _structured_answer_deltas(run_result.evidence)
+        if case.task_type == "video_detection":
+            video_timestamp_issue = _video_timestamp_issue(
+                deltas=structured_deltas,
+                success_count=run_result.success_count,
+                artifact_ids=_artifact_ids_from_run_result(run_result),
+            )
+            if video_timestamp_issue is not None:
+                return video_timestamp_issue
         if structured_deltas:
             affected_box_ids = _affected_box_ids_from_deltas(structured_deltas)
             target_summary = _target_summary_from_deltas(structured_deltas, affected_box_ids)
@@ -1125,6 +1168,64 @@ def _native_structured_sheet_fields(
     if artifact_ids:
         fields["证据产物"] = ", ".join(artifact_ids)
     return fields
+
+
+def _video_timestamp_issue(
+    *,
+    deltas: list[dict[str, object]],
+    success_count: int,
+    artifact_ids: list[str],
+) -> tuple[ObservedFailure, RootCause, dict[str, str]] | None:
+    timestamp_deltas = [
+        delta
+        for delta in deltas
+        if str(delta.get("reason", "")).startswith("timestamp_")
+    ]
+    if not timestamp_deltas:
+        return None
+    target_summary = _target_summary_from_deltas(timestamp_deltas, [])
+    delta_lines = [_video_timestamp_delta_line(delta) for delta in timestamp_deltas]
+    first_line = delta_lines[0]
+    fields = {
+        "debug1状态": "待人工确认",
+        "模型可做对次数": f"{success_count}次",
+        "错误原因": f"视频时间边界定位失败：{first_line}。",
+        "影响目标": target_summary,
+        "结构化差异": "\n".join(delta_lines),
+    }
+    if artifact_ids:
+        fields["证据产物"] = ", ".join(artifact_ids)
+    return (
+        ObservedFailure(
+            type="video_timestamp_mismatch",
+            summary=f"视频时间窗评分发现 {target_summary} 存在时间边界偏差。",
+            affected_box_ids=[],
+        ),
+        RootCause(
+            label="video_timestamp_boundary_error",
+            confidence="high",
+            evidence_summary=f"视频时间边界定位失败：{'; '.join(delta_lines)}。",
+        ),
+        fields,
+    )
+
+
+def _video_timestamp_delta_line(delta: dict[str, object]) -> str:
+    target_id = str(delta.get("target_id") or "video:segment:unknown")
+    metadata = delta.get("metadata")
+    if not isinstance(metadata, dict):
+        return f"{target_id} 时间边界异常"
+    field = str(metadata.get("field") or "timestamp")
+    expected_range = (
+        str(metadata.get("expected_start_s_range") or "")
+        if field == "start_s"
+        else str(metadata.get("expected_end_s_range") or "")
+    )
+    actual = metadata.get("actual_end_s") if field == "end_s" else metadata.get("actual_start_s")
+    delta_seconds = metadata.get("delta_seconds")
+    actual_text = f"{float(actual):.1f}s" if isinstance(actual, int | float) else "未知"
+    delta_text = f"{float(delta_seconds):.1f}s" if isinstance(delta_seconds, int | float) else "未知"
+    return f"{target_id} {field} 超出期望窗口 {expected_range}s，实际 {actual_text}，偏差 {delta_text}"
 
 
 def _delta_summary(deltas: list[dict[str, object]]) -> str:

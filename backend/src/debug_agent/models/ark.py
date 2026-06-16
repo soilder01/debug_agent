@@ -1,7 +1,13 @@
 import asyncio
+import base64
 import json
+import mimetypes
+import os
+from pathlib import Path
+from urllib.error import HTTPError
 from typing import Protocol
 from urllib import request as urllib_request
+from urllib.parse import unquote, urlparse
 
 from pydantic import BaseModel, Field
 
@@ -32,8 +38,12 @@ class UrllibArkTransport:
             headers={**request.headers, "Content-Type": "application/json"},
             method="POST",
         )
-        with urllib_request.urlopen(http_request, timeout=120) as response:
-            decoded = json.loads(response.read().decode("utf-8"))
+        try:
+            with urllib_request.urlopen(http_request, timeout=120) as response:
+                decoded = json.loads(response.read().decode("utf-8"))
+        except HTTPError as exc:
+            error_body = exc.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"Ark HTTP {exc.code} {exc.reason}: {error_body}") from exc
         if not isinstance(decoded, dict):
             raise ValueError("Ark response must be a JSON object")
         return decoded
@@ -108,10 +118,26 @@ def _extract_response_content(response_json: dict[str, object]) -> str:
 
 def _media_content(uri: str) -> dict[str, object]:
     if _is_video_uri(uri):
-        return {"type": "video_url", "video_url": {"url": uri}}
+        return {"type": "video_url", "video_url": {"url": _ark_media_url(uri)}}
     return {"type": "image_url", "image_url": {"url": uri}}
 
 
 def _is_video_uri(uri: str) -> bool:
     normalized = uri.split("?", 1)[0].lower()
     return normalized.endswith((".mp4", ".mov", ".mkv", ".webm", ".avi", ".m4v"))
+
+
+def _ark_media_url(uri: str) -> str:
+    parsed = urlparse(uri)
+    if parsed.scheme != "file":
+        return uri
+    local_path = Path(unquote(parsed.path))
+    if os.name == "nt" and len(local_path.as_posix()) > 3 and local_path.as_posix()[0] == "/" and local_path.as_posix()[2] == ":":
+        local_path = Path(local_path.as_posix()[1:])
+    if parsed.netloc:
+        local_path = Path(f"//{parsed.netloc}{unquote(parsed.path)}")
+    if not local_path.exists():
+        return uri
+    mime_type = mimetypes.guess_type(local_path.name)[0] or "application/octet-stream"
+    encoded = base64.b64encode(local_path.read_bytes()).decode("ascii")
+    return f"data:{mime_type};base64,{encoded}"

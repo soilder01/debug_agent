@@ -9,6 +9,7 @@ from debug_agent.cases.models import AnswerSet, BoxRegion, DebugCase, HumanNotes
 
 COLUMN_ALIASES: dict[str, str] = {
     "case_id": "case_id",
+    "id": "case_id",
     "case id": "case_id",
     "样本ID": "case_id",
     "样本 ID": "case_id",
@@ -23,6 +24,7 @@ COLUMN_ALIASES: dict[str, str] = {
     "图片链接": "image_uri",
     "图片URL": "image_uri",
     "prompt": "prompt",
+    "user prompt": "prompt",
     "提示词": "prompt",
     "模型输入": "prompt",
     "题目prompt": "prompt",
@@ -31,16 +33,19 @@ COLUMN_ALIASES: dict[str, str] = {
     "标答JSON": "golden_answer_json",
     "标准答案JSON": "golden_answer_json",
     "expected_output_json": "expected_output_json",
+    "参考答案": "expected_output_json",
     "expected output json": "expected_output_json",
     "期望输出JSON": "expected_output_json",
     "output_schema_json": "output_schema_json",
     "output schema json": "output_schema_json",
     "输出SchemaJSON": "output_schema_json",
     "scoring_standard": "scoring_standard",
+    "chains_alpha": "scoring_ops_json",
     "scoring standard": "scoring_standard",
     "评分标准": "scoring_standard",
     "打分标准": "scoring_standard",
     "predictions_json": "predictions_json",
+    "predict": "predictions_json",
     "predictions json": "predictions_json",
     "预测JSON": "predictions_json",
     "模型预测JSON": "predictions_json",
@@ -80,6 +85,7 @@ COLUMN_ALIASES: dict[str, str] = {
     "root cause": "root_cause",
     "错误原因": "root_cause",
     "根因": "root_cause",
+    "video": "image_uri",
 }
 
 

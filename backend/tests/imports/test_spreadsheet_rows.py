@@ -105,6 +105,69 @@ def test_parse_spreadsheet_rows_imports_non_ocr_expected_output_without_golden_a
     assert case.golden_answer.answers == []
 
 
+def test_parse_spreadsheet_rows_imports_jszn_video_action_row() -> None:
+    result = parse_spreadsheet_rows(
+        [
+            {
+                "sheet_row_id": "qJAomX:2",
+                "id": "JSZN-131",
+                "user prompt": "Segment the video and return video_action_segments JSON.",
+                "参考答案": """
+                {
+                  "video_action_segments": [
+                    {
+                      "subtask_label": "The right arm picks up the crab clamp and adjusts its position",
+                      "start_s": 0.1,
+                      "end_s": 23.1
+                    }
+                  ]
+                }
+                """,
+                "predict": [
+                    """
+                    {
+                      "video_action_segments": [
+                        {
+                          "subtask_label": "The right arm picks up the crab clamp and adjusts its position",
+                          "start_s": 0.0,
+                          "end_s": 34.0
+                        }
+                      ]
+                    }
+                    """
+                ],
+                "score": "[0]",
+                "video": "JSZN-131.mp4",
+                "chains_alpha": """
+                [
+                  {
+                    "op_name": "check_timestamp",
+                    "format": "float",
+                    "in_key": "video_action_segments",
+                    "grids": [
+                      {
+                        "start_s": {"type": "range", "min": 0.0, "max": 1.0},
+                        "end_s": {"type": "range", "min": 22.0, "max": 24.0}
+                      }
+                    ]
+                  }
+                ]
+                """,
+            }
+        ]
+    )
+
+    assert result.rejected_rows == []
+    case = result.imported_rows[0].case
+    assert case.case_id == "JSZN-131"
+    assert case.task_type == "video_detection"
+    assert case.image_uri == "JSZN-131.mp4"
+    assert case.expected_output["temporal_segments"][0]["target_id"] == "video:segment:1"
+    assert case.expected_output["temporal_segments"][0]["end_ms"] == 23100
+    assert case.predictions[0].score == 0
+    assert "check_timestamp" in case.scoring_standard
+
+
 def test_parse_spreadsheet_rows_accepts_box_regions_json() -> None:
     result = parse_spreadsheet_rows(
         [

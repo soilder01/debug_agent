@@ -374,8 +374,8 @@ def _build_native_delta_artifacts(
         artifact_type = _artifact_type_from_target_id(target_id)
         if not target_id or not artifact_type:
             continue
-        artifact_id = f"{case.case_id}:{step_name}:{trial_index}:{_safe_target_fragment(target_id)}:delta"
         metadata = _native_delta_metadata(delta)
+        artifact_id = f"{case.case_id}:{step_name}:{trial_index}:{_delta_artifact_fragment(target_id, metadata)}:delta"
         region = _image_region_from_delta(delta) if artifact_type == "image_region" else None
         derived_uri = ""
         preview_url = ""
@@ -440,6 +440,15 @@ def _artifact_type_from_target_id(target_id: str) -> str:
 
 def _safe_target_fragment(target_id: str) -> str:
     return target_id.replace(":", "_")
+
+
+def _delta_artifact_fragment(target_id: str, metadata: dict[str, object]) -> str:
+    fragment = _safe_target_fragment(target_id)
+    reason = str(metadata.get("reason") or "")
+    field = str(metadata.get("field") or "")
+    if reason.startswith("timestamp_"):
+        return "_".join(part for part in [fragment, field, reason] if part)
+    return fragment
 
 
 def _image_region_from_delta(delta: dict[str, object]) -> ImageRegion | None:

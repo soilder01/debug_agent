@@ -3,6 +3,7 @@ import json
 from pydantic import BaseModel, ValidationError
 
 from debug_agent.cases.models import AnswerSet, BoxRegion, DebugCase, HumanNotes, Prediction
+from debug_agent.cases.comparator import parse_video_detection_output
 from debug_agent.imports.csv_cases import COLUMN_ALIASES
 
 
@@ -47,8 +48,9 @@ def parse_spreadsheet_rows(rows: list[dict[str, object]]) -> SpreadsheetRowImpor
 
 
 def _row_to_case(row: dict[str, object]) -> DebugCase:
-    task_type = _optional_string(row.get("task_type")) or "handwriting_ocr"
-    expected_output = _loads_optional_json_object(row.get("expected_output_json"), "expected_output_json")
+    task_type = _optional_string(row.get("task_type")) or _infer_task_type(row)
+    expected_output = _load_expected_output(row, task_type=task_type)
+    scoring_standard = _optional_string(row.get("scoring_ops_json")) or _required_string(row, "scoring_standard")
     return DebugCase(
         case_id=_required_string(row, "case_id"),
         task_type=task_type,
@@ -57,18 +59,67 @@ def _row_to_case(row: dict[str, object]) -> DebugCase:
         golden_answer=_load_golden_answer(row, task_type=task_type, expected_output=expected_output),
         expected_output=expected_output,
         output_schema=_loads_optional_json_object(row.get("output_schema_json"), "output_schema_json"),
-        scoring_standard=_required_string(row, "scoring_standard"),
-        predictions=[
-            Prediction.model_validate(item)
-            for item in _loads_json_list(_required(row, "predictions_json"), "predictions_json")
-        ],
-        avg_score=_required_float(row, "avg_score"),
+        scoring_standard=scoring_standard,
+        predictions=_load_predictions(row),
+        avg_score=_row_score(row),
         box_regions=_parse_box_regions(row),
         human_notes=HumanNotes(
             debug_status=_optional_string(row.get("debug_status")),
             root_cause=_optional_string(row.get("root_cause")),
         ),
     )
+
+
+def _infer_task_type(row: dict[str, object]) -> str:
+    if row.get("scoring_ops_json") or _optional_string(row.get("image_uri")).lower().endswith(".mp4"):
+        return "video_detection"
+    return "handwriting_ocr"
+
+
+def _load_expected_output(row: dict[str, object], *, task_type: str) -> dict[str, object]:
+    expected_output = _loads_optional_json_object(row.get("expected_output_json"), "expected_output_json")
+    if task_type == "video_detection" and "video_action_segments" in expected_output:
+        return parse_video_detection_output(json.dumps(expected_output)).model_dump()
+    return expected_output
+
+
+def _load_predictions(row: dict[str, object]) -> list[Prediction]:
+    raw_predictions = _loads_json_list(_required(row, "predictions_json"), "predictions_json")
+    scores = _score_values(row.get("score"))
+    predictions: list[Prediction] = []
+    for index, item in enumerate(raw_predictions):
+        if isinstance(item, str):
+            predictions.append(Prediction(trial=index + 1, raw_output=item, score=_score_for_index(scores, index)))
+        else:
+            predictions.append(Prediction.model_validate(item))
+    return predictions
+
+
+def _row_score(row: dict[str, object]) -> float:
+    value = row.get("avg_score")
+    if value is not None and value != "":
+        return _required_float(row, "avg_score")
+    scores = _score_values(row.get("score"))
+    if scores:
+        return sum(scores) / len(scores)
+    return 0.0
+
+
+def _score_values(value: object) -> list[int]:
+    if value is None or value == "":
+        return []
+    loaded = _loads_json_value(value, "score")
+    if isinstance(loaded, list):
+        return [int(item) for item in loaded if isinstance(item, int | float | str) and str(item).strip()]
+    if isinstance(loaded, int | float | str) and str(loaded).strip():
+        return [int(loaded)]
+    return []
+
+
+def _score_for_index(scores: list[int], index: int) -> int:
+    if not scores:
+        return 0
+    return scores[min(index, len(scores) - 1)]
 
 
 def _load_golden_answer(
