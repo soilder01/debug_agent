@@ -363,35 +363,36 @@ Commit only after the focused tests and full verification pass.
 
 **Files:**
 - Modify: `frontend/src/**`
+- Modify: `frontend/vite.config.ts`
 - Modify: `docs/superpowers/plans/2026-06-15-frontend-productization-completion.md`
 
-- [ ] Start services:
+- [x] Start services:
   ```powershell
   $env:PYTHONPATH='src'; python -m uvicorn debug_agent.main:app --host 127.0.0.1 --port 8000 --reload
   npx --yes pnpm@9.15.4 --dir frontend dev -- --host 127.0.0.1 --port 5173
   ```
-- [ ] Verify:
+- [x] Verify:
   ```powershell
   Invoke-WebRequest -UseBasicParsing http://localhost:8000/health
   Invoke-WebRequest -UseBasicParsing http://localhost:5173/
   ```
-- [ ] Dogfood manually through:
+- [x] Dogfood manually through:
   - Load observability summary.
   - Submit debug job.
   - Load persisted report.
   - Open evidence.
   - Run report follow-up controls where fixture data allows.
   - Load spreadsheet controls and writeback audit surfaces.
-- [ ] Fix any visual, accessibility, or interaction issues discovered.
-- [ ] Re-run:
+- [x] Fix any visual, accessibility, or interaction issues discovered.
+- [x] Re-run:
   ```powershell
   .\scripts\verify.ps1
   git diff --check
   git ls-files -co --exclude-standard | Select-String -Pattern 'ark-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
   ```
-- [ ] Commit:
+- [x] Commit:
   ```powershell
-  git add frontend/src docs/superpowers/plans/2026-06-15-frontend-productization-completion.md
+  git add frontend/src frontend/vite.config.ts docs/superpowers/plans/2026-06-15-frontend-productization-completion.md
   git commit -m "fix: polish frontend dogfood findings"
   ```
 
