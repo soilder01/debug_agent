@@ -1,5 +1,5 @@
 import pytest
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from io import BytesIO
 import base64
 from pathlib import Path
@@ -170,3 +170,37 @@ def test_urllib_ark_transport_includes_http_error_body(monkeypatch: pytest.Monke
 
     with pytest.raises(RuntimeError, match="invalid video url"):
         UrllibArkTransport()._post_sync(request)
+
+
+def test_urllib_ark_transport_retries_transient_url_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    attempts = 0
+
+    class SuccessfulResponse:
+        def __enter__(self) -> "SuccessfulResponse":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            del args
+
+        def read(self) -> bytes:
+            return b'{"choices":[{"message":{"content":"{\\"video_action_segments\\":[]}"}}]}'
+
+    def flaky_urlopen(*args: object, **kwargs: object) -> SuccessfulResponse:
+        del args, kwargs
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise URLError("EOF occurred in violation of protocol (_ssl.c:2393)")
+        return SuccessfulResponse()
+
+    monkeypatch.setattr("debug_agent.models.ark.urllib_request.urlopen", flaky_urlopen)
+    request = ArkRequest(
+        url="https://ark.example/api/v3/chat/completions",
+        headers={"Authorization": "Bearer secret-value"},
+        json_body={"model": "video-model", "messages": []},
+    )
+
+    response = UrllibArkTransport(retry_delay_seconds=0)._post_sync(request)
+
+    assert attempts == 2
+    assert response["choices"]

@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import type {
+  AutoDebugClosureResult,
   DebugReport,
   ExperimentEvidence,
   SpreadsheetWritebackAudit,
@@ -124,6 +125,30 @@ function makeTargetedProbe(): TargetedProbeJob {
     success_rate: 0,
     summary: "Targeted probe still failed on multimodal:conflict:1; escalation is recommended.",
     escalation: "Run deeper localized replay or modality-specific probes for multimodal:conflict:1."
+  };
+}
+
+function makeAutoDebugClosureResult(): AutoDebugClosureResult {
+  return {
+    source_job_id: "job-1",
+    created_targeted_probe_jobs: ["job-targeted-probe-1"],
+    created_strategy_follow_up_jobs: ["job-stability-follow-up-1"],
+    created_verification_jobs: ["job-action-verify-1"],
+    evidence_summaries: [],
+    targeted_probe_outcomes: [],
+    final_attribution_candidates: [
+      {
+        category: "model_instability",
+        confidence: "high",
+        summary: "Live rerun passed 4/5 trials, so stability verification is required."
+      }
+    ],
+    badcase_live_comparison: {
+      original_badcase: "原 badcase：0/1 通过，avg_score=0.0。",
+      live_rerun: "Live 复测：4/5 通过，success_rate=80%。",
+      decision: "model_instability"
+    },
+    writeback_status: "succeeded"
   };
 }
 
@@ -500,6 +525,38 @@ describe("DebugReportWorkspace", () => {
     expect(screen.getByText("Chain step 2：targeted_probe_outcome/job-targeted-probe-2")).toBeInTheDocument();
     expect(screen.getByText("Parent probe：job-targeted-probe-1")).toBeInTheDocument();
     expect(screen.getByText("Trigger outcome：target_still_failing")).toBeInTheDocument();
+  });
+
+  it("delegates auto debug closure and visualizes closure lineage", async () => {
+    const onRunAutoDebugClosure = vi.fn();
+
+    render(
+      <DebugReportWorkspace
+        report={makeReport()}
+        selectedEvidence={null}
+        autoDebugClosureResult={makeAutoDebugClosureResult()}
+        writebackResult={null}
+        writebackAudit={null}
+        onSelectEvidence={vi.fn()}
+        onWriteReport={vi.fn()}
+        onLoadWritebackAudit={vi.fn()}
+        onRunAutoDebugClosure={onRunAutoDebugClosure}
+      />
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Run auto debug closure" }));
+
+    expect(onRunAutoDebugClosure).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("自动 Targeted Probe：job-targeted-probe-1")).toBeInTheDocument();
+    expect(screen.getByText("自动稳定性 Follow-up：job-stability-follow-up-1")).toBeInTheDocument();
+    expect(screen.getByText("自动验证任务：job-action-verify-1")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "model_instability/high：Live rerun passed 4/5 trials, so stability verification is required."
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByText("闭环判断：model_instability")).toBeInTheDocument();
+    expect(screen.getByText("自动写回状态：succeeded")).toBeInTheDocument();
   });
 
   it("renders an explainability workspace narrative across evidence, diagnostics, confidence, actions, and verification", () => {

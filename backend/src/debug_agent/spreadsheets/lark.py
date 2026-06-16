@@ -239,7 +239,20 @@ def _header_columns(data: dict[str, object]) -> dict[str, str]:
     header_row = next((values for _, values in sorted(rows) if not _is_empty_row(list(values.values()))), None)
     if header_row is None:
         raise LarkCliError("Spreadsheet header row is empty")
-    return {str(value).strip(): column for column, value in header_row.items() if str(value).strip()}
+    headers: dict[str, str] = {}
+    for column, value in header_row.items():
+        header = str(value).strip()
+        if not header:
+            continue
+        headers.setdefault(header, column)
+        normalized_header = _normalized_header(header)
+        if normalized_header:
+            headers.setdefault(normalized_header, column)
+    return headers
+
+
+def _normalized_header(value: str) -> str:
+    return value.splitlines()[0].strip()
 
 
 def _rows_json_entries(data: dict[str, object]) -> list[tuple[int, dict[str, object]]]:

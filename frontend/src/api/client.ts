@@ -237,6 +237,41 @@ export type TargetedProbeJobResponse = TargetedProbeJob & {
   probe_job: SubmittedDebugJob;
 };
 
+export type AutoDebugClosureResult = {
+  source_job_id: string;
+  created_targeted_probe_jobs: string[];
+  created_strategy_follow_up_jobs: string[];
+  created_verification_jobs: string[];
+  evidence_summaries: Array<{
+    job_id: string;
+    evidence_id: string;
+    step_name: string;
+    trial: string;
+    judge_score: string;
+    delta_reasons: string[];
+    raw_output_excerpt: string;
+    model_call_error: string;
+    response_parse_error: string;
+  }>;
+  targeted_probe_outcomes: Array<{
+    probe_job_id: string;
+    target_id: string;
+    outcome: string;
+    summary: string;
+  }>;
+  final_attribution_candidates: Array<{
+    category: string;
+    confidence: string;
+    summary: string;
+  }>;
+  badcase_live_comparison: {
+    original_badcase: string;
+    live_rerun: string;
+    decision: string;
+  };
+  writeback_status: string;
+};
+
 export type HumanHandoffStatusValue = "pending" | "acknowledged" | "in_progress" | "resolved" | "wont_fix";
 
 export type HumanHandoffStatus = {
@@ -909,6 +944,31 @@ export async function createTargetedProbeJob(
     throw new Error(`Failed to create targeted probe job ${targetId} for ${jobId}: ${response.status}`);
   }
   return (await response.json()) as TargetedProbeJobResponse;
+}
+
+export async function runAutoDebugClosure(
+  jobId: string,
+  request: {
+    actor?: string;
+    note?: string;
+    writeback?: boolean;
+    report_url?: string;
+  }
+): Promise<AutoDebugClosureResult> {
+  const response = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/auto-closure`, {
+    body: JSON.stringify({
+      actor: request.actor ?? "",
+      note: request.note ?? "",
+      writeback: request.writeback ?? false,
+      report_url: request.report_url ?? ""
+    }),
+    headers: { "Content-Type": "application/json" },
+    method: "POST"
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to run auto debug closure for ${jobId}: ${response.status}`);
+  }
+  return (await response.json()) as AutoDebugClosureResult;
 }
 
 export async function createFinalAttributionVerificationJob(

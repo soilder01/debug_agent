@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import {
+  type AutoDebugClosureResult,
   type BatchDebugJobResponse,
   createFinalAttributionRecoveryJob,
   createFinalAttributionVerificationJob,
@@ -39,6 +40,7 @@ import {
   type RecommendedActionStatusEvent,
   type RecommendedActionVerification,
   type RecommendedActionVerificationResult,
+  runAutoDebugClosure,
   startWorker,
   submitBatchDebugJobs,
   submitDebugJob,
@@ -112,6 +114,7 @@ export function App() {
   const [strategyFollowUps, setStrategyFollowUps] = useState<StrategyFollowUpJob[]>([]);
   const [targetedProbes, setTargetedProbes] = useState<TargetedProbeJob[]>([]);
   const [humanHandoffStatuses, setHumanHandoffStatuses] = useState<HumanHandoffStatus[]>([]);
+  const [autoDebugClosureResult, setAutoDebugClosureResult] = useState<AutoDebugClosureResult | null>(null);
   const [spreadsheetWritebackAuditSummary, setSpreadsheetWritebackAuditSummary] =
     useState<SpreadsheetWritebackAuditCounts | null>(null);
   const [spreadsheetWritebackAuditList, setSpreadsheetWritebackAuditList] =
@@ -197,6 +200,8 @@ export function App() {
       setReport(null);
       setSpreadsheetWritebackResult(null);
       setSpreadsheetWritebackAudit(null);
+      setAutoDebugClosureResult(null);
+      setSelectedEvidence(null);
       setSelectedEvidence(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
@@ -249,6 +254,8 @@ export function App() {
       setReport(null);
       setSpreadsheetWritebackResult(null);
       setSpreadsheetWritebackAudit(null);
+      setAutoDebugClosureResult(null);
+      setSelectedEvidence(null);
       setSelectedEvidence(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
@@ -306,6 +313,7 @@ export function App() {
     setReport(null);
     setSpreadsheetWritebackResult(null);
     setSpreadsheetWritebackAudit(null);
+    setAutoDebugClosureResult(null);
     setSelectedEvidence(null);
   }
 
@@ -456,6 +464,7 @@ export function App() {
       setReport(null);
       setSpreadsheetWritebackResult(null);
       setSpreadsheetWritebackAudit(null);
+      setAutoDebugClosureResult(null);
       setSelectedEvidence(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
@@ -558,6 +567,7 @@ export function App() {
       }
       setSpreadsheetWritebackResult(null);
       setSpreadsheetWritebackAudit(null);
+      setAutoDebugClosureResult(null);
       setSelectedEvidence(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
@@ -594,6 +604,25 @@ export function App() {
     setError("");
     try {
       setSpreadsheetWritebackAudit(await fetchSpreadsheetWritebackAudit(report.job_id));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unknown error");
+    }
+  }
+
+  async function runCurrentAutoDebugClosure() {
+    if (!report?.job_id) {
+      return;
+    }
+    setError("");
+    try {
+      const reportUrl = `${window.location.origin}/api/jobs/${report.job_id}/report`;
+      const result = await runAutoDebugClosure(report.job_id, {
+        actor: localDevActor,
+        note: "auto close video badcase",
+        writeback: true,
+        report_url: reportUrl
+      });
+      setAutoDebugClosureResult(result);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
     }
@@ -798,6 +827,7 @@ export function App() {
       setTargetedProbes([]);
       setSpreadsheetWritebackResult(null);
       setSpreadsheetWritebackAudit(null);
+      setAutoDebugClosureResult(null);
       setSelectedEvidence(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
@@ -968,6 +998,8 @@ export function App() {
                 onCreateFinalAttributionRecovery={(targetId) => void createCurrentFinalAttributionRecovery(targetId)}
                 onOpenStrategyFollowUp={(jobId) => void openStrategyFollowUpJob(jobId)}
                 onOpenTargetedProbe={(jobId) => void openStrategyFollowUpJob(jobId)}
+                autoDebugClosureResult={autoDebugClosureResult}
+                onRunAutoDebugClosure={() => void runCurrentAutoDebugClosure()}
               />
             ) : submittedJob ? null : (
               <p className="agent-shell__empty">点击按钮运行第一条可验证 debug 闭环。</p>

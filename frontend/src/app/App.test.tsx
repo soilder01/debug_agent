@@ -676,6 +676,127 @@ describe("App", () => {
     expect(screen.getByText("Writeback audit updated：2026-06-12T06:00:01+00:00")).toBeInTheDocument();
   });
 
+  it("runs auto debug closure from a persisted report and renders closure lineage", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            jobs: [
+              {
+                job_id: "job-auto-closure-1",
+                case_id: "JSZN-131",
+                status: "completed",
+                attempt_count: 1,
+                max_attempts: 2,
+                remaining_attempts: 1,
+                will_retry: false,
+                retry_recommendation: "no_retry_needed",
+                retry_recommendation_detail: {
+                  code: "no_retry_needed",
+                  label: "无需重试",
+                  action: "任务已完成，直接查看证据链和结论。",
+                  severity: "info"
+                },
+                error_message: null,
+                evidence_ids: ["JSZN-131:baseline_replay:0"],
+                evidence_error_counts: {
+                  total_evidence: 5,
+                  failed_judgements: 1,
+                  response_parse_errors: 0,
+                  model_call_errors: 0
+                },
+                spreadsheet_writeback_audit: null
+              }
+            ],
+            total_count: 1
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            job_id: "job-auto-closure-1",
+            case_id: "JSZN-131",
+            status: "needs_human_review",
+            observed_failure: {
+              type: "video_timestamp_mismatch",
+              summary: "视频时间窗评分发现 video:segment:3 存在时间边界偏差。",
+              affected_box_ids: []
+            },
+            planned_experiments: ["baseline_replay"],
+            experiment_summary: {
+              total_trials: 5,
+              success_count: 4,
+              failed_trial_count: 1,
+              success_rate: 0.8,
+              stability_label: "unstable",
+              evidence_ids: ["JSZN-131:baseline_replay:0"],
+              image_artifact_ids: []
+            },
+            root_cause: {
+              label: "video_timestamp_boundary_error",
+              confidence: "high",
+              evidence_summary: "视频时间边界定位失败。"
+            },
+            suggested_sheet_fields: {
+              "错误原因": "视频时间边界定位失败"
+            }
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            source_job_id: "job-auto-closure-1",
+            created_targeted_probe_jobs: ["job-targeted-probe-1"],
+            created_strategy_follow_up_jobs: ["job-stability-follow-up-1"],
+            created_verification_jobs: ["job-action-verify-1"],
+            evidence_summaries: [],
+            targeted_probe_outcomes: [],
+            final_attribution_candidates: [
+              {
+                category: "model_instability",
+                confidence: "high",
+                summary: "Live rerun passed 4/5 trials, so stability verification is required."
+              }
+            ],
+            badcase_live_comparison: {
+              original_badcase: "原 badcase：0/1 通过，avg_score=0.0。",
+              live_rerun: "Live 复测：4/5 通过，success_rate=80%。",
+              decision: "model_instability"
+            },
+            writeback_status: "succeeded"
+          }),
+          { status: 202, headers: { "Content-Type": "application/json" } }
+        )
+      );
+
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Load debug jobs" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Open job job-auto-closure-1" }));
+    await userEvent.click(screen.getByRole("button", { name: "Load persisted report" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Run auto debug closure" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-auto-closure-1/auto-closure", {
+      body: JSON.stringify({
+        actor: "local-dev-operator",
+        note: "auto close video badcase",
+        writeback: true,
+        report_url: `${window.location.origin}/api/jobs/job-auto-closure-1/report`
+      }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST"
+    });
+    expect(await screen.findByText("自动 Targeted Probe：job-targeted-probe-1")).toBeInTheDocument();
+    expect(screen.getByText("自动稳定性 Follow-up：job-stability-follow-up-1")).toBeInTheDocument();
+    expect(screen.getByText("自动验证任务：job-action-verify-1")).toBeInTheDocument();
+    expect(screen.getByText("闭环判断：model_instability")).toBeInTheDocument();
+    expect(screen.getByText("自动写回状态：succeeded")).toBeInTheDocument();
+  });
+
   it("updates recommended action status from a persisted report", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")

@@ -10,6 +10,7 @@ import {
   fetchRecommendedActionStatuses,
   fetchStrategyFollowUpJobs,
   fetchTargetedProbeJobs,
+  runAutoDebugClosure,
   updateHumanHandoffStatus,
   updateRecommendedActionStatus
 } from "./client";
@@ -219,6 +220,56 @@ describe("api client recommended action status", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1/strategy-follow-ups");
     expect(response.follow_ups[0].follow_up_job_id).toBe("job-follow-up-1");
     expect(response.follow_ups[0].outcome).toBe("needs_escalation");
+  });
+
+  it("runs auto debug closure with writeback options", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          source_job_id: "job-1",
+          created_targeted_probe_jobs: ["job-probe-1"],
+          created_strategy_follow_up_jobs: ["job-stability-1"],
+          created_verification_jobs: ["job-verify-1"],
+          evidence_summaries: [],
+          targeted_probe_outcomes: [],
+          final_attribution_candidates: [
+            {
+              category: "model_instability",
+              confidence: "high",
+              summary: "Live rerun passed 4/5 trials."
+            }
+          ],
+          badcase_live_comparison: {
+            original_badcase: "原 badcase：0/1 通过，avg_score=0.0。",
+            live_rerun: "Live 复测：4/5 通过，success_rate=80%。",
+            decision: "model_instability"
+          },
+          writeback_status: "succeeded"
+        }),
+        { status: 202, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    const response = await runAutoDebugClosure("job-1", {
+      actor: "auto-debugger",
+      note: "close loop",
+      writeback: true,
+      report_url: "http://localhost:8000/jobs/job-1/report"
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1/auto-closure", {
+      body: JSON.stringify({
+        actor: "auto-debugger",
+        note: "close loop",
+        writeback: true,
+        report_url: "http://localhost:8000/jobs/job-1/report"
+      }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST"
+    });
+    expect(response.final_attribution_candidates[0].category).toBe("model_instability");
+    expect(response.badcase_live_comparison.decision).toBe("model_instability");
+    expect(response.created_targeted_probe_jobs).toEqual(["job-probe-1"]);
   });
 
   it("creates targeted probe jobs with operator context", async () => {

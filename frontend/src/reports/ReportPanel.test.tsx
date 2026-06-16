@@ -1104,4 +1104,93 @@ describe("ReportPanel", () => {
     expect(screen.getByText("验证通过率：100%｜原通过率：50%")).toBeInTheDocument();
     expect(screen.getByText("验证任务通过率 100%，高于原任务 50%，推荐操作可能已修复该问题。")).toBeInTheDocument();
   });
+
+  it("renders auto debug closure lineage and trigger", async () => {
+    const user = userEvent.setup();
+    const onRunAutoDebugClosure = vi.fn();
+    const report: DebugReport = {
+      job_id: "job-auto-closure",
+      case_id: "case-auto-closure",
+      status: "needs_human_review",
+      observed_failure: {
+        type: "video_timestamp_mismatch",
+        summary: "timestamp failed",
+        affected_box_ids: []
+      },
+      planned_experiments: ["baseline_replay"],
+      experiment_summary: null,
+      root_cause: {
+        label: "video_timestamp_boundary_error",
+        confidence: "high",
+        evidence_summary: "视频时间边界定位失败。"
+      },
+      suggested_sheet_fields: {
+        错误原因: "视频时间边界定位失败"
+      }
+    };
+
+    render(
+      <ReportPanel
+        report={report}
+        onRunAutoDebugClosure={onRunAutoDebugClosure}
+        autoDebugClosureResult={{
+          source_job_id: "job-auto-closure",
+          created_targeted_probe_jobs: ["job-probe-1"],
+          created_strategy_follow_up_jobs: ["job-stability-1"],
+          created_verification_jobs: ["job-verify-1"],
+          final_attribution_candidates: [
+            {
+              category: "model_instability",
+              confidence: "high",
+              summary: "Live rerun passed 4/5 trials."
+            }
+          ],
+          badcase_live_comparison: {
+            original_badcase: "原 badcase：0/1 通过，avg_score=0.0。",
+            live_rerun: "Live 复测：4/5 通过，success_rate=80%。",
+            decision: "model_instability"
+          },
+          evidence_summaries: [
+            {
+              job_id: "job-auto-closure",
+              evidence_id: "job-auto-closure:baseline_replay:0",
+              step_name: "baseline_replay",
+              trial: "0",
+              judge_score: "0",
+              delta_reasons: ["timestamp_end_out_of_range"],
+              raw_output_excerpt: "{\"video_action_segments\":[{\"start_s\":0.0,\"end_s\":34.0}]}",
+              model_call_error: "",
+              response_parse_error: ""
+            }
+          ],
+          targeted_probe_outcomes: [
+            {
+              probe_job_id: "job-probe-1",
+              target_id: "video:segment:1",
+              outcome: "corrected_boundary",
+              summary: "Clipped targeted probe cleared video:segment:1."
+            }
+          ],
+          writeback_status: "succeeded"
+        }}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "Run auto debug closure" }));
+
+    expect(onRunAutoDebugClosure).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("自动 Targeted Probe：job-probe-1")).toBeInTheDocument();
+    expect(screen.getByText("自动稳定性 Follow-up：job-stability-1")).toBeInTheDocument();
+    expect(screen.getByText("自动验证任务：job-verify-1")).toBeInTheDocument();
+    expect(screen.getByText("原始 badcase：原 badcase：0/1 通过，avg_score=0.0。")).toBeInTheDocument();
+    expect(screen.getByText("Live 复测对比：Live 复测：4/5 通过，success_rate=80%。")).toBeInTheDocument();
+    expect(screen.getByText("闭环判断：model_instability")).toBeInTheDocument();
+    expect(screen.getByText("model_instability/high：Live rerun passed 4/5 trials.")).toBeInTheDocument();
+    expect(screen.getByText("Auto Closure Evidence Summaries")).toBeInTheDocument();
+    expect(screen.getByText("Targeted Probe Outcomes")).toBeInTheDocument();
+    expect(screen.getByText("video:segment:1/corrected_boundary：Clipped targeted probe cleared video:segment:1.")).toBeInTheDocument();
+    expect(screen.getByText("证据 job-auto-closure:baseline_replay:0 / baseline_replay / score=0")).toBeInTheDocument();
+    expect(screen.getByText("Delta：timestamp_end_out_of_range")).toBeInTheDocument();
+    expect(screen.getByText("原始输出：{\"video_action_segments\":[{\"start_s\":0.0,\"end_s\":34.0}]}")).toBeInTheDocument();
+  });
 });

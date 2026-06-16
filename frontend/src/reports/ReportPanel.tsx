@@ -1,4 +1,5 @@
 import type {
+  AutoDebugClosureResult,
   DebugReport,
   HumanHandoffStatus,
   HumanHandoffStatusValue,
@@ -23,6 +24,8 @@ type ReportPanelProps = {
   onCreateTargetedProbe?: (targetId: string) => void;
   onCreateFinalAttributionFollowUp?: (targetId: string) => void;
   onCreateFinalAttributionRecovery?: (targetId: string) => void;
+  autoDebugClosureResult?: AutoDebugClosureResult | null;
+  onRunAutoDebugClosure?: () => void;
 };
 
 export function ReportPanel({
@@ -38,7 +41,9 @@ export function ReportPanel({
   onCreateStrategyFollowUp,
   onCreateTargetedProbe,
   onCreateFinalAttributionFollowUp,
-  onCreateFinalAttributionRecovery
+  onCreateFinalAttributionRecovery,
+  autoDebugClosureResult = null,
+  onRunAutoDebugClosure
 }: ReportPanelProps) {
   const experimentSummary = report.experiment_summary;
   const artifactIds = experimentSummary?.artifact_ids?.length
@@ -82,6 +87,65 @@ export function ReportPanel({
       <p>类型：{report.root_cause.label}</p>
       <p>置信度：{report.root_cause.confidence}</p>
       <p>{report.root_cause.evidence_summary}</p>
+      <section aria-label="Auto debug closure">
+        <h3>Auto Debug Closure</h3>
+        {onRunAutoDebugClosure ? (
+          <button type="button" onClick={onRunAutoDebugClosure}>
+            Run auto debug closure
+          </button>
+        ) : null}
+        {autoDebugClosureResult ? (
+          <>
+            <p>自动闭环源任务：{autoDebugClosureResult.source_job_id}</p>
+            <p>自动 Targeted Probe：{autoDebugClosureResult.created_targeted_probe_jobs.join(", ") || "无"}</p>
+            <p>自动稳定性 Follow-up：{autoDebugClosureResult.created_strategy_follow_up_jobs.join(", ") || "无"}</p>
+            <p>自动验证任务：{autoDebugClosureResult.created_verification_jobs.join(", ") || "无"}</p>
+            <p>原始 badcase：{autoDebugClosureResult.badcase_live_comparison.original_badcase}</p>
+            <p>Live 复测对比：{autoDebugClosureResult.badcase_live_comparison.live_rerun}</p>
+            <p>闭环判断：{autoDebugClosureResult.badcase_live_comparison.decision}</p>
+            <p>自动写回状态：{autoDebugClosureResult.writeback_status}</p>
+            <ul aria-label="Auto final attribution candidates">
+              {autoDebugClosureResult.final_attribution_candidates.map((candidate) => (
+                <li key={`${candidate.category}:${candidate.summary}`}>
+                  {candidate.category}/{candidate.confidence}：{candidate.summary}
+                </li>
+              ))}
+            </ul>
+            {autoDebugClosureResult.targeted_probe_outcomes.length > 0 ? (
+              <>
+                <h4>Targeted Probe Outcomes</h4>
+                <ul aria-label="Auto targeted probe outcomes" className="evidence-spine">
+                  {autoDebugClosureResult.targeted_probe_outcomes.map((outcome) => (
+                    <li className="lineage-row" key={`${outcome.probe_job_id}:${outcome.target_id}`}>
+                      {outcome.target_id}/{outcome.outcome}：{outcome.summary}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+            {autoDebugClosureResult.evidence_summaries.length > 0 ? (
+              <>
+                <h4>Auto Closure Evidence Summaries</h4>
+                <ul aria-label="Auto closure evidence summaries" className="evidence-spine">
+                  {autoDebugClosureResult.evidence_summaries.map((evidence) => (
+                    <li className="lineage-row" key={`${evidence.job_id}:${evidence.evidence_id}`}>
+                      <p>
+                        证据 {evidence.evidence_id} / {evidence.step_name} / score={evidence.judge_score}
+                      </p>
+                      <p>任务：{evidence.job_id}</p>
+                      <p>Trial：{evidence.trial}</p>
+                      <p>Delta：{evidence.delta_reasons.join(", ") || "无"}</p>
+                      {evidence.model_call_error ? <p>模型调用错误：{evidence.model_call_error}</p> : null}
+                      {evidence.response_parse_error ? <p>解析错误：{evidence.response_parse_error}</p> : null}
+                      <p>原始输出：{evidence.raw_output_excerpt}</p>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+          </>
+        ) : null}
+      </section>
       {experimentSummary ? (
         <>
           <h3>Replay Stability</h3>

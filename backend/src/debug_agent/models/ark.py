@@ -3,8 +3,9 @@ import base64
 import json
 import mimetypes
 import os
+import time
 from pathlib import Path
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from typing import Protocol
 from urllib import request as urllib_request
 from urllib.parse import unquote, urlparse
@@ -27,6 +28,10 @@ class ArkTransport(Protocol):
 
 
 class UrllibArkTransport:
+    def __init__(self, max_attempts: int = 3, retry_delay_seconds: float = 0.5) -> None:
+        self._max_attempts = max_attempts
+        self._retry_delay_seconds = retry_delay_seconds
+
     async def post(self, request: ArkRequest) -> dict[str, object]:
         return await asyncio.to_thread(self._post_sync, request)
 
@@ -38,12 +43,19 @@ class UrllibArkTransport:
             headers={**request.headers, "Content-Type": "application/json"},
             method="POST",
         )
-        try:
-            with urllib_request.urlopen(http_request, timeout=120) as response:
-                decoded = json.loads(response.read().decode("utf-8"))
-        except HTTPError as exc:
-            error_body = exc.read().decode("utf-8", errors="replace")
-            raise RuntimeError(f"Ark HTTP {exc.code} {exc.reason}: {error_body}") from exc
+        decoded: object = {}
+        for attempt in range(1, self._max_attempts + 1):
+            try:
+                with urllib_request.urlopen(http_request, timeout=120) as response:
+                    decoded = json.loads(response.read().decode("utf-8"))
+                break
+            except HTTPError as exc:
+                error_body = exc.read().decode("utf-8", errors="replace")
+                raise RuntimeError(f"Ark HTTP {exc.code} {exc.reason}: {error_body}") from exc
+            except URLError:
+                if attempt >= self._max_attempts:
+                    raise
+                time.sleep(self._retry_delay_seconds)
         if not isinstance(decoded, dict):
             raise ValueError("Ark response must be a JSON object")
         return decoded

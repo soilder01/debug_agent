@@ -138,6 +138,37 @@ def test_lark_cli_transport_writes_fields_to_header_columns() -> None:
     ]
 
 
+def test_lark_cli_transport_matches_header_prefix_before_newline() -> None:
+    runner = RecordingCommandRunner(
+        [
+            {
+                "ok": True,
+                "data": {
+                    "rows": [
+                        {
+                            "row_number": 1,
+                            "values": {
+                                "R": "评估问题反馈\n（务必再三确认）",
+                            },
+                        }
+                    ]
+                },
+            },
+            {"ok": True, "data": {}},
+        ]
+    )
+    transport = LarkCliSheetsTransport(command_runner=runner, read_range="A1:AC200")
+
+    transport.update_row(
+        spreadsheet_id="spreadsheet-1",
+        sheet_id="sheet-1",
+        row_id="2",
+        fields={"评估问题反馈": "自动闭环完成。"},
+    )
+
+    assert runner.calls[1][0][8] == "R2"
+
+
 def test_lark_cli_transport_uses_first_non_empty_row_for_writeback_headers() -> None:
     runner = RecordingCommandRunner(
         [

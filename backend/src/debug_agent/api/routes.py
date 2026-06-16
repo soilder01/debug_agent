@@ -13,6 +13,7 @@ from debug_agent.experiments.planner import plan_experiments
 from debug_agent.experiments.runner import ExperimentEvidence, run_experiments
 from debug_agent.imports.csv_cases import CsvRejectedRow, parse_csv_cases
 from debug_agent.imports.spreadsheet_rows import SpreadsheetRejectedRow, parse_spreadsheet_rows
+from debug_agent.jobs.auto_closure import AutoDebugClosureResult, LocalVideoClipper, run_auto_debug_closure
 from debug_agent.jobs.service import DebugJobService, RetryRecommendationDetail, SubmittedDebugJob
 from debug_agent.jobs.worker import AsyncJobWorker, AsyncJobWorkerStatus
 from debug_agent.models.fake import FakeModelAdapter
@@ -51,6 +52,10 @@ session_factory, engine = create_sqlite_session_factory(settings.database_url)
 ensure_database_schema(engine)
 job_repository = DebugJobRepository(session_factory)
 job_service = DebugJobService(job_repository, image_artifact_dir=settings.image_artifact_dir)
+auto_closure_video_clipper = LocalVideoClipper(
+    settings.image_artifact_dir / "targeted-video-probes",
+    skip_missing_source=True,
+)
 spreadsheet_writeback_client: SpreadsheetWritebackClient | None = None
 spreadsheet_sync_client: SpreadsheetClient | None = None
 lark_spreadsheet_settings = LarkSpreadsheetSettings.from_env()
@@ -226,6 +231,13 @@ class StrategyFollowUpJobRequest(BaseModel):
 class TargetedProbeJobRequest(BaseModel):
     actor: str = ""
     note: str = ""
+
+
+class AutoDebugClosureRequest(BaseModel):
+    actor: str = ""
+    note: str = ""
+    writeback: bool = False
+    report_url: str = ""
 
 
 class HumanHandoffStatusRequest(BaseModel):
@@ -1071,6 +1083,26 @@ def list_targeted_probe_jobs(job_id: str) -> TargetedProbeJobListResponse:
             TargetedProbeJobWithOutcome.model_validate(probe)
             for probe in build_targeted_probe_results(job_repository, job_id)
         ]
+    )
+
+
+@router.post("/jobs/{job_id}/auto-closure", status_code=202)
+async def run_job_auto_debug_closure(
+    job_id: str,
+    request: AutoDebugClosureRequest,
+) -> AutoDebugClosureResult:
+    if job_repository.get_job(job_id) is None:
+        raise HTTPException(status_code=404, detail=f"Debug job not found: {job_id}")
+    actor = _resolved_actor(request.actor)
+    _raise_if_usage_budget_blocks_submission()
+    return await run_auto_debug_closure(
+        repository=job_repository,
+        job_service=job_service,
+        job_id=job_id,
+        actor=actor,
+        writeback_client=spreadsheet_writeback_client if request.writeback else None,
+        video_clipper=auto_closure_video_clipper,
+        report_url=request.report_url,
     )
 
 

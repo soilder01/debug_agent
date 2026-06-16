@@ -203,6 +203,31 @@ async def test_run_experiments_adds_generic_input_and_output_artifacts() -> None
 
 
 @pytest.mark.asyncio
+async def test_run_experiments_materializes_full_structured_output_artifact() -> None:
+    with TemporaryDirectory(dir=Path.cwd()) as temp_dir:
+        temp_path = Path(temp_dir)
+        artifact_dir = temp_path / "artifacts"
+        fixture_path = Path(__file__).parents[1] / "fixtures" / "handwrite233.json"
+        case = DebugCase.model_validate(json.loads(fixture_path.read_text(encoding="utf-8")))
+        raw_output = '{"answers":[{"box_id":1,"student_answer":"完整原始输出"}]}'
+        plan = ExperimentPlan(
+            case_id=case.case_id,
+            max_model_calls=1,
+            steps=[ExperimentStep(name="baseline_replay", description="Replay baseline.", trials=1)],
+        )
+        adapter = FakeModelAdapter(outputs=[raw_output])
+
+        result = await run_experiments(case=case, plan=plan, adapter=adapter, image_artifact_dir=artifact_dir)
+
+        artifact = next(item for item in result.evidence[0].artifacts if item.kind == "structured_output")
+        assert artifact.derived_uri
+        output_path = _path_from_file_uri(artifact.derived_uri)
+        assert output_path.exists()
+        assert output_path.read_text(encoding="utf-8") == raw_output
+        assert artifact.metadata["raw_output_persisted"] is True
+
+
+@pytest.mark.asyncio
 async def test_run_experiments_materializes_localized_crop_artifacts() -> None:
     with TemporaryDirectory(dir=Path.cwd()) as temp_dir:
         temp_path = Path(temp_dir)

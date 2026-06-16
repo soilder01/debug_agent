@@ -322,13 +322,32 @@ def _build_generic_artifacts(
             artifact_id=f"{case.case_id}:{step_name}:{trial_index}:structured-output",
             kind="structured_output",
             artifact_type="model_output",
+            derived_uri=_materialize_structured_output(
+                raw_output=raw_output,
+                output_dir=image_artifact_dir,
+                artifact_id=f"{case.case_id}:{step_name}:{trial_index}:structured-output",
+            ),
             metadata={
                 "raw_output_length": len(raw_output),
                 "response_parse_error": response_parse_error,
+                "raw_output_persisted": image_artifact_dir is not None,
             },
         )
     )
     return artifacts
+
+
+def _materialize_structured_output(*, raw_output: str, output_dir: Path | None, artifact_id: str) -> str:
+    if output_dir is None:
+        return ""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / f"{_safe_artifact_filename(artifact_id)}.txt"
+    output_path.write_text(raw_output, encoding="utf-8")
+    return output_path.resolve().as_uri()
+
+
+def _safe_artifact_filename(artifact_id: str) -> str:
+    return "".join(character if character.isalnum() or character in {"-", "_"} else "_" for character in artifact_id)
 
 
 def _input_snapshot_metadata(

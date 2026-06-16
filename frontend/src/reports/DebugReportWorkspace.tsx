@@ -1,4 +1,5 @@
 import type {
+  AutoDebugClosureResult,
   DebugReport,
   ExperimentEvidence,
   HumanHandoffStatus,
@@ -41,6 +42,8 @@ type DebugReportWorkspaceProps = {
   onCreateFinalAttributionRecovery?: (targetId: string) => void;
   onOpenStrategyFollowUp?: (jobId: string) => void;
   onOpenTargetedProbe?: (jobId: string) => void;
+  autoDebugClosureResult?: AutoDebugClosureResult | null;
+  onRunAutoDebugClosure?: () => void;
 };
 
 export function DebugReportWorkspace({
@@ -65,7 +68,9 @@ export function DebugReportWorkspace({
   onCreateFinalAttributionFollowUp,
   onCreateFinalAttributionRecovery,
   onOpenStrategyFollowUp,
-  onOpenTargetedProbe
+  onOpenTargetedProbe,
+  autoDebugClosureResult = null,
+  onRunAutoDebugClosure
 }: DebugReportWorkspaceProps) {
   return (
     <section aria-label="Debug report workspace" className="report-workspace">
@@ -97,6 +102,8 @@ export function DebugReportWorkspace({
         onCreateTargetedProbe={onCreateTargetedProbe}
         onCreateFinalAttributionFollowUp={onCreateFinalAttributionFollowUp}
         onCreateFinalAttributionRecovery={onCreateFinalAttributionRecovery}
+        autoDebugClosureResult={autoDebugClosureResult}
+        onRunAutoDebugClosure={onRunAutoDebugClosure}
       />
       {report.job_id ? (
         <SpreadsheetWritebackPanel
