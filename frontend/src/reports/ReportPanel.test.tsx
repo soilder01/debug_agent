@@ -1176,6 +1176,7 @@ describe("ReportPanel", () => {
         autoDebugClosureMarkdown={
           "# case-auto-closure 最终 Debug 报告\n\n## Evidence 明细\n\n| Job | Evidence | Step | Trial | Score | Delta | Raw Output 摘录 |\n"
         }
+        autoDebugClosureReportUrl="/api/artifacts/files/case-auto-closure-report.md"
       />
     );
 
@@ -1196,6 +1197,10 @@ describe("ReportPanel", () => {
     expect(screen.getByText("Delta：timestamp_end_out_of_range")).toBeInTheDocument();
     expect(screen.getByText("原始输出：{\"video_action_segments\":[{\"start_s\":0.0,\"end_s\":34.0}]}")).toBeInTheDocument();
     expect(screen.getByText("Auto Closure Markdown Report")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "打开自动闭环 Markdown 报告" })).toHaveAttribute(
+      "href",
+      "/api/artifacts/files/case-auto-closure-report.md"
+    );
     expect(screen.getByText(/# case-auto-closure 最终 Debug 报告/)).toBeInTheDocument();
     expect(screen.getByText(/## Evidence 明细/)).toBeInTheDocument();
   });

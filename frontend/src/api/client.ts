@@ -276,6 +276,7 @@ export type AutoDebugClosureReportResponse = {
   source_job_id: string;
   closure: AutoDebugClosureResult;
   markdown: string;
+  report_artifact_url: string;
 };
 
 export type HumanHandoffStatusValue = "pending" | "acknowledged" | "in_progress" | "resolved" | "wont_fix";

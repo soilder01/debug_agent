@@ -94,6 +94,7 @@ The previous validation proved the agent can run real auto-closure, but personal
 - [x] Artifact file API now serves persisted structured raw outputs and nested clipped targeted video files through safe filename lookup.
 - [x] Frontend evidence drilldown now exposes direct links for full raw model output, clipped targeted video artifacts, and targeted probe input video snapshots.
 - [x] Frontend auto-closure action now calls the Markdown report API, stores both closure lineage and Markdown, and renders the generated final report in the report panel.
+- [x] Auto-closure Markdown report is now persisted as a safe artifact file and returned as `report_artifact_url` for direct open/writeback reuse.
 - [x] Re-run full `.\scripts\verify.ps1`, `git diff --check`, and secret scan after the personal-perfect gap closure changes.
 
 ## Latest Verification

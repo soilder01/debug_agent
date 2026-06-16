@@ -335,6 +335,10 @@ def test_auto_debug_closure_report_api_returns_chinese_markdown_from_real_closur
     assert "参考答案" in body["markdown"]
     assert "评分规则" in body["markdown"]
     assert '{"video_action_segments"' in body["markdown"]
+    assert body["report_artifact_url"].startswith("/api/artifacts/files/")
+    artifact_response = client.get(body["report_artifact_url"])
+    assert artifact_response.status_code == 200
+    assert artifact_response.text.replace("\r\n", "\n") == body["markdown"]
     assert body["closure"]["source_job_id"] == source_job_id
     assert body["closure"]["created_targeted_probe_jobs"]
 

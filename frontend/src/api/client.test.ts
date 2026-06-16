@@ -293,7 +293,8 @@ describe("api client recommended action status", () => {
             },
             writeback_status: "succeeded"
           },
-          markdown: "# JSZN-131 最终 Debug 报告\n\n## Evidence 明细\n"
+          markdown: "# JSZN-131 最终 Debug 报告\n\n## Evidence 明细\n",
+          report_artifact_url: "/api/artifacts/files/JSZN-131-auto-closure-report.md"
         }),
         { status: 202, headers: { "Content-Type": "application/json" } }
       )
@@ -318,6 +319,7 @@ describe("api client recommended action status", () => {
     });
     expect(response.closure.created_targeted_probe_jobs).toEqual(["job-probe-1"]);
     expect(response.markdown).toContain("最终 Debug 报告");
+    expect(response.report_artifact_url).toBe("/api/artifacts/files/JSZN-131-auto-closure-report.md");
   });
 
   it("creates targeted probe jobs with operator context", async () => {

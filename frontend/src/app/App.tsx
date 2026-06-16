@@ -116,6 +116,7 @@ export function App() {
   const [humanHandoffStatuses, setHumanHandoffStatuses] = useState<HumanHandoffStatus[]>([]);
   const [autoDebugClosureResult, setAutoDebugClosureResult] = useState<AutoDebugClosureResult | null>(null);
   const [autoDebugClosureMarkdown, setAutoDebugClosureMarkdown] = useState("");
+  const [autoDebugClosureReportUrl, setAutoDebugClosureReportUrl] = useState("");
   const [spreadsheetWritebackAuditSummary, setSpreadsheetWritebackAuditSummary] =
     useState<SpreadsheetWritebackAuditCounts | null>(null);
   const [spreadsheetWritebackAuditList, setSpreadsheetWritebackAuditList] =
@@ -203,6 +204,7 @@ export function App() {
       setSpreadsheetWritebackAudit(null);
       setAutoDebugClosureResult(null);
       setAutoDebugClosureMarkdown("");
+      setAutoDebugClosureReportUrl("");
       setSelectedEvidence(null);
       setSelectedEvidence(null);
     } catch (caught) {
@@ -258,6 +260,7 @@ export function App() {
       setSpreadsheetWritebackAudit(null);
       setAutoDebugClosureResult(null);
       setAutoDebugClosureMarkdown("");
+      setAutoDebugClosureReportUrl("");
       setSelectedEvidence(null);
       setSelectedEvidence(null);
     } catch (caught) {
@@ -318,6 +321,7 @@ export function App() {
     setSpreadsheetWritebackAudit(null);
     setAutoDebugClosureResult(null);
     setAutoDebugClosureMarkdown("");
+    setAutoDebugClosureReportUrl("");
     setSelectedEvidence(null);
   }
 
@@ -470,6 +474,7 @@ export function App() {
       setSpreadsheetWritebackAudit(null);
       setAutoDebugClosureResult(null);
       setAutoDebugClosureMarkdown("");
+      setAutoDebugClosureReportUrl("");
       setSelectedEvidence(null);
       setSelectedEvidence(null);
     } catch (caught) {
@@ -575,6 +580,7 @@ export function App() {
       setSpreadsheetWritebackAudit(null);
       setAutoDebugClosureResult(null);
       setAutoDebugClosureMarkdown("");
+      setAutoDebugClosureReportUrl("");
       setSelectedEvidence(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
@@ -631,6 +637,7 @@ export function App() {
       });
       setAutoDebugClosureResult(result.closure);
       setAutoDebugClosureMarkdown(result.markdown);
+      setAutoDebugClosureReportUrl(result.report_artifact_url);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
     }
@@ -837,6 +844,7 @@ export function App() {
       setSpreadsheetWritebackAudit(null);
       setAutoDebugClosureResult(null);
       setAutoDebugClosureMarkdown("");
+      setAutoDebugClosureReportUrl("");
       setSelectedEvidence(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
@@ -1009,6 +1017,7 @@ export function App() {
                 onOpenTargetedProbe={(jobId) => void openStrategyFollowUpJob(jobId)}
                 autoDebugClosureResult={autoDebugClosureResult}
                 autoDebugClosureMarkdown={autoDebugClosureMarkdown}
+                autoDebugClosureReportUrl={autoDebugClosureReportUrl}
                 onRunAutoDebugClosure={() => void runCurrentAutoDebugClosure()}
               />
             ) : submittedJob ? null : (

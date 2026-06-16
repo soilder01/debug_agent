@@ -246,6 +246,7 @@ class AutoDebugClosureReportResponse(BaseModel):
     source_job_id: str
     closure: AutoDebugClosureResult
     markdown: str
+    report_artifact_url: str
 
 
 class HumanHandoffStatusRequest(BaseModel):
@@ -782,6 +783,11 @@ def get_artifact_image(filename: str) -> FileResponse:
     return FileResponse(artifact_path, media_type="image/png")
 
 
+@router.get("/api/artifacts/files/{filename}")
+def get_api_artifact_file(filename: str) -> FileResponse:
+    return get_artifact_file(filename)
+
+
 @router.get("/artifacts/manifests/{filename}")
 def get_artifact_manifest(filename: str) -> FileResponse:
     artifact_dir = settings.image_artifact_dir.resolve()
@@ -1155,7 +1161,17 @@ async def run_job_auto_debug_closure_report(
         reference_answer=json.dumps(case.expected_output, ensure_ascii=False, indent=2),
         scoring_ops=case.scoring_standard,
     )
-    return AutoDebugClosureReportResponse(source_job_id=job_id, closure=closure, markdown=markdown)
+    report_artifact_url = _persist_auto_closure_markdown_report(
+        job_id=job_id,
+        case_id=case.case_id,
+        markdown=markdown,
+    )
+    return AutoDebugClosureReportResponse(
+        source_job_id=job_id,
+        closure=closure,
+        markdown=markdown,
+        report_artifact_url=report_artifact_url,
+    )
 
 
 @router.patch("/jobs/{job_id}/human-handoffs/{target_id}/status")
@@ -1494,6 +1510,8 @@ def _artifact_file_path(filename: str) -> Path | None:
 
 
 def _artifact_media_type(artifact_path: Path) -> str:
+    if artifact_path.suffix == ".md":
+        return "text/markdown"
     if artifact_path.suffix == ".txt":
         return "text/plain"
     if artifact_path.suffix == ".mp4":
@@ -1501,6 +1519,18 @@ def _artifact_media_type(artifact_path: Path) -> str:
     if artifact_path.suffix == ".json":
         return "application/json"
     return "application/octet-stream"
+
+
+def _persist_auto_closure_markdown_report(*, job_id: str, case_id: str, markdown: str) -> str:
+    settings.image_artifact_dir.mkdir(parents=True, exist_ok=True)
+    filename = f"{_safe_artifact_filename(case_id)}_{_safe_artifact_filename(job_id)}_auto_closure_report.md"
+    output_path = settings.image_artifact_dir / filename
+    output_path.write_text(markdown, encoding="utf-8")
+    return f"/api/artifacts/files/{filename}"
+
+
+def _safe_artifact_filename(value: str) -> str:
+    return "".join(character if character.isalnum() or character in {"-", "_"} else "_" for character in value)
 
 
 def _original_prediction(case: DebugCase) -> str:

@@ -44,6 +44,7 @@ type DebugReportWorkspaceProps = {
   onOpenTargetedProbe?: (jobId: string) => void;
   autoDebugClosureResult?: AutoDebugClosureResult | null;
   autoDebugClosureMarkdown?: string;
+  autoDebugClosureReportUrl?: string;
   onRunAutoDebugClosure?: () => void;
 };
 
@@ -72,6 +73,7 @@ export function DebugReportWorkspace({
   onOpenTargetedProbe,
   autoDebugClosureResult = null,
   autoDebugClosureMarkdown = "",
+  autoDebugClosureReportUrl = "",
   onRunAutoDebugClosure
 }: DebugReportWorkspaceProps) {
   return (
@@ -106,6 +108,7 @@ export function DebugReportWorkspace({
         onCreateFinalAttributionRecovery={onCreateFinalAttributionRecovery}
         autoDebugClosureResult={autoDebugClosureResult}
         autoDebugClosureMarkdown={autoDebugClosureMarkdown}
+        autoDebugClosureReportUrl={autoDebugClosureReportUrl}
         onRunAutoDebugClosure={onRunAutoDebugClosure}
       />
       {report.job_id ? (

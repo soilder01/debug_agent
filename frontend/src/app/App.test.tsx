@@ -772,7 +772,8 @@ describe("App", () => {
               },
               writeback_status: "succeeded"
             },
-            markdown: "# JSZN-131 最终 Debug 报告\n\n## Evidence 明细\n"
+            markdown: "# JSZN-131 最终 Debug 报告\n\n## Evidence 明细\n",
+            report_artifact_url: "/api/artifacts/files/JSZN-131_auto_closure_report.md"
           }),
           { status: 202, headers: { "Content-Type": "application/json" } }
         )
@@ -800,6 +801,10 @@ describe("App", () => {
     expect(screen.getByText("闭环判断：model_instability")).toBeInTheDocument();
     expect(screen.getByText("自动写回状态：succeeded")).toBeInTheDocument();
     expect(screen.getByText("Auto Closure Markdown Report")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "打开自动闭环 Markdown 报告" })).toHaveAttribute(
+      "href",
+      "/api/artifacts/files/JSZN-131_auto_closure_report.md"
+    );
     expect(screen.getByText(/# JSZN-131 最终 Debug 报告/)).toBeInTheDocument();
   });
 
