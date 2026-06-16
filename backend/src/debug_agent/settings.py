@@ -98,6 +98,9 @@ class ArkSettings(BaseModel):
     content_tasks_url: str = "https://ark-cn-beijing.bytedance.net/api/v3/contents/generations/tasks"
     seed2_lite_model_id: str = "ep-20260609151048-sbfnk"
     seed2_pro_model_id: str = "ep-20260609191630-7gkjm"
+    video_model_id: str = "ep-20260604110333-dhrf7"
+    video_mode: str = "high"
+    video_disable_thinking: bool = True
 
     @classmethod
     def from_env(cls) -> "ArkSettings":
@@ -117,6 +120,11 @@ class ArkSettings(BaseModel):
             seed2_pro_model_id=os.environ.get(
                 "ARK_SEED2_PRO_MODEL_ID", cls.model_fields["seed2_pro_model_id"].default
             ),
+            video_model_id=os.environ.get(
+                "ARK_VIDEO_MODEL_ID", cls.model_fields["video_model_id"].default
+            ),
+            video_mode=os.environ.get("ARK_VIDEO_MODE", cls.model_fields["video_mode"].default),
+            video_disable_thinking=_env_bool("ARK_VIDEO_DISABLE_THINKING", default=True),
         )
 
 

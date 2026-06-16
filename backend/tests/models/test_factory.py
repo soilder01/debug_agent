@@ -39,6 +39,22 @@ def test_model_factory_builds_ark_seed2_pro_adapter(monkeypatch: pytest.MonkeyPa
     assert request.json_body["model"] == "pro-model"
 
 
+def test_model_factory_builds_ark_video_adapter(monkeypatch: pytest.MonkeyPatch) -> None:
+    case = load_fixture_case("handwrite233")
+    monkeypatch.setenv("ARK_API_KEY", "secret-value")
+    monkeypatch.setenv("ARK_VIDEO_MODEL_ID", "video-model")
+    monkeypatch.setenv("ARK_VIDEO_MODE", "high")
+    monkeypatch.setenv("ARK_VIDEO_DISABLE_THINKING", "1")
+
+    adapter = build_model_adapter(case, settings=ModelRuntimeSettings(provider="ark-video"))
+
+    assert isinstance(adapter, ArkModelAdapter)
+    request = adapter.build_request(prompt="hello", image_uri="file:///tmp/case.mp4")
+    assert request.json_body["model"] == "video-model"
+    assert request.json_body["mode"] == "high"
+    assert request.json_body["thinking"] == {"type": "disabled"}
+
+
 def test_model_factory_rejects_unknown_provider() -> None:
     case = load_fixture_case("handwrite233")
 

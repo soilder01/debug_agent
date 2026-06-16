@@ -6,7 +6,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 function Run-Step($Name, $Command, $WorkingDirectory) {
-  Write-Host "==> $Name"
+  [Console]::WriteLine("==> $Name")
   Push-Location $WorkingDirectory
   try {
     Invoke-Expression $Command
@@ -18,7 +18,7 @@ function Run-Step($Name, $Command, $WorkingDirectory) {
 }
 
 if ($Target -eq "test" -or $Target -eq "all") {
-  Run-Step "backend tests" "python -m pytest -q" "backend"
+  Run-Step "backend tests" '$env:DEBUG_AGENT_MODEL_PROVIDER="fake"; $env:DEBUG_AGENT_ENABLE_LIVE_MODEL_TESTS="0"; python -m pytest -ra --durations=20' "backend"
   Run-Step "frontend tests" "npx --yes pnpm@9.15.4 test -- --run" "frontend"
 }
 

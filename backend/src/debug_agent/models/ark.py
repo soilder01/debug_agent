@@ -44,24 +44,33 @@ class ArkModelAdapter:
         self,
         settings: ArkSettings,
         model_id: str,
+        mode: str = "",
+        disable_thinking: bool = False,
         transport: ArkTransport | None = None,
     ) -> None:
         self._settings = settings
         self._model_id = model_id
+        self._mode = mode
+        self._disable_thinking = disable_thinking
         self._transport = transport or UrllibArkTransport()
         self._cursor = 0
 
     def build_request(self, prompt: str, image_uri: str) -> ArkRequest:
         content: list[dict[str, object]] = [{"type": "text", "text": prompt}]
         if image_uri:
-            content.append({"type": "image_url", "image_url": {"url": image_uri}})
+            content.append(_media_content(image_uri))
+        json_body: dict[str, object] = {
+            "model": self._model_id,
+            "messages": [{"role": "user", "content": content}],
+        }
+        if self._mode:
+            json_body["mode"] = self._mode
+        if self._disable_thinking:
+            json_body["thinking"] = {"type": "disabled"}
         return ArkRequest(
             url=f"{self._settings.base_url.rstrip('/')}/chat/completions",
             headers={"Authorization": f"Bearer {self._settings.api_key.get_secret_value()}"},
-            json_body={
-                "model": self._model_id,
-                "messages": [{"role": "user", "content": content}],
-            },
+            json_body=json_body,
         )
 
     async def generate(self, prompt: str, image_uri: str) -> ModelResponse:
@@ -95,3 +104,14 @@ def _extract_response_content(response_json: dict[str, object]) -> str:
         return content
     except (KeyError, IndexError) as exc:
         raise ValueError("Unable to parse Ark response content") from exc
+
+
+def _media_content(uri: str) -> dict[str, object]:
+    if _is_video_uri(uri):
+        return {"type": "video_url", "video_url": {"url": uri}}
+    return {"type": "image_url", "image_url": {"url": uri}}
+
+
+def _is_video_uri(uri: str) -> bool:
+    normalized = uri.split("?", 1)[0].lower()
+    return normalized.endswith((".mp4", ".mov", ".mkv", ".webm", ".avi", ".m4v"))

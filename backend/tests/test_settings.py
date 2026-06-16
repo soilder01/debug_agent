@@ -114,6 +114,9 @@ def test_ark_settings_can_be_built_from_env_file(monkeypatch) -> None:
         "ARK_CONTENT_TASKS_URL",
         "ARK_SEED2_LITE_MODEL_ID",
         "ARK_SEED2_PRO_MODEL_ID",
+        "ARK_VIDEO_MODEL_ID",
+        "ARK_VIDEO_MODE",
+        "ARK_VIDEO_DISABLE_THINKING",
     ):
         monkeypatch.delenv(key, raising=False)
     env_file = Path(__file__).with_name(".settings-ark-test.env")
@@ -126,6 +129,9 @@ def test_ark_settings_can_be_built_from_env_file(monkeypatch) -> None:
                     "ARK_CONTENT_TASKS_URL=https://ark.example/api/v3/contents/generations/tasks",
                     "ARK_SEED2_LITE_MODEL_ID=lite-model",
                     "ARK_SEED2_PRO_MODEL_ID=pro-model",
+                    "ARK_VIDEO_MODEL_ID=video-model",
+                    "ARK_VIDEO_MODE=high",
+                    "ARK_VIDEO_DISABLE_THINKING=1",
                 ]
             ),
             encoding="utf-8",
@@ -139,6 +145,9 @@ def test_ark_settings_can_be_built_from_env_file(monkeypatch) -> None:
         assert settings.content_tasks_url == "https://ark.example/api/v3/contents/generations/tasks"
         assert settings.seed2_lite_model_id == "lite-model"
         assert settings.seed2_pro_model_id == "pro-model"
+        assert settings.video_model_id == "video-model"
+        assert settings.video_mode == "high"
+        assert settings.video_disable_thinking is True
     finally:
         env_file.unlink(missing_ok=True)
 

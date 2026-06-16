@@ -9,6 +9,9 @@ def test_ark_settings_reads_environment(monkeypatch) -> None:
     monkeypatch.setenv("ARK_BASE_URL", "https://ark.example/api/v3")
     monkeypatch.setenv("ARK_SEED2_LITE_MODEL_ID", "lite-model")
     monkeypatch.setenv("ARK_SEED2_PRO_MODEL_ID", "pro-model")
+    monkeypatch.setenv("ARK_VIDEO_MODEL_ID", "video-model")
+    monkeypatch.setenv("ARK_VIDEO_MODE", "high")
+    monkeypatch.setenv("ARK_VIDEO_DISABLE_THINKING", "1")
 
     settings = ArkSettings.from_env()
 
@@ -16,6 +19,9 @@ def test_ark_settings_reads_environment(monkeypatch) -> None:
     assert settings.base_url == "https://ark.example/api/v3"
     assert settings.seed2_lite_model_id == "lite-model"
     assert settings.seed2_pro_model_id == "pro-model"
+    assert settings.video_model_id == "video-model"
+    assert settings.video_mode == "high"
+    assert settings.video_disable_thinking is True
 
 
 def test_ark_adapter_builds_request_without_exposing_secret() -> None:
@@ -25,6 +31,7 @@ def test_ark_adapter_builds_request_without_exposing_secret() -> None:
         content_tasks_url="https://ark.example/api/v3/contents/generations/tasks",
         seed2_lite_model_id="lite-model",
         seed2_pro_model_id="pro-model",
+        video_model_id="video-model",
     )
     adapter = ArkModelAdapter(settings=settings, model_id=settings.seed2_lite_model_id)
 
@@ -34,6 +41,26 @@ def test_ark_adapter_builds_request_without_exposing_secret() -> None:
     assert request.headers["Authorization"] == "Bearer secret-value"
     assert request.json_body["model"] == "lite-model"
     assert "secret-value" not in repr(request)
+
+
+def test_ark_adapter_builds_high_no_thinking_video_request() -> None:
+    settings = ark_settings()
+    adapter = ArkModelAdapter(
+        settings=settings,
+        model_id=settings.video_model_id,
+        mode=settings.video_mode,
+        disable_thinking=settings.video_disable_thinking,
+    )
+
+    request = adapter.build_request(prompt="segment this video", image_uri="file:///tmp/case.mp4")
+
+    assert request.json_body["model"] == "video-model"
+    assert request.json_body["mode"] == "high"
+    assert request.json_body["thinking"] == {"type": "disabled"}
+    messages = request.json_body["messages"]
+    assert isinstance(messages, list)
+    content = messages[0]["content"]  # type: ignore[index]
+    assert content[1] == {"type": "video_url", "video_url": {"url": "file:///tmp/case.mp4"}}
 
 
 class FakeArkTransport:
@@ -53,6 +80,7 @@ def ark_settings() -> ArkSettings:
         content_tasks_url="https://ark.example/api/v3/contents/generations/tasks",
         seed2_lite_model_id="lite-model",
         seed2_pro_model_id="pro-model",
+        video_model_id="video-model",
     )
 
 

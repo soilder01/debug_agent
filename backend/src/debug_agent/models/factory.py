@@ -19,5 +19,13 @@ def build_model_adapter(
     if runtime_settings.provider == "ark-seed2-pro":
         ark_settings = ArkSettings.from_env()
         return ArkModelAdapter(settings=ark_settings, model_id=ark_settings.seed2_pro_model_id)
+    if runtime_settings.provider == "ark-video":
+        ark_settings = ArkSettings.from_env()
+        return ArkModelAdapter(
+            settings=ark_settings,
+            model_id=ark_settings.video_model_id,
+            mode=ark_settings.video_mode,
+            disable_thinking=ark_settings.video_disable_thinking,
+        )
 
     raise ValueError(f"Unsupported model provider: {runtime_settings.provider}")

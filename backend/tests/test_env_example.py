@@ -17,11 +17,14 @@ def _read_env_example() -> dict[str, str]:
 def test_env_example_defaults_to_usable_ark_lite_model_config() -> None:
     values = _read_env_example()
 
-    assert values["DEBUG_AGENT_MODEL_PROVIDER"] == "ark-seed2-lite"
+    assert values["DEBUG_AGENT_MODEL_PROVIDER"] == "ark-video"
     assert values["ARK_BASE_URL"] == "https://ark-cn-beijing.bytedance.net/api/v3"
     assert values["ARK_CONTENT_TASKS_URL"] == "https://ark-cn-beijing.bytedance.net/api/v3/contents/generations/tasks"
     assert values["ARK_SEED2_LITE_MODEL_ID"] == "ep-20260609151048-sbfnk"
     assert values["ARK_SEED2_PRO_MODEL_ID"] == "ep-20260609191630-7gkjm"
+    assert values["ARK_VIDEO_MODEL_ID"] == "ep-20260604110333-dhrf7"
+    assert values["ARK_VIDEO_MODE"] == "high"
+    assert values["ARK_VIDEO_DISABLE_THINKING"] == "1"
 
 
 def test_env_example_does_not_commit_real_ark_api_key() -> None:
