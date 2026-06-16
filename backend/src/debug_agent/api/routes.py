@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from typing import Literal
 from uuid import uuid4
 
@@ -14,6 +15,7 @@ from debug_agent.experiments.runner import ExperimentEvidence, run_experiments
 from debug_agent.imports.csv_cases import CsvRejectedRow, parse_csv_cases
 from debug_agent.imports.spreadsheet_rows import SpreadsheetRejectedRow, parse_spreadsheet_rows
 from debug_agent.jobs.auto_closure import AutoDebugClosureResult, LocalVideoClipper, run_auto_debug_closure
+from debug_agent.jobs.auto_closure_report import build_auto_closure_markdown_report
 from debug_agent.jobs.service import DebugJobService, RetryRecommendationDetail, SubmittedDebugJob
 from debug_agent.jobs.worker import AsyncJobWorker, AsyncJobWorkerStatus
 from debug_agent.models.fake import FakeModelAdapter
@@ -238,6 +240,12 @@ class AutoDebugClosureRequest(BaseModel):
     note: str = ""
     writeback: bool = False
     report_url: str = ""
+
+
+class AutoDebugClosureReportResponse(BaseModel):
+    source_job_id: str
+    closure: AutoDebugClosureResult
+    markdown: str
 
 
 class HumanHandoffStatusRequest(BaseModel):
@@ -787,6 +795,14 @@ def get_artifact_manifest(filename: str) -> FileResponse:
     return FileResponse(artifact_path, media_type="application/json")
 
 
+@router.get("/artifacts/files/{filename}")
+def get_artifact_file(filename: str) -> FileResponse:
+    artifact_path = _artifact_file_path(filename)
+    if artifact_path is None:
+        raise HTTPException(status_code=404, detail=f"Artifact file not found: {filename}")
+    return FileResponse(artifact_path, media_type=_artifact_media_type(artifact_path))
+
+
 @router.post("/worker/start", status_code=202)
 async def start_worker() -> WorkerRuntimeStatus:
     job_worker.start()
@@ -1104,6 +1120,42 @@ async def run_job_auto_debug_closure(
         video_clipper=auto_closure_video_clipper,
         report_url=request.report_url,
     )
+
+
+@router.post("/jobs/{job_id}/auto-closure/report", status_code=202)
+async def run_job_auto_debug_closure_report(
+    job_id: str,
+    request: AutoDebugClosureRequest,
+) -> AutoDebugClosureReportResponse:
+    job = job_repository.get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail=f"Debug job not found: {job_id}")
+    report = build_report_for_job(job_repository, job_id)
+    if report is None:
+        raise HTTPException(status_code=404, detail=f"Debug report not found for job: {job_id}")
+    case = job_repository.get_case(job.case_id)
+    if case is None:
+        raise HTTPException(status_code=404, detail=f"Debug case not found: {job.case_id}")
+    actor = _resolved_actor(request.actor)
+    _raise_if_usage_budget_blocks_submission()
+    closure = await run_auto_debug_closure(
+        repository=job_repository,
+        job_service=job_service,
+        job_id=job_id,
+        actor=actor,
+        writeback_client=spreadsheet_writeback_client if request.writeback else None,
+        video_clipper=auto_closure_video_clipper,
+        report_url=request.report_url,
+    )
+    markdown = build_auto_closure_markdown_report(
+        report=report,
+        closure=closure,
+        original_cot_excerpt=_original_cot_excerpt(case),
+        original_prediction=_original_prediction(case),
+        reference_answer=json.dumps(case.expected_output, ensure_ascii=False, indent=2),
+        scoring_ops=case.scoring_standard,
+    )
+    return AutoDebugClosureReportResponse(source_job_id=job_id, closure=closure, markdown=markdown)
 
 
 @router.patch("/jobs/{job_id}/human-handoffs/{target_id}/status")
@@ -1428,6 +1480,40 @@ def _targeted_probe_from_report(report: DebugReport, target_id: str) -> dict[str
         if follow_up.get("source") == "targeted_probe" and follow_up.get("target_id") == target_id:
             return follow_up
     return None
+
+
+def _artifact_file_path(filename: str) -> Path | None:
+    if Path(filename).name != filename:
+        return None
+    artifact_dir = settings.image_artifact_dir.resolve()
+    for artifact_path in artifact_dir.rglob(filename):
+        resolved_path = artifact_path.resolve()
+        if resolved_path.is_file() and resolved_path.is_relative_to(artifact_dir):
+            return resolved_path
+    return None
+
+
+def _artifact_media_type(artifact_path: Path) -> str:
+    if artifact_path.suffix == ".txt":
+        return "text/plain"
+    if artifact_path.suffix == ".mp4":
+        return "video/mp4"
+    if artifact_path.suffix == ".json":
+        return "application/json"
+    return "application/octet-stream"
+
+
+def _original_prediction(case: DebugCase) -> str:
+    if not case.predictions:
+        return ""
+    return case.predictions[0].raw_output
+
+
+def _original_cot_excerpt(case: DebugCase) -> str:
+    prediction = _original_prediction(case)
+    if not prediction:
+        return "未在导入样本中找到原始模型回答。"
+    return "当前样本未单独保存 COT 字段；以下原始预测用于追溯原 badcase 回答：\n" + prediction
 
 
 def _build_observability_health(

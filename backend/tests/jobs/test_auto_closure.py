@@ -306,6 +306,39 @@ def test_auto_debug_closure_api_runs_closure_for_completed_job() -> None:
     assert body["final_attribution_candidates"][0]["category"] == "model_instability"
 
 
+def test_auto_debug_closure_report_api_returns_chinese_markdown_from_real_closure() -> None:
+    client = TestClient(app)
+    case = _video_case(f"api-auto-report-video-case-{uuid4()}")
+    source_job_id = f"api-auto-report-video-job-{uuid4()}"
+    routes.job_repository.save_case(case)
+    routes.job_repository.create_job(source_job_id, case.case_id, baseline_trials=1)
+    routes.job_repository.save_evidence(
+        job_id=source_job_id,
+        case_id=case.case_id,
+        evidence=[_failed_video_timestamp_evidence(source_job_id)],
+    )
+    routes.job_repository.mark_completed(source_job_id)
+
+    response = client.post(
+        f"/jobs/{source_job_id}/auto-closure/report",
+        json={"actor": "api-auto-debugger", "note": "generate trusted markdown report"},
+    )
+
+    assert response.status_code == 202
+    body = response.json()
+    assert body["source_job_id"] == source_job_id
+    assert body["markdown"].startswith(f"# {case.case_id} 最终 Debug 报告")
+    assert "## 原始 Badcase 证据" in body["markdown"]
+    assert "## 自动深挖链路" in body["markdown"]
+    assert "## Evidence 明细" in body["markdown"]
+    assert "原模型预测" in body["markdown"]
+    assert "参考答案" in body["markdown"]
+    assert "评分规则" in body["markdown"]
+    assert '{"video_action_segments"' in body["markdown"]
+    assert body["closure"]["source_job_id"] == source_job_id
+    assert body["closure"]["created_targeted_probe_jobs"]
+
+
 class RecordingWritebackClient:
     def __init__(self) -> None:
         self.fields: dict[str, str] = {}

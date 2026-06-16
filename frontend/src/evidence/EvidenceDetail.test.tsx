@@ -85,6 +85,85 @@ describe("EvidenceDetail", () => {
     expect(screen.queryByText("Image Artifacts")).not.toBeInTheDocument();
   });
 
+  it("renders direct drilldown links for full raw output and clipped targeted video artifacts", () => {
+    const evidence = {
+      evidence_id: "JSZN-131:baseline_replay:0",
+      step_name: "baseline_replay",
+      trial: 0,
+      model_name: "ark-video",
+      model_provider: "ark",
+      model_id: "ep-video",
+      request_summary: {
+        prompt_length: 2048,
+        has_image: true,
+        image_uri_scheme: "file"
+      },
+      latency_ms: 1200,
+      response_parse_error: "",
+      model_call_error_type: "",
+      model_call_error_message: "",
+      artifacts: [
+        {
+          artifact_id: "JSZN-131:baseline_replay:0:structured-output",
+          kind: "structured_output",
+          artifact_type: "model_output",
+          source_uri: "",
+          derived_uri: "file:///tmp/artifacts/JSZN-131_baseline_replay_0_structured-output.txt",
+          preview_url: "",
+          region: null,
+          metadata: {
+            raw_output_persisted: true,
+            raw_output_length: 4096
+          }
+        },
+        {
+          artifact_id: "JSZN-131:auto_probe:video_segment_1:input-snapshot",
+          kind: "input_snapshot",
+          artifact_type: "request",
+          source_uri: "file:///tmp/artifacts/targeted-video-probes/JSZN-131_video_segment_1_17.0_39.0.mp4",
+          derived_uri: "",
+          preview_url: "",
+          region: null,
+          metadata: {
+            task_type: "video_detection",
+            prompt_length: 2048
+          }
+        },
+        {
+          artifact_id: "JSZN-131:auto_probe:video_segment_1:clip",
+          kind: "targeted_video_clip",
+          artifact_type: "video_clip",
+          source_uri: "file:///tmp/JSZN-131.mp4",
+          derived_uri: "file:///tmp/artifacts/targeted-video-probes/JSZN-131_video_segment_1_17.0_39.0.mp4",
+          preview_url: "",
+          region: null,
+          metadata: {
+            target_id: "video:segment:1",
+            clip_window_s: "17.0-39.0"
+          }
+        }
+      ],
+      image_artifacts: [],
+      raw_output: "{\"video_action_segments\":[]}",
+      judge: {
+        score: 0,
+        reasons: ["timestamp_end_out_of_range"]
+      }
+    } satisfies ExperimentEvidence;
+
+    render(<EvidenceDetail evidence={evidence} />);
+
+    expect(
+      screen.getByRole("link", { name: "打开完整原始输出 JSZN-131:baseline_replay:0:structured-output" })
+    ).toHaveAttribute("href", "/api/artifacts/files/JSZN-131_baseline_replay_0_structured-output.txt");
+    expect(
+      screen.getByRole("link", { name: "打开 clipped targeted video JSZN-131:auto_probe:video_segment_1:clip" })
+    ).toHaveAttribute("href", "/api/artifacts/files/JSZN-131_video_segment_1_17.0_39.0.mp4");
+    expect(
+      screen.getByRole("link", { name: "打开输入视频 JSZN-131:auto_probe:video_segment_1:input-snapshot" })
+    ).toHaveAttribute("href", "/api/artifacts/files/JSZN-131_video_segment_1_17.0_39.0.mp4");
+  });
+
   it("renders ablation variant context from request summary", () => {
     const evidence = {
       evidence_id: "case-1:modality_ablation_check:1",

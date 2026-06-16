@@ -70,6 +70,7 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
                 <p>源 URI：{artifact.source_uri || "无"}</p>
                 <p>派生 URI：{artifact.derived_uri || "无"}</p>
                 <p>元数据：{JSON.stringify(artifact.metadata)}</p>
+                <ArtifactDrilldownLinks artifact={artifact} />
                 <ArtifactNativeContext metadata={artifact.metadata} />
                 <VideoSegmentAudit artifact={artifact} />
                 <MultimodalConflictAudit artifact={artifact} />
@@ -172,6 +173,20 @@ type ArtifactNativeContextProps = {
   metadata: Record<string, unknown>;
 };
 
+type EvidenceArtifactView = {
+  artifact_id: string;
+  kind: string;
+  artifact_type: string;
+  source_uri: string;
+  derived_uri: string;
+  preview_url?: string;
+  metadata: Record<string, unknown>;
+};
+
+type ArtifactDrilldownLinksProps = {
+  artifact: EvidenceArtifactView;
+};
+
 type VideoSegmentAuditProps = {
   artifact: {
     artifact_id: string;
@@ -180,6 +195,42 @@ type VideoSegmentAuditProps = {
     metadata: Record<string, unknown>;
   };
 };
+
+function ArtifactDrilldownLinks({ artifact }: ArtifactDrilldownLinksProps) {
+  const derivedUrl = artifactFileUrl(artifact.derived_uri);
+  const sourceUrl = artifactFileUrl(artifact.source_uri);
+  if (artifact.kind === "input_snapshot" && sourceUrl && isVideoUri(artifact.source_uri)) {
+    return (
+      <p>
+        <a href={sourceUrl} target="_blank" rel="noreferrer">
+          打开输入视频 {artifact.artifact_id}
+        </a>
+      </p>
+    );
+  }
+  if (!derivedUrl) {
+    return null;
+  }
+  if (artifact.kind === "structured_output") {
+    return (
+      <p>
+        <a href={derivedUrl} target="_blank" rel="noreferrer">
+          打开完整原始输出 {artifact.artifact_id}
+        </a>
+      </p>
+    );
+  }
+  if (artifact.kind === "targeted_video_clip" || artifact.artifact_type === "video_clip") {
+    return (
+      <p>
+        <a href={derivedUrl} target="_blank" rel="noreferrer">
+          打开 clipped targeted video {artifact.artifact_id}
+        </a>
+      </p>
+    );
+  }
+  return null;
+}
 
 function VideoSegmentAudit({ artifact }: VideoSegmentAuditProps) {
   if (artifact.kind !== "video_segment_delta" || !artifact.derived_uri) {
@@ -432,6 +483,25 @@ function manifestArtifactUrl(uri: string): string {
     return filename ? `/api/artifacts/manifests/${filename}` : uri;
   }
   return uri;
+}
+
+function artifactFileUrl(uri: string): string {
+  if (!uri) {
+    return "";
+  }
+  if (uri.startsWith("/api/artifacts/files/")) {
+    return uri;
+  }
+  if (uri.startsWith("file://")) {
+    const pathParts = uri.split(/[\\/]/);
+    const filename = decodeURIComponent(pathParts[pathParts.length - 1] ?? "");
+    return filename ? `/api/artifacts/files/${filename}` : "";
+  }
+  return uri;
+}
+
+function isVideoUri(uri: string): boolean {
+  return uri.toLowerCase().endsWith(".mp4");
 }
 
 function stringValue(value: unknown): string {

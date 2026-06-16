@@ -64,3 +64,30 @@ def test_artifact_manifest_route_rejects_missing_or_unsafe_files() -> None:
             assert unsafe_response.status_code == 404
         finally:
             routes.settings.image_artifact_dir = original_artifact_dir
+
+
+def test_artifact_file_route_serves_raw_output_and_nested_video_clip() -> None:
+    with TemporaryDirectory(dir=Path.cwd()) as temp_dir:
+        temp_path = Path(temp_dir)
+        raw_output_path = temp_path / "JSZN-131_baseline_replay_0_structured-output.txt"
+        raw_output_path.write_text('{"video_action_segments":[]}', encoding="utf-8")
+        clip_dir = temp_path / "targeted-video-probes"
+        clip_dir.mkdir()
+        clip_path = clip_dir / "JSZN-131_video_segment_1_17.0_39.0.mp4"
+        clip_path.write_bytes(b"fake-video")
+        original_artifact_dir = routes.settings.image_artifact_dir
+        routes.settings.image_artifact_dir = temp_path
+        try:
+            client = TestClient(app)
+
+            raw_response = client.get("/artifacts/files/JSZN-131_baseline_replay_0_structured-output.txt")
+            clip_response = client.get("/artifacts/files/JSZN-131_video_segment_1_17.0_39.0.mp4")
+
+            assert raw_response.status_code == 200
+            assert raw_response.headers["content-type"].startswith("text/plain")
+            assert raw_response.text == '{"video_action_segments":[]}'
+            assert clip_response.status_code == 200
+            assert clip_response.headers["content-type"] == "video/mp4"
+            assert clip_response.content == b"fake-video"
+        finally:
+            routes.settings.image_artifact_dir = original_artifact_dir
