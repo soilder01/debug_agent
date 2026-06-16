@@ -25,6 +25,7 @@ type ReportPanelProps = {
   onCreateFinalAttributionFollowUp?: (targetId: string) => void;
   onCreateFinalAttributionRecovery?: (targetId: string) => void;
   autoDebugClosureResult?: AutoDebugClosureResult | null;
+  autoDebugClosureMarkdown?: string;
   onRunAutoDebugClosure?: () => void;
 };
 
@@ -43,6 +44,7 @@ export function ReportPanel({
   onCreateFinalAttributionFollowUp,
   onCreateFinalAttributionRecovery,
   autoDebugClosureResult = null,
+  autoDebugClosureMarkdown = "",
   onRunAutoDebugClosure
 }: ReportPanelProps) {
   const experimentSummary = report.experiment_summary;
@@ -142,6 +144,12 @@ export function ReportPanel({
                   ))}
                 </ul>
               </>
+            ) : null}
+            {autoDebugClosureMarkdown ? (
+              <section aria-label="Auto closure markdown report">
+                <h4>Auto Closure Markdown Report</h4>
+                <pre>{autoDebugClosureMarkdown}</pre>
+              </section>
             ) : null}
           </>
         ) : null}

@@ -751,24 +751,28 @@ describe("App", () => {
         new Response(
           JSON.stringify({
             source_job_id: "job-auto-closure-1",
-            created_targeted_probe_jobs: ["job-targeted-probe-1"],
-            created_strategy_follow_up_jobs: ["job-stability-follow-up-1"],
-            created_verification_jobs: ["job-action-verify-1"],
-            evidence_summaries: [],
-            targeted_probe_outcomes: [],
-            final_attribution_candidates: [
-              {
-                category: "model_instability",
-                confidence: "high",
-                summary: "Live rerun passed 4/5 trials, so stability verification is required."
-              }
-            ],
-            badcase_live_comparison: {
-              original_badcase: "原 badcase：0/1 通过，avg_score=0.0。",
-              live_rerun: "Live 复测：4/5 通过，success_rate=80%。",
-              decision: "model_instability"
+            closure: {
+              source_job_id: "job-auto-closure-1",
+              created_targeted_probe_jobs: ["job-targeted-probe-1"],
+              created_strategy_follow_up_jobs: ["job-stability-follow-up-1"],
+              created_verification_jobs: ["job-action-verify-1"],
+              evidence_summaries: [],
+              targeted_probe_outcomes: [],
+              final_attribution_candidates: [
+                {
+                  category: "model_instability",
+                  confidence: "high",
+                  summary: "Live rerun passed 4/5 trials, so stability verification is required."
+                }
+              ],
+              badcase_live_comparison: {
+                original_badcase: "原 badcase：0/1 通过，avg_score=0.0。",
+                live_rerun: "Live 复测：4/5 通过，success_rate=80%。",
+                decision: "model_instability"
+              },
+              writeback_status: "succeeded"
             },
-            writeback_status: "succeeded"
+            markdown: "# JSZN-131 最终 Debug 报告\n\n## Evidence 明细\n"
           }),
           { status: 202, headers: { "Content-Type": "application/json" } }
         )
@@ -780,7 +784,7 @@ describe("App", () => {
     await userEvent.click(screen.getByRole("button", { name: "Load persisted report" }));
     await userEvent.click(await screen.findByRole("button", { name: "Run auto debug closure" }));
 
-    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-auto-closure-1/auto-closure", {
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-auto-closure-1/auto-closure/report", {
       body: JSON.stringify({
         actor: "local-dev-operator",
         note: "auto close video badcase",
@@ -795,6 +799,8 @@ describe("App", () => {
     expect(screen.getByText("自动验证任务：job-action-verify-1")).toBeInTheDocument();
     expect(screen.getByText("闭环判断：model_instability")).toBeInTheDocument();
     expect(screen.getByText("自动写回状态：succeeded")).toBeInTheDocument();
+    expect(screen.getByText("Auto Closure Markdown Report")).toBeInTheDocument();
+    expect(screen.getByText(/# JSZN-131 最终 Debug 报告/)).toBeInTheDocument();
   });
 
   it("updates recommended action status from a persisted report", async () => {

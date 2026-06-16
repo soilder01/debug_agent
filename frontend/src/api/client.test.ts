@@ -11,6 +11,7 @@ import {
   fetchStrategyFollowUpJobs,
   fetchTargetedProbeJobs,
   runAutoDebugClosure,
+  runAutoDebugClosureReport,
   updateHumanHandoffStatus,
   updateRecommendedActionStatus
 } from "./client";
@@ -270,6 +271,53 @@ describe("api client recommended action status", () => {
     expect(response.final_attribution_candidates[0].category).toBe("model_instability");
     expect(response.badcase_live_comparison.decision).toBe("model_instability");
     expect(response.created_targeted_probe_jobs).toEqual(["job-probe-1"]);
+  });
+
+  it("runs auto debug closure report and returns markdown", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          source_job_id: "job-1",
+          closure: {
+            source_job_id: "job-1",
+            created_targeted_probe_jobs: ["job-probe-1"],
+            created_strategy_follow_up_jobs: ["job-stability-1"],
+            created_verification_jobs: ["job-verify-1"],
+            evidence_summaries: [],
+            targeted_probe_outcomes: [],
+            final_attribution_candidates: [],
+            badcase_live_comparison: {
+              original_badcase: "原 badcase：0/1 通过，avg_score=0.0。",
+              live_rerun: "Live 复测：4/5 通过，success_rate=80%。",
+              decision: "model_instability"
+            },
+            writeback_status: "succeeded"
+          },
+          markdown: "# JSZN-131 最终 Debug 报告\n\n## Evidence 明细\n"
+        }),
+        { status: 202, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    const response = await runAutoDebugClosureReport("job-1", {
+      actor: "auto-debugger",
+      note: "close loop with markdown",
+      writeback: true,
+      report_url: "http://localhost:8000/jobs/job-1/report"
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1/auto-closure/report", {
+      body: JSON.stringify({
+        actor: "auto-debugger",
+        note: "close loop with markdown",
+        writeback: true,
+        report_url: "http://localhost:8000/jobs/job-1/report"
+      }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST"
+    });
+    expect(response.closure.created_targeted_probe_jobs).toEqual(["job-probe-1"]);
+    expect(response.markdown).toContain("最终 Debug 报告");
   });
 
   it("creates targeted probe jobs with operator context", async () => {

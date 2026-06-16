@@ -93,12 +93,13 @@ The previous validation proved the agent can run real auto-closure, but personal
 - [x] Auto-closure report API now runs closure and returns Chinese Markdown with source badcase evidence, original prediction, reference answer, scoring rules, deepening lineage, targeted outcomes, and evidence raw-output excerpts.
 - [x] Artifact file API now serves persisted structured raw outputs and nested clipped targeted video files through safe filename lookup.
 - [x] Frontend evidence drilldown now exposes direct links for full raw model output, clipped targeted video artifacts, and targeted probe input video snapshots.
+- [x] Frontend auto-closure action now calls the Markdown report API, stores both closure lineage and Markdown, and renders the generated final report in the report panel.
 - [x] Re-run full `.\scripts\verify.ps1`, `git diff --check`, and secret scan after the personal-perfect gap closure changes.
 
 ## Latest Verification
 
 - Focused backend auto-closure/report/artifact: `12 passed`.
-- Focused frontend evidence/report: `30 passed`.
-- Full `.\scripts\verify.ps1`: backend `364 passed, 1 skipped`; frontend `180 passed`; backend/frontend lint and typecheck passed.
+- Focused frontend API/evidence/report/workspace/app: `112 passed`.
+- Full `.\scripts\verify.ps1`: backend `364 passed, 1 skipped`; frontend `181 passed`; backend/frontend lint and typecheck passed.
 - `git diff --check`: passed.
 - Secret scan on tracked diff excluding local artifacts/temp outputs: no Ark key found.

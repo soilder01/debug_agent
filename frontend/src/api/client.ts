@@ -272,6 +272,12 @@ export type AutoDebugClosureResult = {
   writeback_status: string;
 };
 
+export type AutoDebugClosureReportResponse = {
+  source_job_id: string;
+  closure: AutoDebugClosureResult;
+  markdown: string;
+};
+
 export type HumanHandoffStatusValue = "pending" | "acknowledged" | "in_progress" | "resolved" | "wont_fix";
 
 export type HumanHandoffStatus = {
@@ -969,6 +975,31 @@ export async function runAutoDebugClosure(
     throw new Error(`Failed to run auto debug closure for ${jobId}: ${response.status}`);
   }
   return (await response.json()) as AutoDebugClosureResult;
+}
+
+export async function runAutoDebugClosureReport(
+  jobId: string,
+  request: {
+    actor?: string;
+    note?: string;
+    writeback?: boolean;
+    report_url?: string;
+  }
+): Promise<AutoDebugClosureReportResponse> {
+  const response = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/auto-closure/report`, {
+    body: JSON.stringify({
+      actor: request.actor ?? "",
+      note: request.note ?? "",
+      writeback: request.writeback ?? false,
+      report_url: request.report_url ?? ""
+    }),
+    headers: { "Content-Type": "application/json" },
+    method: "POST"
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to run auto debug closure report for ${jobId}: ${response.status}`);
+  }
+  return (await response.json()) as AutoDebugClosureReportResponse;
 }
 
 export async function createFinalAttributionVerificationJob(
