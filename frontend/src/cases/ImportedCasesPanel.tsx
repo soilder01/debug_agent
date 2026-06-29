@@ -34,14 +34,14 @@ export function ImportedCasesPanel({
 }: ImportedCasesPanelProps) {
   return (
     <ProductSurface
-      title="Imported Cases"
-      eyebrow="Queue"
-      description="Load imported cases before starting targeted debug jobs."
+      title="导入样本"
+      eyebrow="队列"
+      description="先加载导入样本，再启动定向 debug 任务。"
       className="case-queue"
     >
-      <ActionRow label="Imported case actions">
-        <button type="button" onClick={onLoadImportedCases}>
-          Load imported cases
+      <ActionRow label="导入样本操作">
+        <button type="button" aria-label="加载导入样本" onClick={onLoadImportedCases}>
+          加载案件
         </button>
       </ActionRow>
       {cases.length > 0 ? (
@@ -62,7 +62,7 @@ export function ImportedCasesPanel({
           ) : null}
         </>
       ) : (
-        <EmptyState title="No imported cases loaded" description="Load cases from local imports or spreadsheet sync." />
+        <EmptyState title="尚未加载导入样本" description="从本地导入或飞书表格同步加载案件数据。" />
       )}
     </ProductSurface>
   );

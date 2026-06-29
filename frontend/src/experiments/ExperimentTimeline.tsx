@@ -14,8 +14,8 @@ export function ExperimentTimeline({
   onSelectEvidence
 }: ExperimentTimelineProps) {
   return (
-    <section className="experiment-timeline" aria-label="Experiment Plan">
-      <h2>Experiment Plan</h2>
+    <section className="experiment-timeline" aria-label="实验计划">
+      <h2>实验计划</h2>
       {summary ? (
         <p>
           成功次数：{summary.success_count} / {summary.total_trials}，证据数：
@@ -24,8 +24,8 @@ export function ExperimentTimeline({
       ) : null}
       {summary ? (
         <>
-          <h3>Evidence</h3>
-          <ul className="experiment-timeline__evidence" aria-label="Experiment evidence">
+          <h3>证据</h3>
+          <ul className="experiment-timeline__evidence" aria-label="实验证据">
             {summary.evidence_ids.map((evidenceId) => (
               <li className="experiment-timeline__row" key={evidenceId} data-anime-flow>
                 <button type="button" onClick={() => onSelectEvidence(evidenceId)}>

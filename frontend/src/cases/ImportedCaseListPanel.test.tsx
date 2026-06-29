@@ -42,15 +42,15 @@ describe("ImportedCaseListPanel", () => {
     expect(screen.getByText("已导入样本：5")).toBeInTheDocument();
     expect(screen.getByText("已显示样本：1/3")).toBeInTheDocument();
     expect(screen.getByText("未加载样本：2")).toBeInTheDocument();
-    expect(screen.getByLabelText("Imported case queue metrics")).toHaveClass("metric-strip");
-    expect(screen.getByLabelText("Case queue actions")).toHaveClass("action-row");
-    expect(screen.getByText("case-1｜avg_score 0.4｜regions 2｜未标记｜未归因")).toBeInTheDocument();
+    expect(screen.getByLabelText("导入样本队列指标")).toHaveClass("metric-strip");
+    expect(screen.getByLabelText("样本队列操作")).toHaveClass("action-row");
+    expect(screen.getByText("case-1｜平均分 0.4｜区域 2｜未标记｜未归因")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Only cases with regions" }));
-    await userEvent.click(screen.getByRole("button", { name: "Show all imported cases" }));
-    await userEvent.click(screen.getByRole("button", { name: "Load more imported cases" }));
-    await userEvent.click(screen.getByRole("button", { name: "Use imported cases for batch" }));
-    await userEvent.click(screen.getByRole("button", { name: "View case detail case-1" }));
+    await userEvent.click(screen.getByRole("button", { name: "只看有区域的样本" }));
+    await userEvent.click(screen.getByRole("button", { name: "显示全部导入样本" }));
+    await userEvent.click(screen.getByRole("button", { name: "加载更多导入样本" }));
+    await userEvent.click(screen.getByRole("button", { name: "用导入样本创建批次" }));
+    await userEvent.click(screen.getByRole("button", { name: "查看样本详情 case-1" }));
 
     expect(onLoadWithRegions).toHaveBeenCalledTimes(1);
     expect(onLoadAll).toHaveBeenCalledTimes(1);
@@ -74,7 +74,7 @@ describe("ImportedCaseListPanel", () => {
       />
     );
 
-    expect(screen.queryByRole("button", { name: "Load more imported cases" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "加载更多导入样本" })).not.toBeInTheDocument();
   });
 
   it("falls back to safe count values when upstream totals are unavailable", () => {

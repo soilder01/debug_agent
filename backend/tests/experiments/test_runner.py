@@ -1,4 +1,5 @@
 import json
+import asyncio
 from tempfile import TemporaryDirectory
 from pathlib import Path
 from urllib.parse import unquote, urlparse
@@ -6,6 +7,7 @@ from urllib.parse import unquote, urlparse
 import pytest
 from PIL import Image
 
+from debug_agent.artifacts.videos import materialize_video_segment_manifest
 from debug_agent.cases.models import DebugCase
 from debug_agent.experiments.planner import ExperimentPlan, ExperimentStep, plan_experiments
 from debug_agent.experiments.runner import run_experiments
@@ -35,6 +37,9 @@ async def test_run_experiments_collects_judged_evidence() -> None:
         "prompt_length": len(case.prompt),
         "has_image": bool(case.image_uri),
         "image_uri_scheme": urlparse(case.image_uri).scheme,
+        "media_type": "none",
+        "media_uri_scheme": "",
+        "media_uri_resolved": False,
         "scoring_standard_present": True,
     }
     assert result.evidence[0].latency_ms >= 0
@@ -117,6 +122,57 @@ async def test_run_experiments_keeps_model_call_error_as_evidence() -> None:
 
 
 @pytest.mark.asyncio
+async def test_run_experiments_cancels_in_flight_model_call() -> None:
+    fixture_path = Path(__file__).parents[1] / "fixtures" / "handwrite233.json"
+    case = DebugCase.model_validate(json.loads(fixture_path.read_text(encoding="utf-8")))
+    plan = ExperimentPlan(
+        case_id=case.case_id,
+        max_model_calls=1,
+        steps=[
+            ExperimentStep(
+                name="long_call",
+                description="Cancel an in-flight model call.",
+                trials=1,
+            )
+        ],
+    )
+    should_cancel = False
+
+    class HangingModelAdapter:
+        def __init__(self) -> None:
+            self.started = asyncio.Event()
+            self.cancelled = False
+
+        async def generate(self, prompt: str, image_uri: str) -> ModelResponse:
+            del prompt, image_uri
+            self.started.set()
+            try:
+                await asyncio.sleep(10)
+            except asyncio.CancelledError:
+                self.cancelled = True
+                raise
+            return ModelResponse(model_name="hanging", trial=0, raw_output='{"answer":"8"}')
+
+    adapter = HangingModelAdapter()
+    task = asyncio.create_task(
+        run_experiments(
+            case=case,
+            plan=plan,
+            adapter=adapter,
+            should_cancel=lambda: should_cancel,
+        )
+    )
+    await adapter.started.wait()
+    should_cancel = True
+
+    result = await asyncio.wait_for(task, timeout=1)
+
+    assert adapter.cancelled is True
+    assert result.total_trials == 0
+    assert result.evidence == []
+
+
+@pytest.mark.asyncio
 async def test_run_experiments_adds_localized_image_artifacts_for_affected_boxes() -> None:
     case = DebugCase.model_validate(
         {
@@ -128,7 +184,7 @@ async def test_run_experiments_adds_localized_image_artifacts_for_affected_boxes
             "predictions": [
                 {
                     "trial": 0,
-                    "raw_output": "{\"answers\":[{\"box_id\":7,\"student_answer\":\"低温烘干\"}]}",
+                    "raw_output": '{"answers":[{"box_id":7,"student_answer":"低温烘干"}]}',
                     "score": 0,
                 }
             ],
@@ -181,7 +237,10 @@ async def test_run_experiments_adds_localized_image_artifacts_for_affected_boxes
     assert generic_artifact.preview_url == ""
     assert generic_artifact.region is not None
     assert generic_artifact.region.label == "box-7"
-    assert generic_artifact.metadata == {"target_id": "box:7", "legacy_kind": "affected_box_candidate"}
+    assert generic_artifact.metadata == {
+        "target_id": "box:7",
+        "legacy_kind": "affected_box_candidate",
+    }
 
 
 @pytest.mark.asyncio
@@ -203,6 +262,145 @@ async def test_run_experiments_adds_generic_input_and_output_artifacts() -> None
 
 
 @pytest.mark.asyncio
+async def test_run_experiments_judges_generic_video_json_arrays() -> None:
+    reference_answer = [
+        {"子任务编号": 1, "子任务描述": "双臂取出旧垃圾袋"},
+        {"子任务编号": 2, "子任务描述": "右臂拿起新垃圾袋并双臂套入垃圾桶"},
+    ]
+    case = DebugCase.model_validate(
+        {
+            "case_id": "generic-video-json",
+            "task_type": "generic_video_json",
+            "image_uri": "https://example.com/video.mp4",
+            "prompt": "Return JSON array.",
+            "golden_answer": {"answers": []},
+            "expected_output": {"reference_answer": reference_answer},
+            "scoring_standard": "JSON array must match reference task descriptions.",
+            "predictions": [
+                {
+                    "trial": 1,
+                    "raw_output": json.dumps(reference_answer, ensure_ascii=False),
+                    "score": 1,
+                }
+            ],
+            "avg_score": 1.0,
+        }
+    )
+    plan = ExperimentPlan(
+        case_id=case.case_id,
+        max_model_calls=1,
+        steps=[ExperimentStep(name="baseline_replay", description="Replay baseline.", trials=1)],
+    )
+    adapter = FakeModelAdapter(outputs=[json.dumps(reference_answer, ensure_ascii=False)])
+
+    result = await run_experiments(case=case, plan=plan, adapter=adapter)
+
+    assert result.success_count == 1
+    assert result.evidence[0].judge.score == 1
+
+
+@pytest.mark.asyncio
+async def test_run_experiments_fail_fast_for_unresolved_video_media(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "JSZN-131.mp4").write_bytes(b"local-file-must-not-be-used")
+    case = DebugCase.model_validate(
+        {
+            "case_id": "JSZN-131",
+            "task_type": "video_detection",
+            "image_uri": "JSZN-131.mp4",
+            "prompt": "Segment the video and return video_action_segments JSON.",
+            "golden_answer": {"answers": []},
+            "expected_output": {
+                "temporal_segments": [
+                    {
+                        "target_id": "video:segment:1",
+                        "start_ms": 100,
+                        "end_ms": 23100,
+                        "label": (
+                            "The right arm picks up the crab clamp and adjusts its position"
+                        ),
+                    }
+                ]
+            },
+            "scoring_standard": "timestamp range must match.",
+            "predictions": [{"trial": 0, "raw_output": "{}", "score": 0}],
+            "avg_score": 0.0,
+        }
+    )
+    plan = ExperimentPlan(
+        case_id=case.case_id,
+        max_model_calls=3,
+        steps=[ExperimentStep(name="baseline_replay", description="Replay baseline.", trials=3)],
+    )
+    adapter = PromptRecordingModelAdapter(raw_output='{"temporal_segments":[]}')
+
+    result = await run_experiments(case=case, plan=plan, adapter=adapter)
+
+    assert adapter.prompts == []
+    assert adapter.image_uris == []
+    assert result.total_trials == 1
+    assert result.success_count == 0
+    evidence = result.evidence[0]
+    assert evidence.model_call_error_type == "UnresolvedMediaInput"
+    assert evidence.model_call_error_message == "Video media input is unresolved: JSZN-131.mp4"
+    assert evidence.raw_output == ""
+    assert evidence.judge.score == 0
+    assert evidence.request_summary["media_type"] == "video"
+    assert evidence.request_summary["media_uri_resolved"] is False
+    assert evidence.request_summary["media_uri_scheme"] == ""
+    assert evidence.request_summary["image_uri_scheme"] == ""
+
+
+@pytest.mark.asyncio
+async def test_run_experiments_extracts_json_from_fenced_model_output() -> None:
+    reference_answer = {
+        "video_action_segments": [
+            {
+                "subtask_label": "The right arm picks up the crab clamp and adjusts its position",
+                "start_s": 0.1,
+                "end_s": 23.1,
+            }
+        ]
+    }
+    raw_output = (
+        "### Corrected structured output\n"
+        "```json\n"
+        f"{json.dumps(reference_answer, ensure_ascii=False, indent=2)}\n"
+        "```\n\n"
+        "### Root cause analysis\n"
+        "The previous timestamp boundary was too late."
+    )
+    case = DebugCase.model_validate(
+        {
+            "case_id": "generic-video-json-fenced",
+            "task_type": "generic_json",
+            "image_uri": "https://example.com/video.mp4",
+            "prompt": "Return corrected JSON.",
+            "golden_answer": {"answers": []},
+            "expected_output": reference_answer,
+            "scoring_standard": "JSON must match reference.",
+            "predictions": [{"trial": 0, "raw_output": raw_output, "score": 1}],
+            "avg_score": 1.0,
+        }
+    )
+    plan = ExperimentPlan(
+        case_id=case.case_id,
+        max_model_calls=1,
+        steps=[ExperimentStep(name="baseline_replay", description="Replay baseline.", trials=1)],
+    )
+    adapter = FakeModelAdapter(outputs=[raw_output])
+
+    result = await run_experiments(case=case, plan=plan, adapter=adapter)
+
+    assert result.success_count == 1
+    assert result.evidence[0].response_parse_error == ""
+    assert result.evidence[0].judge.score == 1
+
+
+@pytest.mark.asyncio
 async def test_run_experiments_materializes_full_structured_output_artifact() -> None:
     with TemporaryDirectory(dir=Path.cwd()) as temp_dir:
         temp_path = Path(temp_dir)
@@ -213,13 +411,19 @@ async def test_run_experiments_materializes_full_structured_output_artifact() ->
         plan = ExperimentPlan(
             case_id=case.case_id,
             max_model_calls=1,
-            steps=[ExperimentStep(name="baseline_replay", description="Replay baseline.", trials=1)],
+            steps=[
+                ExperimentStep(name="baseline_replay", description="Replay baseline.", trials=1)
+            ],
         )
         adapter = FakeModelAdapter(outputs=[raw_output])
 
-        result = await run_experiments(case=case, plan=plan, adapter=adapter, image_artifact_dir=artifact_dir)
+        result = await run_experiments(
+            case=case, plan=plan, adapter=adapter, image_artifact_dir=artifact_dir
+        )
 
-        artifact = next(item for item in result.evidence[0].artifacts if item.kind == "structured_output")
+        artifact = next(
+            item for item in result.evidence[0].artifacts if item.kind == "structured_output"
+        )
         assert artifact.derived_uri
         output_path = _path_from_file_uri(artifact.derived_uri)
         assert output_path.exists()
@@ -228,16 +432,77 @@ async def test_run_experiments_materializes_full_structured_output_artifact() ->
 
 
 @pytest.mark.asyncio
+async def test_run_experiments_materializes_local_input_snapshot_artifact() -> None:
+    with TemporaryDirectory(dir=Path.cwd()) as temp_dir:
+        temp_path = Path(temp_dir)
+        source_video_path = temp_path / "JSZN-131.mp4"
+        source_video_path.write_bytes(b"fake-video")
+        artifact_dir = temp_path / "artifacts"
+        reference_answer = [{"子任务编号": 1, "子任务描述": "取出旧垃圾袋"}]
+        case = DebugCase.model_validate(
+            {
+                "case_id": "JSZN-131",
+                "task_type": "generic_video_json",
+                "image_uri": source_video_path.as_uri(),
+                "prompt": "Return JSON array.",
+                "golden_answer": {"answers": []},
+                "expected_output": {"reference_answer": reference_answer},
+                "scoring_standard": "JSON array must match reference task descriptions.",
+                "predictions": [
+                    {
+                        "trial": 0,
+                        "raw_output": json.dumps(reference_answer, ensure_ascii=False),
+                        "score": 1,
+                    }
+                ],
+                "avg_score": 1.0,
+            }
+        )
+        plan = ExperimentPlan(
+            case_id=case.case_id,
+            max_model_calls=1,
+            steps=[
+                ExperimentStep(name="baseline_replay", description="Replay baseline.", trials=1)
+            ],
+        )
+        adapter = FakeModelAdapter(outputs=[json.dumps(reference_answer, ensure_ascii=False)])
+
+        result = await run_experiments(
+            case=case,
+            plan=plan,
+            adapter=adapter,
+            image_artifact_dir=artifact_dir,
+        )
+
+        artifact = next(
+            item for item in result.evidence[0].artifacts if item.kind == "input_snapshot"
+        )
+        assert artifact.source_uri == source_video_path.as_uri()
+        assert artifact.derived_uri
+        snapshot_path = _path_from_file_uri(artifact.derived_uri)
+        assert (
+            snapshot_path
+            == artifact_dir / "input" / "JSZN-131_baseline_replay_0_input-snapshot.mp4"
+        )
+        assert snapshot_path.read_bytes() == b"fake-video"
+
+
+@pytest.mark.asyncio
 async def test_run_experiments_materializes_localized_crop_artifacts() -> None:
     with TemporaryDirectory(dir=Path.cwd()) as temp_dir:
         temp_path = Path(temp_dir)
         source_image_path = temp_path / "case-localized.png"
         artifact_dir = temp_path / "artifacts"
-        result = await _run_localized_crop_case(source_image_path=source_image_path, artifact_dir=artifact_dir)
+        result = await _run_localized_crop_case(
+            source_image_path=source_image_path, artifact_dir=artifact_dir
+        )
 
         artifact = result.evidence[0].image_artifacts[0]
         assert artifact.derived_image_uri
-        assert artifact.preview_image_url == "/api/artifacts/images/case-localized-crop_box-7_localized-candidate.png"
+        assert (
+            artifact.preview_image_url
+            == "/api/artifacts/images/case-localized-crop_box-7_localized-candidate.png"
+        )
         crop_path = _path_from_file_uri(artifact.derived_image_uri)
         assert crop_path.exists()
         with Image.open(crop_path) as crop:
@@ -256,7 +521,7 @@ async def _run_localized_crop_case(source_image_path: Path, artifact_dir: Path):
             "predictions": [
                 {
                     "trial": 0,
-                    "raw_output": "{\"answers\":[{\"box_id\":7,\"student_answer\":\"低温烘干\"}]}",
+                    "raw_output": '{"answers":[{"box_id":7,"student_answer":"低温烘干"}]}',
                     "score": 0,
                 }
             ],
@@ -315,7 +580,7 @@ async def test_run_experiments_sends_localized_prompt_with_affected_region_conte
             "predictions": [
                 {
                     "trial": 0,
-                    "raw_output": "{\"answers\":[{\"box_id\":7,\"student_answer\":\"低温烘干\"}]}",
+                    "raw_output": '{"answers":[{"box_id":7,"student_answer":"低温烘干"}]}',
                     "score": 0,
                 }
             ],
@@ -390,7 +655,7 @@ async def test_run_experiments_uses_classification_recipe_prompt() -> None:
             "predictions": [
                 {
                     "trial": 0,
-                    "raw_output": "{\"label\":\"negative\",\"confidence\":0.61}",
+                    "raw_output": '{"label":"negative","confidence":0.61}',
                     "score": 0,
                 }
             ],
@@ -422,7 +687,9 @@ async def test_run_experiments_judges_classification_output_natively() -> None:
             "prompt": "Classify sentiment and return JSON.",
             "golden_answer": {"answers": [{"box_id": 1, "student_answer": "positive"}]},
             "scoring_standard": "label must match exactly.",
-            "predictions": [{"trial": 0, "raw_output": "{\"label\":\"negative\",\"confidence\":0.61}", "score": 0}],
+            "predictions": [
+                {"trial": 0, "raw_output": '{"label":"negative","confidence":0.61}', "score": 0}
+            ],
             "avg_score": 0.0,
         }
     )
@@ -460,7 +727,9 @@ async def test_run_experiments_prefers_classification_expected_output_over_legac
             "golden_answer": {"answers": [{"box_id": 1, "student_answer": "legacy-negative"}]},
             "expected_output": {"label": "positive"},
             "scoring_standard": "label must match exactly.",
-            "predictions": [{"trial": 0, "raw_output": "{\"label\":\"positive\",\"confidence\":0.9}", "score": 1}],
+            "predictions": [
+                {"trial": 0, "raw_output": '{"label":"positive","confidence":0.9}', "score": 1}
+            ],
             "avg_score": 1.0,
         }
     )
@@ -504,8 +773,8 @@ async def test_run_experiments_judges_image_detection_output_natively() -> None:
                 {
                     "trial": 0,
                     "raw_output": (
-                        "{\"regions\":[{\"target_id\":\"image:region:1\",\"x\":10,\"y\":20,"
-                        "\"width\":30,\"height\":40,\"label\":\"dog\",\"confidence\":0.57}]}"
+                        '{"regions":[{"target_id":"image:region:1","x":10,"y":20,'
+                        '"width":30,"height":40,"label":"dog","confidence":0.57}]}'
                     ),
                     "score": 0,
                 }
@@ -555,7 +824,9 @@ async def test_run_experiments_judges_image_detection_output_natively() -> None:
         }
     ]
     native_artifact = next(
-        artifact for artifact in result.evidence[0].artifacts if artifact.artifact_id.endswith(":image_region_1:delta")
+        artifact
+        for artifact in result.evidence[0].artifacts
+        if artifact.artifact_id.endswith(":image_region_1:delta")
     )
     assert native_artifact.kind == "image_region_delta"
     assert native_artifact.artifact_type == "image_region"
@@ -617,8 +888,8 @@ async def test_run_experiments_materializes_image_region_delta_crop_artifacts() 
                     {
                         "trial": 0,
                         "raw_output": (
-                            "{\"regions\":[{\"target_id\":\"image:region:1\",\"x\":10,\"y\":20,"
-                            "\"width\":30,\"height\":40,\"label\":\"dog\"}]}"
+                            '{"regions":[{"target_id":"image:region:1","x":10,"y":20,'
+                            '"width":30,"height":40,"label":"dog"}]}'
                         ),
                         "score": 0,
                     }
@@ -629,7 +900,9 @@ async def test_run_experiments_materializes_image_region_delta_crop_artifacts() 
         plan = ExperimentPlan(
             case_id=case.case_id,
             max_model_calls=1,
-            steps=[ExperimentStep(name="baseline_replay", description="Replay baseline.", trials=1)],
+            steps=[
+                ExperimentStep(name="baseline_replay", description="Replay baseline.", trials=1)
+            ],
         )
         adapter = FakeModelAdapter(outputs=[case.predictions[0].raw_output])
 
@@ -641,7 +914,9 @@ async def test_run_experiments_materializes_image_region_delta_crop_artifacts() 
         )
 
         native_artifact = next(
-            artifact for artifact in result.evidence[0].artifacts if artifact.kind == "image_region_delta"
+            artifact
+            for artifact in result.evidence[0].artifacts
+            if artifact.kind == "image_region_delta"
         )
         assert native_artifact.region is not None
         assert native_artifact.region.x == 10
@@ -678,14 +953,18 @@ async def test_run_experiments_uses_image_detection_recipe_prompt() -> None:
                 ]
             },
             "scoring_standard": "region target ids and labels must match.",
-            "predictions": [{"trial": 0, "raw_output": "{\"regions\":[]}", "score": 0}],
+            "predictions": [{"trial": 0, "raw_output": '{"regions":[]}', "score": 0}],
             "avg_score": 0.0,
         }
     )
     plan = ExperimentPlan(
         case_id=case.case_id,
         max_model_calls=1,
-        steps=[ExperimentStep(name="localization_prompt_check", description="Check localization.", trials=1)],
+        steps=[
+            ExperimentStep(
+                name="localization_prompt_check", description="Check localization.", trials=1
+            )
+        ],
     )
     adapter = PromptRecordingModelAdapter(raw_output=case.predictions[0].raw_output)
 
@@ -704,7 +983,7 @@ async def test_run_experiments_judges_video_detection_output_natively() -> None:
         {
             "case_id": "video-detection-native-runner",
             "task_type": "video_detection",
-            "image_uri": "file:///tmp/video-detection.mp4",
+            "image_uri": "https://example.com/video-detection.mp4",
             "prompt": "Detect the event and return temporal segment JSON.",
             "golden_answer": {"answers": [{"box_id": 1, "student_answer": "legacy-event"}]},
             "expected_output": {
@@ -722,8 +1001,8 @@ async def test_run_experiments_judges_video_detection_output_natively() -> None:
                 {
                     "trial": 0,
                     "raw_output": (
-                        "{\"temporal_segments\":[{\"target_id\":\"video:segment:1\",\"start_ms\":1000,"
-                        "\"end_ms\":2500,\"label\":\"person_leaves\",\"confidence\":0.62}]}"
+                        '{"temporal_segments":[{"target_id":"video:segment:1","start_ms":1000,'
+                        '"end_ms":2500,"label":"person_leaves","confidence":0.62}]}'
                     ),
                     "score": 0,
                 }
@@ -758,10 +1037,14 @@ async def test_run_experiments_judges_video_detection_output_natively() -> None:
             },
         }
     ]
-    native_artifact = next(artifact for artifact in result.evidence[0].artifacts if artifact.kind == "video_segment_delta")
+    native_artifact = next(
+        artifact
+        for artifact in result.evidence[0].artifacts
+        if artifact.kind == "video_segment_delta"
+    )
     assert native_artifact.kind == "video_segment_delta"
     assert native_artifact.artifact_type == "video_segment"
-    assert native_artifact.source_uri == "file:///tmp/video-detection.mp4"
+    assert native_artifact.source_uri == "https://example.com/video-detection.mp4"
     assert native_artifact.metadata == {
         "target_id": "video:segment:1",
         "reason": "segment_label_mismatch",
@@ -803,8 +1086,8 @@ async def test_run_experiments_materializes_video_segment_delta_manifest() -> No
                     {
                         "trial": 0,
                         "raw_output": (
-                            "{\"temporal_segments\":[{\"target_id\":\"video:segment:1\",\"start_ms\":1000,"
-                            "\"end_ms\":2500,\"label\":\"person_leaves\"}]}"
+                            '{"temporal_segments":[{"target_id":"video:segment:1","start_ms":1000,'
+                            '"end_ms":2500,"label":"person_leaves"}]}'
                         ),
                         "score": 0,
                     }
@@ -815,7 +1098,9 @@ async def test_run_experiments_materializes_video_segment_delta_manifest() -> No
         plan = ExperimentPlan(
             case_id=case.case_id,
             max_model_calls=1,
-            steps=[ExperimentStep(name="baseline_replay", description="Replay baseline.", trials=1)],
+            steps=[
+                ExperimentStep(name="baseline_replay", description="Replay baseline.", trials=1)
+            ],
         )
         adapter = FakeModelAdapter(outputs=[case.predictions[0].raw_output])
 
@@ -827,12 +1112,18 @@ async def test_run_experiments_materializes_video_segment_delta_manifest() -> No
         )
 
         native_artifact = next(
-            artifact for artifact in result.evidence[0].artifacts if artifact.kind == "video_segment_delta"
+            artifact
+            for artifact in result.evidence[0].artifacts
+            if artifact.kind == "video_segment_delta"
         )
         assert native_artifact.derived_uri == (
             "/api/artifacts/manifests/video-detection-manifest_baseline_replay_0_video_segment_1_delta.json"
         )
-        manifest_path = artifact_dir / "video-detection-manifest_baseline_replay_0_video_segment_1_delta.json"
+        manifest_path = (
+            artifact_dir
+            / "manifests"
+            / "video-detection-manifest_baseline_replay_0_video_segment_1_delta.json"
+        )
         assert manifest_path.exists()
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         assert manifest["artifact_id"] == native_artifact.artifact_id
@@ -852,7 +1143,9 @@ async def test_run_experiments_materializes_video_segment_delta_manifest() -> No
             }
         ]
         keyframe_manifest_path = (
-            artifact_dir / "video-detection-manifest_baseline_replay_0_video_segment_1_delta_keyframe_1000.json"
+            artifact_dir
+            / "manifests"
+            / "video-detection-manifest_baseline_replay_0_video_segment_1_delta_keyframe_1000.json"
         )
         assert keyframe_manifest_path.exists()
         keyframe_manifest = json.loads(keyframe_manifest_path.read_text(encoding="utf-8"))
@@ -867,13 +1160,36 @@ async def test_run_experiments_materializes_video_segment_delta_manifest() -> No
         assert native_artifact.metadata["keyframe_thumbnails"] == manifest["keyframe_thumbnails"]
 
 
+def test_video_segment_manifest_truncates_long_artifact_filename(tmp_path: Path) -> None:
+    artifact_id = (
+        "JSZN-131__auto_probe__video_segment_5_temporal_schema_check_1_"
+        "video_segment_4_end_s_timestamp_end_out_of_range_delta"
+    )
+
+    derived_uri = materialize_video_segment_manifest(
+        artifact_id=artifact_id,
+        source_uri="file:///tmp/video.mp4",
+        metadata={
+            "target_id": "video:segment:4",
+            "reason": "timestamp_end_out_of_range",
+            "actual_segment": {"start_ms": 52100, "end_ms": 52200, "label": "pick"},
+        },
+        output_dir=tmp_path / "manifests",
+    )
+
+    manifest_files = list((tmp_path / "manifests").glob("*.json"))
+    assert len(manifest_files) == 2
+    assert all(len(path.name) < 150 for path in manifest_files)
+    assert derived_uri.startswith("/api/artifacts/manifests/")
+
+
 @pytest.mark.asyncio
 async def test_run_experiments_preserves_video_timestamp_delta_metadata() -> None:
     case = DebugCase.model_validate(
         {
             "case_id": "video-timestamp-delta",
             "task_type": "video_detection",
-            "image_uri": "file:///tmp/video-timestamp.mp4",
+            "image_uri": "https://example.com/video-timestamp.mp4",
             "prompt": "Return video_action_segments JSON.",
             "golden_answer": {"answers": []},
             "expected_output": {
@@ -928,7 +1244,11 @@ async def test_run_experiments_preserves_video_timestamp_delta_metadata() -> Non
 
     result = await run_experiments(case=case, plan=plan, adapter=adapter)
 
-    native_artifact = next(artifact for artifact in result.evidence[0].artifacts if artifact.kind == "video_segment_delta")
+    native_artifact = next(
+        artifact
+        for artifact in result.evidence[0].artifacts
+        if artifact.kind == "video_segment_delta"
+    )
     assert native_artifact.metadata["reason"] == "timestamp_end_out_of_range"
     assert native_artifact.metadata["expected_end_s_range"] == "22.0-24.0"
     assert native_artifact.metadata["actual_end_s"] == 34.0
@@ -941,13 +1261,23 @@ async def test_run_experiments_uses_unique_artifacts_for_multiple_timestamp_delt
         {
             "case_id": "video-timestamp-multi-delta",
             "task_type": "video_detection",
-            "image_uri": "file:///tmp/video-timestamp.mp4",
+            "image_uri": "https://example.com/video-timestamp.mp4",
             "prompt": "Return video_action_segments JSON.",
             "golden_answer": {"answers": []},
             "expected_output": {
                 "temporal_segments": [
-                    {"target_id": "video:segment:1", "start_ms": 100, "end_ms": 24000, "label": "first"},
-                    {"target_id": "video:segment:2", "start_ms": 24100, "end_ms": 44000, "label": "second"},
+                    {
+                        "target_id": "video:segment:1",
+                        "start_ms": 100,
+                        "end_ms": 24000,
+                        "label": "first",
+                    },
+                    {
+                        "target_id": "video:segment:2",
+                        "start_ms": 24100,
+                        "end_ms": 44000,
+                        "label": "second",
+                    },
                 ]
             },
             "scoring_standard": """
@@ -997,7 +1327,9 @@ async def test_run_experiments_uses_unique_artifacts_for_multiple_timestamp_delt
         if artifact.artifact_type == "video_segment"
     ]
     assert len(video_artifact_ids) == len(set(video_artifact_ids))
-    assert any("timestamp_start_not_continuous" in artifact_id for artifact_id in video_artifact_ids)
+    assert any(
+        "timestamp_start_not_continuous" in artifact_id for artifact_id in video_artifact_ids
+    )
     assert any("timestamp_end_out_of_range" in artifact_id for artifact_id in video_artifact_ids)
 
 
@@ -1007,7 +1339,7 @@ async def test_run_experiments_uses_video_detection_recipe_prompt() -> None:
         {
             "case_id": "video-detection-prompt",
             "task_type": "video_detection",
-            "image_uri": "file:///tmp/video-detection-prompt.mp4",
+            "image_uri": "https://example.com/video-detection-prompt.mp4",
             "prompt": "Detect events and return temporal segment JSON.",
             "golden_answer": {"answers": [{"box_id": 1, "student_answer": "legacy-event"}]},
             "expected_output": {
@@ -1021,14 +1353,18 @@ async def test_run_experiments_uses_video_detection_recipe_prompt() -> None:
                 ]
             },
             "scoring_standard": "temporal segment target ids and labels must match.",
-            "predictions": [{"trial": 0, "raw_output": "{\"temporal_segments\":[]}", "score": 0}],
+            "predictions": [{"trial": 0, "raw_output": '{"temporal_segments":[]}', "score": 0}],
             "avg_score": 0.0,
         }
     )
     plan = ExperimentPlan(
         case_id=case.case_id,
         max_model_calls=1,
-        steps=[ExperimentStep(name="temporal_grounding_check", description="Check grounding.", trials=1)],
+        steps=[
+            ExperimentStep(
+                name="temporal_grounding_check", description="Check grounding.", trials=1
+            )
+        ],
     )
     adapter = PromptRecordingModelAdapter(raw_output=case.predictions[0].raw_output)
 
@@ -1047,7 +1383,7 @@ async def test_run_experiments_judges_multimodal_detection_output_natively() -> 
         {
             "case_id": "multimodal-detection-native-runner",
             "task_type": "multimodal_detection",
-            "image_uri": "file:///tmp/multimodal-input.mp4",
+            "image_uri": "https://example.com/multimodal-input.mp4",
             "prompt": "Compare image and caption, then return cross-modal conflict JSON.",
             "golden_answer": {"answers": [{"box_id": 1, "student_answer": "legacy-conflict"}]},
             "expected_output": {
@@ -1066,10 +1402,10 @@ async def test_run_experiments_judges_multimodal_detection_output_natively() -> 
                 {
                     "trial": 0,
                     "raw_output": (
-                        "{\"conflicts\":[{\"target_id\":\"multimodal:conflict:1\","
-                        "\"conflict_type\":\"visual_text_conflict\",\"modalities\":[\"image\",\"text\"],"
-                        "\"expected\":\"caption matches the visual subject\","
-                        "\"actual\":\"image shows dog while caption says cat\",\"confidence\":0.76}]}"
+                        '{"conflicts":[{"target_id":"multimodal:conflict:1",'
+                        '"conflict_type":"visual_text_conflict","modalities":["image","text"],'
+                        '"expected":"caption matches the visual subject",'
+                        '"actual":"image shows dog while caption says cat","confidence":0.76}]}'
                     ),
                     "score": 0,
                 }
@@ -1109,11 +1445,13 @@ async def test_run_experiments_judges_multimodal_detection_output_natively() -> 
         }
     ]
     native_artifact = next(
-        artifact for artifact in result.evidence[0].artifacts if artifact.artifact_id.endswith(":multimodal_conflict_1:delta")
+        artifact
+        for artifact in result.evidence[0].artifacts
+        if artifact.artifact_id.endswith(":multimodal_conflict_1:delta")
     )
     assert native_artifact.kind == "multimodal_conflict_delta"
     assert native_artifact.artifact_type == "multimodal_conflict"
-    assert native_artifact.source_uri == "file:///tmp/multimodal-input.mp4"
+    assert native_artifact.source_uri == "https://example.com/multimodal-input.mp4"
     assert native_artifact.metadata == {
         "target_id": "multimodal:conflict:1",
         "reason": "conflict_actual_mismatch",
@@ -1160,10 +1498,10 @@ async def test_run_experiments_materializes_multimodal_conflict_delta_manifest()
                     {
                         "trial": 0,
                         "raw_output": (
-                            "{\"conflicts\":[{\"target_id\":\"multimodal:conflict:1\","
-                            "\"conflict_type\":\"visual_text_conflict\",\"modalities\":[\"image\",\"text\"],"
-                            "\"expected\":\"caption matches the visual subject\","
-                            "\"actual\":\"image shows dog while caption says cat\"}]}"
+                            '{"conflicts":[{"target_id":"multimodal:conflict:1",'
+                            '"conflict_type":"visual_text_conflict","modalities":["image","text"],'
+                            '"expected":"caption matches the visual subject",'
+                            '"actual":"image shows dog while caption says cat"}]}'
                         ),
                         "score": 0,
                     }
@@ -1174,7 +1512,9 @@ async def test_run_experiments_materializes_multimodal_conflict_delta_manifest()
         plan = ExperimentPlan(
             case_id=case.case_id,
             max_model_calls=1,
-            steps=[ExperimentStep(name="baseline_replay", description="Replay baseline.", trials=1)],
+            steps=[
+                ExperimentStep(name="baseline_replay", description="Replay baseline.", trials=1)
+            ],
         )
         adapter = FakeModelAdapter(outputs=[case.predictions[0].raw_output])
 
@@ -1186,13 +1526,19 @@ async def test_run_experiments_materializes_multimodal_conflict_delta_manifest()
         )
 
         native_artifact = next(
-            artifact for artifact in result.evidence[0].artifacts if artifact.kind == "multimodal_conflict_delta"
+            artifact
+            for artifact in result.evidence[0].artifacts
+            if artifact.kind == "multimodal_conflict_delta"
         )
         assert native_artifact.derived_uri == (
             "/api/artifacts/manifests/"
             "multimodal-conflict-manifest_baseline_replay_0_multimodal_conflict_1_delta.json"
         )
-        manifest_path = artifact_dir / "multimodal-conflict-manifest_baseline_replay_0_multimodal_conflict_1_delta.json"
+        manifest_path = (
+            artifact_dir
+            / "manifests"
+            / "multimodal-conflict-manifest_baseline_replay_0_multimodal_conflict_1_delta.json"
+        )
         assert manifest_path.exists()
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         assert manifest["artifact_id"] == native_artifact.artifact_id
@@ -1213,7 +1559,7 @@ async def test_run_experiments_uses_multimodal_detection_recipe_prompt() -> None
         {
             "case_id": "multimodal-detection-prompt",
             "task_type": "multimodal_detection",
-            "image_uri": "file:///tmp/multimodal-input.mp4",
+            "image_uri": "https://example.com/multimodal-input.mp4",
             "prompt": "Compare image and caption, then return cross-modal conflict JSON.",
             "golden_answer": {"answers": [{"box_id": 1, "student_answer": "legacy-conflict"}]},
             "expected_output": {
@@ -1228,14 +1574,18 @@ async def test_run_experiments_uses_multimodal_detection_recipe_prompt() -> None
                 ]
             },
             "scoring_standard": "cross-modal claims must agree.",
-            "predictions": [{"trial": 0, "raw_output": "{\"conflicts\":[]}", "score": 0}],
+            "predictions": [{"trial": 0, "raw_output": '{"conflicts":[]}', "score": 0}],
             "avg_score": 0.0,
         }
     )
     plan = ExperimentPlan(
         case_id=case.case_id,
         max_model_calls=1,
-        steps=[ExperimentStep(name="modality_ablation_check", description="Check modality ablation.", trials=1)],
+        steps=[
+            ExperimentStep(
+                name="modality_ablation_check", description="Check modality ablation.", trials=1
+            )
+        ],
     )
     adapter = PromptRecordingModelAdapter(raw_output=case.predictions[0].raw_output)
 
@@ -1255,7 +1605,7 @@ async def test_run_experiments_applies_multimodal_ablation_variants_to_trials() 
         {
             "case_id": "multimodal-ablation-runner",
             "task_type": "multimodal_detection",
-            "image_uri": "file:///tmp/multimodal-input.mp4",
+            "image_uri": "https://example.com/multimodal-input.mp4",
             "prompt": "Compare image and caption, then return cross-modal conflict JSON.",
             "golden_answer": {"answers": []},
             "expected_output": {
@@ -1270,7 +1620,7 @@ async def test_run_experiments_applies_multimodal_ablation_variants_to_trials() 
                 ]
             },
             "scoring_standard": "cross-modal claims must agree.",
-            "predictions": [{"trial": 0, "raw_output": "{\"conflicts\":[]}", "score": 0}],
+            "predictions": [{"trial": 0, "raw_output": '{"conflicts":[]}', "score": 0}],
             "avg_score": 0.0,
         }
     )
@@ -1313,7 +1663,11 @@ async def test_run_experiments_applies_multimodal_ablation_variants_to_trials() 
     assert "Ablation variant: text_only" in adapter.prompts[1]
     assert "Use only text/caption evidence" in adapter.prompts[1]
     assert "Ablation variant: cross_modal_compare" in adapter.prompts[2]
-    assert adapter.image_uris == ["file:///tmp/multimodal-input.mp4", "", "file:///tmp/multimodal-input.mp4"]
+    assert adapter.image_uris == [
+        "https://example.com/multimodal-input.mp4",
+        "",
+        "https://example.com/multimodal-input.mp4",
+    ]
     assert [evidence.request_summary["ablation_variant"] for evidence in result.evidence] == [
         "image_only",
         "text_only",

@@ -11,6 +11,9 @@ def test_logical_agent_roles_are_stable_and_complete() -> None:
         "judge_comparator",
         "evidence_artifact",
         "report_root_cause",
+        "hypothesis_strategist",
+        "probe_synthesizer",
+        "causal_comparator",
         "writeback_operator",
     ]
     assert all(role.display_name for role in roles)

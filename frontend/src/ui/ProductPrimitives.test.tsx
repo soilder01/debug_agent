@@ -13,66 +13,66 @@ import {
 describe("ProductPrimitives", () => {
   it("renders a labelled product surface region", () => {
     render(
-      <ProductSurface title="Investigation queue" eyebrow="Operations" description="Active debug work">
-        <button type="button">Open queue</button>
+      <ProductSurface title="调查队列" eyebrow="操作" description="当前 debug 工作">
+        <button type="button">打开队列</button>
       </ProductSurface>
     );
 
-    const region = screen.getByRole("region", { name: "Investigation queue" });
+    const region = screen.getByRole("region", { name: "调查队列" });
     expect(region).toHaveClass("product-surface");
-    expect(screen.getByText("Operations")).toHaveClass("section-header__eyebrow");
-    expect(screen.getByText("Active debug work")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Open queue" })).toBeInTheDocument();
+    expect(screen.getByText("操作")).toHaveClass("section-header__eyebrow");
+    expect(screen.getByText("当前 debug 工作")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "打开队列" })).toBeInTheDocument();
   });
 
   it("renders metric labels and values in a definition list", () => {
     render(
       <MetricStrip
         metrics={[
-          { label: "Open jobs", value: 12 },
-          { label: "Recovery reopen", value: "3" }
+          { label: "打开任务", value: 12 },
+          { label: "恢复重开", value: "3" }
         ]}
       />
     );
 
-    expect(screen.getByLabelText("Metrics")).toHaveClass("metric-strip");
-    expect(screen.getByText("Open jobs")).toBeInTheDocument();
+    expect(screen.getByLabelText("指标")).toHaveClass("metric-strip");
+    expect(screen.getByText("打开任务")).toBeInTheDocument();
     expect(screen.getByText("12")).toBeInTheDocument();
-    expect(screen.getByText("Recovery reopen")).toBeInTheDocument();
+    expect(screen.getByText("恢复重开")).toBeInTheDocument();
     expect(screen.getByText("3")).toBeInTheDocument();
   });
 
   it("maps status tones to stable badge class names", () => {
     render(
       <>
-        <StatusBadge tone="critical">Critical</StatusBadge>
-        <StatusBadge tone="warning">Warning</StatusBadge>
-        <StatusBadge tone="success">Success</StatusBadge>
-        <StatusBadge tone="neutral">Neutral</StatusBadge>
+        <StatusBadge tone="critical">严重</StatusBadge>
+        <StatusBadge tone="warning">警告</StatusBadge>
+        <StatusBadge tone="success">成功</StatusBadge>
+        <StatusBadge tone="neutral">普通</StatusBadge>
       </>
     );
 
-    expect(screen.getByText("Critical")).toHaveClass("status-badge--critical");
-    expect(screen.getByText("Warning")).toHaveClass("status-badge--warning");
-    expect(screen.getByText("Success")).toHaveClass("status-badge--success");
-    expect(screen.getByText("Neutral")).toHaveClass("status-badge--neutral");
+    expect(screen.getByText("严重")).toHaveClass("status-badge--critical");
+    expect(screen.getByText("警告")).toHaveClass("status-badge--warning");
+    expect(screen.getByText("成功")).toHaveClass("status-badge--success");
+    expect(screen.getByText("普通")).toHaveClass("status-badge--neutral");
   });
 
   it("renders action rows, empty states, and standalone section headers", () => {
     render(
       <>
-        <SectionHeader eyebrow="Evidence" title="No evidence selected" description="Select a run to inspect details." />
+        <SectionHeader eyebrow="证据" title="未选择证据" description="选择一次运行后查看详情。" />
         <ActionRow>
-          <button type="button">Select evidence</button>
+          <button type="button">选择证据</button>
         </ActionRow>
-        <EmptyState title="Nothing loaded" description="Load a report to begin." />
+        <EmptyState title="尚未加载" description="先加载报告再开始。" />
       </>
     );
 
-    expect(screen.getByRole("heading", { name: "No evidence selected" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Actions")).toHaveClass("action-row");
-    expect(screen.getByRole("button", { name: "Select evidence" })).toBeInTheDocument();
-    expect(screen.getByText("Nothing loaded")).toHaveClass("empty-state__title");
-    expect(screen.getByText("Load a report to begin.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "未选择证据" })).toBeInTheDocument();
+    expect(screen.getByLabelText("操作")).toHaveClass("action-row");
+    expect(screen.getByRole("button", { name: "选择证据" })).toBeInTheDocument();
+    expect(screen.getByText("尚未加载")).toHaveClass("empty-state__title");
+    expect(screen.getByText("先加载报告再开始。")).toBeInTheDocument();
   });
 });

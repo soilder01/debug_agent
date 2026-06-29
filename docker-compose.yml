@@ -1,22 +1,141 @@
 services:
   backend:
-    image: python:3.11-slim
-    working_dir: /app/backend
+    image: debug-agent-backend:local
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DEBUG_AGENT_ENVIRONMENT: ${DEBUG_AGENT_ENVIRONMENT:-docker}
+      DEBUG_AGENT_DATABASE_URL: sqlite+pysqlite:////app/backend/artifacts/debug-agent.db
+      DEBUG_AGENT_IMAGE_ARTIFACT_DIR: /app/backend/artifacts
+      DEBUG_AGENT_REPORT_BASE_URL: ${DEBUG_AGENT_DOCKER_REPORT_BASE_URL:-http://localhost:8080}
+      DEBUG_AGENT_AUTO_WRITEBACK_ENABLED: ${DEBUG_AGENT_AUTO_WRITEBACK_ENABLED:-0}
+      DEBUG_AGENT_AUTO_CLOSURE_ENABLED: ${DEBUG_AGENT_AUTO_CLOSURE_ENABLED:-1}
+      DEBUG_AGENT_USAGE_BUDGET_UNITS: ${DEBUG_AGENT_USAGE_BUDGET_UNITS:-0}
+      DEBUG_AGENT_ENFORCE_USAGE_BUDGET: ${DEBUG_AGENT_ENFORCE_USAGE_BUDGET:-0}
+      DEBUG_AGENT_REQUIRE_TRUSTED_ACTOR: ${DEBUG_AGENT_REQUIRE_TRUSTED_ACTOR:-0}
+      DEBUG_AGENT_ARTIFACT_RETENTION_DAYS: ${DEBUG_AGENT_ARTIFACT_RETENTION_DAYS:-30}
+      DEBUG_AGENT_QUEUE_MAX_CONCURRENCY: ${DEBUG_AGENT_QUEUE_MAX_CONCURRENCY:-1}
+      DEBUG_AGENT_RETRY_MAX_ATTEMPTS: ${DEBUG_AGENT_RETRY_MAX_ATTEMPTS:-2}
+      DEBUG_AGENT_STALE_RUNNING_JOB_SECONDS: ${DEBUG_AGENT_STALE_RUNNING_JOB_SECONDS:-1800}
+      DEBUG_AGENT_MODEL_PROVIDER: ${DEBUG_AGENT_MODEL_PROVIDER:-ark-video}
+      LARK_EVENT_MODE: ${LARK_EVENT_MODE:-long_connection}
+      LARK_CLI_IDENTITY: ${LARK_CLI_IDENTITY:-bot}
+      LARK_CLI_PROFILE: ${LARK_CLI_PROFILE:-xiaoD}
+      LARK_BOT_ACTION_TOKEN_SECRET: ${LARK_BOT_ACTION_TOKEN_SECRET:-}
     volumes:
-      - .:/app
-    command: sh -c "pip install -e .[dev] && uvicorn debug_agent.main:app --host 0.0.0.0 --port 8000 --reload"
+      - backend_artifacts:/app/backend/artifacts
     ports:
       - "8000:8000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).read()",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  worker:
+    image: debug-agent-backend:local
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
     environment:
-      DEBUG_AGENT_DATABASE_URL: sqlite:///./debug_agent.db
+      DEBUG_AGENT_ENVIRONMENT: ${DEBUG_AGENT_ENVIRONMENT:-docker}
+      DEBUG_AGENT_DATABASE_URL: sqlite+pysqlite:////app/backend/artifacts/debug-agent.db
+      DEBUG_AGENT_IMAGE_ARTIFACT_DIR: /app/backend/artifacts
+      DEBUG_AGENT_REPORT_BASE_URL: ${DEBUG_AGENT_DOCKER_REPORT_BASE_URL:-http://localhost:8080}
+      DEBUG_AGENT_AUTO_WRITEBACK_ENABLED: ${DEBUG_AGENT_AUTO_WRITEBACK_ENABLED:-0}
+      DEBUG_AGENT_AUTO_CLOSURE_ENABLED: ${DEBUG_AGENT_AUTO_CLOSURE_ENABLED:-1}
+      DEBUG_AGENT_USAGE_BUDGET_UNITS: ${DEBUG_AGENT_USAGE_BUDGET_UNITS:-0}
+      DEBUG_AGENT_ENFORCE_USAGE_BUDGET: ${DEBUG_AGENT_ENFORCE_USAGE_BUDGET:-0}
+      DEBUG_AGENT_REQUIRE_TRUSTED_ACTOR: ${DEBUG_AGENT_REQUIRE_TRUSTED_ACTOR:-0}
+      DEBUG_AGENT_ARTIFACT_RETENTION_DAYS: ${DEBUG_AGENT_ARTIFACT_RETENTION_DAYS:-30}
+      DEBUG_AGENT_QUEUE_MAX_CONCURRENCY: ${DEBUG_AGENT_QUEUE_MAX_CONCURRENCY:-1}
+      DEBUG_AGENT_RETRY_MAX_ATTEMPTS: ${DEBUG_AGENT_RETRY_MAX_ATTEMPTS:-2}
+      DEBUG_AGENT_STALE_RUNNING_JOB_SECONDS: ${DEBUG_AGENT_STALE_RUNNING_JOB_SECONDS:-1800}
+      DEBUG_AGENT_MODEL_PROVIDER: ${DEBUG_AGENT_MODEL_PROVIDER:-ark-video}
+      LARK_EVENT_MODE: ${LARK_EVENT_MODE:-long_connection}
+      LARK_CLI_IDENTITY: ${LARK_CLI_IDENTITY:-bot}
+      LARK_CLI_PROFILE: ${LARK_CLI_PROFILE:-xiaoD}
+      LARK_BOT_ACTION_TOKEN_SECRET: ${LARK_BOT_ACTION_TOKEN_SECRET:-}
+    volumes:
+      - backend_artifacts:/app/backend/artifacts
+    command: ["python", "/app/scripts/run_debug_agent_worker.py"]
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  lark-bot-consumer:
+    image: debug-agent-lark-consumer:local
+    build:
+      context: .
+      dockerfile: Dockerfile.lark-consumer
+    profiles:
+      - lark
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DEBUG_AGENT_REPORT_BASE_URL: ${DEBUG_AGENT_DOCKER_REPORT_BASE_URL:-http://localhost:8080}
+      LARK_EVENT_MODE: ${LARK_EVENT_MODE:-long_connection}
+      LARK_CLI_IDENTITY: ${LARK_CLI_IDENTITY:-bot}
+      LARK_CLI_PROFILE: ${LARK_CLI_PROFILE:-xiaoD}
+      LARK_BOT_ACTION_TOKEN_SECRET: ${LARK_BOT_ACTION_TOKEN_SECRET:-}
+      LARK_BOT_CONSUMER_SEEN_EVENTS_PATH: /app/.tmp/lark-bot-consumer-seen-events.jsonl
+    volumes:
+      - lark_cli_data:/root/.lark
+      - lark_consumer_state:/app/.tmp
+    command:
+      [
+        "python",
+        "/app/scripts/lark_bot_long_connection_consumer.py",
+        "--base-url",
+        "http://backend:8000",
+        "--transport",
+        "sdk",
+        "--seen-events-path",
+        "/app/.tmp/lark-bot-consumer-seen-events.jsonl",
+      ]
+    depends_on:
+      backend:
+        condition: service_healthy
+      worker:
+        condition: service_started
 
   frontend:
-    image: node:20-alpine
-    working_dir: /app/frontend
-    volumes:
-      - .:/app
-    command: sh -c "corepack enable && pnpm install && pnpm dev --host 0.0.0.0"
+    image: debug-agent-frontend:local
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
     ports:
-      - "5173:5173"
+      - "${DEBUG_AGENT_FRONTEND_PORT:-8080}:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/health >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+volumes:
+  backend_artifacts:
+  lark_cli_data:
+  lark_consumer_state:

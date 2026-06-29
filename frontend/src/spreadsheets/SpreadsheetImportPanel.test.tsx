@@ -22,19 +22,19 @@ describe("SpreadsheetImportPanel", () => {
 
     render(<SpreadsheetImportPanel value='[{"row_id":"1"}]' result={makeResult()} onChange={onChange} onImport={onImport} />);
 
-    fireEvent.change(screen.getByLabelText("Spreadsheet rows JSON"), { target: { value: '[{"row_id":"2"}]' } });
-    await userEvent.click(screen.getByRole("button", { name: "Import spreadsheet rows JSON" }));
+    fireEvent.change(screen.getByLabelText("飞书行 JSON"), { target: { value: '[{"row_id":"2"}]' } });
+    await userEvent.click(screen.getByRole("button", { name: "导入飞书行 JSON" }));
 
     expect(onChange).toHaveBeenCalledWith('[{"row_id":"2"}]');
     expect(onImport).toHaveBeenCalledTimes(1);
-    expect(screen.getByText("Spreadsheet 导入样本：1")).toBeInTheDocument();
-    expect(screen.getByText("Spreadsheet 导入行：row-1:case-1")).toBeInTheDocument();
-    expect(screen.getByText("Spreadsheet 导入拒绝：无")).toBeInTheDocument();
+    expect(screen.getByText("表格导入样本：1")).toBeInTheDocument();
+    expect(screen.getByText("表格导入行：row-1:case-1")).toBeInTheDocument();
+    expect(screen.getByText("表格导入拒绝：无")).toBeInTheDocument();
   });
 
   it("hides import result before an import has completed", () => {
     render(<SpreadsheetImportPanel value="" result={null} onChange={vi.fn()} onImport={vi.fn()} />);
 
-    expect(screen.queryByText(/Spreadsheet 导入样本/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/表格导入样本/)).not.toBeInTheDocument();
   });
 });

@@ -1,4 +1,4 @@
-import json
+﻿import json
 
 from debug_agent.imports.spreadsheet_rows import parse_spreadsheet_rows
 
@@ -109,7 +109,7 @@ def test_parse_spreadsheet_rows_imports_jszn_video_action_row() -> None:
     result = parse_spreadsheet_rows(
         [
             {
-                "sheet_row_id": "qJAomX:2",
+                "sheet_row_id": "testSheet123:2",
                 "id": "JSZN-131",
                 "user prompt": "Segment the video and return video_action_segments JSON.",
                 "参考答案": """
@@ -166,6 +166,44 @@ def test_parse_spreadsheet_rows_imports_jszn_video_action_row() -> None:
     assert case.expected_output["temporal_segments"][0]["end_ms"] == 23100
     assert case.predictions[0].score == 0
     assert "check_timestamp" in case.scoring_standard
+
+
+def test_parse_spreadsheet_rows_imports_json_array_reference_answers_as_generic_video() -> None:
+    result = parse_spreadsheet_rows(
+        [
+            {
+                "sheet_row_id": "3",
+                "id": "JSZN-096",
+                "user prompt": "Describe arm action subtasks and return pure JSON array.",
+                "参考答案": [
+                    {"子任务编号": 1, "子任务描述": "双臂配合拿起垃圾桶里的垃圾袋，并放置在地上"},
+                    {"子任务编号": 2, "子任务描述": "右臂拿起桌上垃圾袋并双臂配合将垃圾袋套入垃圾桶里"},
+                ],
+                "predict": [
+                    json.dumps(
+                        [
+                            {"子任务编号": 1, "子任务描述": "双臂取出垃圾桶内的旧垃圾袋，放置到一旁地面"},
+                            {"子任务编号": 2, "子任务描述": "双臂将新垃圾袋展开，套入垃圾桶并整理妥当"},
+                        ],
+                        ensure_ascii=False,
+                    )
+                ],
+                "score": "[0]",
+                "video": "JSZN-096.mp4",
+                "chains_alpha": [
+                    {"op_name": "model_judge", "use_question": False},
+                    {"op_name": "parse_format", "format_type": "json_any"},
+                ],
+                "评分标准": "子任务2必须包含右臂和双臂配合。",
+            }
+        ]
+    )
+
+    assert result.rejected_rows == []
+    case = result.imported_rows[0].case
+    assert case.task_type == "generic_video_json"
+    assert case.expected_output["reference_answer"][1]["子任务编号"] == 2
+    assert case.golden_answer.answers == []
 
 
 def test_parse_spreadsheet_rows_accepts_box_regions_json() -> None:

@@ -172,7 +172,8 @@ def test_build_report_writeback_fields_includes_strategy_follow_up_results() -> 
 
     fields = build_report_writeback_fields(report, report_url="https://debug-agent.local/reports/job-1")
 
-    assert "策略 Follow-up：" in fields["评估问题反馈"]
+    assert "策略跟进：" in fields["评估问题反馈"]
+    assert "策略 Follow-up：" not in fields["评估问题反馈"]
     assert (
         "evidence_audit/passed_stop_condition：Strategy follow-up job passed all probes; stop condition is likely satisfied."
         in fields["评估问题反馈"]
@@ -206,7 +207,8 @@ def test_build_report_writeback_fields_includes_targeted_probe_results() -> None
 
     fields = build_report_writeback_fields(report, report_url="https://debug-agent.local/reports/job-1")
 
-    assert "Targeted Probe：" in fields["评估问题反馈"]
+    assert "定向深挖：" in fields["评估问题反馈"]
+    assert "Targeted Probe：" not in fields["评估问题反馈"]
     assert "multimodal:conflict:1/target_still_failing" in fields["评估问题反馈"]
     assert "Targeted probe still failed on multimodal:conflict:1; escalation is recommended." in fields["评估问题反馈"]
     assert "升级：Run deeper localized replay or modality-specific probes for multimodal:conflict:1." in fields[
@@ -302,7 +304,8 @@ def test_build_report_writeback_fields_includes_targeted_probe_guardrails() -> N
 
     fields = build_report_writeback_fields(report, report_url="https://debug-agent.local/reports/job-1")
 
-    assert "Targeted Guardrail：" in fields["评估问题反馈"]
+    assert "定向深挖保护栏：" in fields["评估问题反馈"]
+    assert "Targeted Guardrail：" not in fields["评估问题反馈"]
     assert "multimodal:conflict:1/target_still_failing：Targeted probe chain for multimodal:conflict:1" in fields[
         "评估问题反馈"
     ]
@@ -512,7 +515,8 @@ def test_completion_hook_writes_source_report_when_strategy_follow_up_completes(
 
     assert client.row_id == "source-row"
     assert client.fields["分析报告链接"] == "https://debug-agent.local/jobs/job-source/report"
-    assert "策略 Follow-up：" in client.fields["评估问题反馈"]
+    assert "策略跟进：" in client.fields["评估问题反馈"]
+    assert "策略 Follow-up：" not in client.fields["评估问题反馈"]
     assert "evidence_audit/passed_stop_condition" in client.fields["评估问题反馈"]
     audit = repository.get_spreadsheet_writeback_audit("job-source")
     assert audit is not None
@@ -582,7 +586,8 @@ def test_completion_hook_writes_source_report_when_targeted_probe_completes() ->
 
     assert client.row_id == "source-row"
     assert client.fields["分析报告链接"] == "https://debug-agent.local/jobs/job-source/report"
-    assert "Targeted Probe：" in client.fields["评估问题反馈"]
+    assert "定向深挖：" in client.fields["评估问题反馈"]
+    assert "Targeted Probe：" not in client.fields["评估问题反馈"]
     assert "image:region:1/target_still_failing" in client.fields["评估问题反馈"]
     audit = repository.get_spreadsheet_writeback_audit("job-source")
     assert audit is not None

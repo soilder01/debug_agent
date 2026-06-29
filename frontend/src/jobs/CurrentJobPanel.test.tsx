@@ -75,15 +75,15 @@ describe("CurrentJobPanel", () => {
       />
     );
 
-    expect(screen.getByRole("region", { name: "Current job workspace" })).toHaveClass("current-job-panel");
-    expect(screen.getByRole("heading", { name: "Job Status" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Job status actions")).toHaveClass("action-row");
-    expect(screen.getByText("Job ID：job-1")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "当前任务工作区" })).toHaveClass("current-job-panel");
+    expect(screen.getByRole("heading", { name: "任务状态" })).toBeInTheDocument();
+    expect(screen.getByLabelText("任务状态操作")).toHaveClass("action-row");
+    expect(screen.getAllByText("任务 ID：job-1").length).toBeGreaterThan(0);
     expect(screen.getByText("证据数：1")).toBeInTheDocument();
     expect(screen.getByText("证据 ID：evidence-1")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "View evidence evidence-1" }));
-    await userEvent.click(screen.getByRole("button", { name: "Load persisted report" }));
+    await userEvent.click(screen.getByRole("button", { name: "查看证据 evidence-1" }));
+    await userEvent.click(screen.getByRole("button", { name: "加载任务报告" }));
 
     expect(onSelectEvidence).toHaveBeenCalledWith("evidence-1");
     expect(onLoadReport).toHaveBeenCalledTimes(1);
@@ -99,7 +99,7 @@ describe("CurrentJobPanel", () => {
       />
     );
 
-    expect(screen.getByRole("heading", { name: "Job Status" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "任务状态" })).toBeInTheDocument();
     expect(screen.queryByText("证据 ID：evidence-1")).not.toBeInTheDocument();
   });
 });

@@ -41,19 +41,19 @@ describe("ImportedCaseDetailPanel", () => {
 
     render(<ImportedCaseDetailPanel caseDetail={makeCaseDetail()} onCreateDebugJob={onCreateDebugJob} />);
 
-    expect(screen.getByRole("region", { name: "Selected case detail" })).toHaveClass("case-detail");
-    expect(screen.getByLabelText("Selected case actions")).toHaveClass("action-row");
+    expect(screen.getByRole("region", { name: "选中样本详情" })).toHaveClass("case-detail");
+    expect(screen.getByLabelText("选中样本操作")).toHaveClass("action-row");
     expect(screen.getByText("样本详情：case-detail-1")).toBeInTheDocument();
     expect(screen.getByText("图片：https://debug-agent.local/case-detail-1.png")).toBeInTheDocument();
     expect(screen.getByText("Prompt：Read the handwritten answer")).toBeInTheDocument();
     expect(screen.getByText("评分标准：score exactly")).toBeInTheDocument();
     expect(screen.getByText("标答 1：42")).toBeInTheDocument();
     expect(screen.getByText("区域 1：x=10, y=20, width=30, height=40, unit=px, label=无")).toBeInTheDocument();
-    expect(screen.getByText("预测 trial 1：score 0")).toBeInTheDocument();
+    expect(screen.getByText("预测轮次 1：得分 0")).toBeInTheDocument();
     expect(screen.getByText("人工状态：未标记")).toBeInTheDocument();
     expect(screen.getByText("人工根因：未归因")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Create debug job for case-detail-1" }));
+    await userEvent.click(screen.getByRole("button", { name: "为 case-detail-1 创建调试任务" }));
 
     expect(onCreateDebugJob).toHaveBeenCalledWith("case-detail-1");
   });
@@ -61,7 +61,7 @@ describe("ImportedCaseDetailPanel", () => {
   it("hides box regions when no regions are available", () => {
     render(<ImportedCaseDetailPanel caseDetail={makeCaseDetail({ box_regions: [] })} onCreateDebugJob={vi.fn()} />);
 
-    expect(screen.queryByLabelText("Box regions")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("框选区域")).not.toBeInTheDocument();
   });
 
   it("renders task-native expected output when present", () => {

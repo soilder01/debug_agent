@@ -19,13 +19,15 @@ describe("BatchJobControlsPanel", () => {
       />
     );
 
-    expect(screen.getByRole("heading", { name: "Batch Jobs" })).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Batch case ids"), { target: { value: "case-1\ncase-2" } });
+    expect(screen.getByRole("heading", { name: "批量调试任务" })).toBeInTheDocument();
+    expect(screen.getByText("不知道样本 ID？先去“数据导入”加载样本，或在“回写同步”按飞书行号重跑。")).toBeInTheDocument();
+    expect(screen.getByText(/一行一个 case_id，例如 JSZN-096/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("批量样本 ID"), { target: { value: "case-1\ncase-2" } });
 
-    await userEvent.click(screen.getByRole("button", { name: "Submit batch jobs" }));
-    await userEvent.click(screen.getByRole("button", { name: "Load debug jobs" }));
-    await userEvent.click(screen.getByRole("button", { name: "Load failed jobs" }));
-    await userEvent.click(screen.getByRole("button", { name: "Load newest debug jobs" }));
+    await userEvent.click(screen.getByRole("button", { name: "批量提交调试" }));
+    await userEvent.click(screen.getByRole("button", { name: "查看历史任务" }));
+    await userEvent.click(screen.getByRole("button", { name: "查看失败任务" }));
+    await userEvent.click(screen.getByRole("button", { name: "查看最新任务" }));
 
     expect(onCaseIdsChange).toHaveBeenCalledWith("case-1\ncase-2");
     expect(onSubmit).toHaveBeenCalledTimes(1);

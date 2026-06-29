@@ -14,6 +14,10 @@ export function JSONLImportResultPanel({ result }: JSONLImportResultPanelProps) 
           ? "无"
           : result.rejected_lines.map((line) => `${line.line_number}:${line.error_message}`).join(", ")}
       </p>
+      <p>批量创建：{result.jobs.length}</p>
+      {result.jobs.map((job) => (
+        <p key={job.job_id}>{job.job_id}：{job.status}</p>
+      ))}
     </>
   );
 }

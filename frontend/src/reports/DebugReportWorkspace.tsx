@@ -4,6 +4,7 @@ import type {
   ExperimentEvidence,
   HumanHandoffStatus,
   HumanHandoffStatusValue,
+  LarkWriteConfirmation,
   RecommendedActionStatusEvent,
   RecommendedActionVerification,
   RecommendedActionVerificationResult,
@@ -30,8 +31,11 @@ type DebugReportWorkspaceProps = {
   humanHandoffStatuses?: HumanHandoffStatus[];
   writebackResult: SpreadsheetWritebackResult | null;
   writebackAudit: SpreadsheetWritebackAudit | null;
+  writeConfirmation?: LarkWriteConfirmation | null;
   onSelectEvidence: (evidenceId: string) => void;
   onWriteReport: () => void;
+  onPrepareWriteConfirmation?: () => void;
+  onConfirmWriteReport?: () => void;
   onLoadWritebackAudit: () => void;
   onUpdateRecommendedActionStatus?: (actionIndex: number, status: RecommendedActionStatusValue) => void;
   onUpdateHumanHandoffStatus?: (targetId: string, status: HumanHandoffStatusValue) => void;
@@ -59,8 +63,11 @@ export function DebugReportWorkspace({
   humanHandoffStatuses = [],
   writebackResult,
   writebackAudit,
+  writeConfirmation = null,
   onSelectEvidence,
   onWriteReport,
+  onPrepareWriteConfirmation,
+  onConfirmWriteReport,
   onLoadWritebackAudit,
   onUpdateRecommendedActionStatus,
   onUpdateHumanHandoffStatus,
@@ -77,7 +84,7 @@ export function DebugReportWorkspace({
   onRunAutoDebugClosure
 }: DebugReportWorkspaceProps) {
   return (
-    <section aria-label="Debug report workspace" className="report-workspace">
+    <section aria-label="调试报告工作区" className="report-workspace">
       <CaseDetail jobId={report.job_id} caseId={report.case_id} status={report.status} />
       <ExperimentTimeline
         experiments={report.planned_experiments}
@@ -115,7 +122,10 @@ export function DebugReportWorkspace({
         <SpreadsheetWritebackPanel
           writebackResult={writebackResult}
           writebackAudit={writebackAudit}
+          writeConfirmation={writeConfirmation}
           onWriteReport={onWriteReport}
+          onPrepareWriteConfirmation={onPrepareWriteConfirmation}
+          onConfirmWriteReport={onConfirmWriteReport}
           onLoadAudit={onLoadWritebackAudit}
         />
       ) : null}
@@ -134,8 +144,8 @@ function StrategyFollowUpHistory({ followUps, onOpenStrategyFollowUp }: Strategy
   }
 
   return (
-    <section aria-label="Strategy follow-up job history" className="evidence-spine">
-      <h2>Strategy Follow-Up Job History</h2>
+    <section aria-label="策略执行历史记录" className="evidence-spine">
+      <h2>策略执行历史记录</h2>
       <ul>
         {followUps.map((followUp) => (
           <li className="lineage-row" key={`${followUp.stage}:${followUp.follow_up_job_id}`}>
@@ -143,16 +153,20 @@ function StrategyFollowUpHistory({ followUps, onOpenStrategyFollowUp }: Strategy
               {followUp.stage}：{followUp.planned_steps}
             </p>
             <p>任务：{followUp.follow_up_job_id}</p>
-            <p>Outcome：{followUp.outcome}</p>
-            <p>Success Rate：{formatPercent(followUp.success_rate)}</p>
+            <p>执行结果：{followUp.outcome}</p>
+            <p>成功率：{formatPercent(followUp.success_rate)}</p>
             <p>{followUp.summary}</p>
-            {followUp.escalation ? <p>Escalation：{followUp.escalation}</p> : null}
-            <p>操作者：{followUp.actor || "unknown"}</p>
+            {followUp.escalation ? <p>升级异常：{followUp.escalation}</p> : null}
+            <p>操作者：{followUp.actor || "未知"}</p>
             {followUp.note ? <p>备注：{followUp.note}</p> : null}
             <p>时间：{followUp.created_at}</p>
             {onOpenStrategyFollowUp ? (
-              <button type="button" onClick={() => onOpenStrategyFollowUp(followUp.follow_up_job_id)}>
-                Open strategy follow-up {followUp.follow_up_job_id}
+              <button
+                type="button"
+                aria-label={`打开策略跟进历史任务 ${followUp.follow_up_job_id}`}
+                onClick={() => onOpenStrategyFollowUp(followUp.follow_up_job_id)}
+              >
+                打开历史任务 {followUp.follow_up_job_id}
               </button>
             ) : null}
           </li>
@@ -173,8 +187,8 @@ function TargetedProbeHistory({ probes, onOpenTargetedProbe }: TargetedProbeHist
   }
 
   return (
-    <section aria-label="Targeted probe job history" className="evidence-spine">
-      <h2>Targeted Probe Job History</h2>
+    <section aria-label="定向探测任务历史记录" className="evidence-spine">
+      <h2>定向探测任务历史记录</h2>
       <TargetedProbeEscalationChain probes={probes} />
       <ul>
         {probes.map((probe) => (
@@ -183,16 +197,20 @@ function TargetedProbeHistory({ probes, onOpenTargetedProbe }: TargetedProbeHist
               {probe.target_id}：{probe.planned_steps}
             </p>
             <p>任务：{probe.probe_job_id}</p>
-            <p>Outcome：{probe.outcome ?? "pending"}</p>
-            <p>Success Rate：{formatPercent(probe.success_rate ?? 0)}</p>
+            <p>执行结果：{probe.outcome ?? "处理中"}</p>
+            <p>成功率：{formatPercent(probe.success_rate ?? 0)}</p>
             {probe.summary ? <p>{probe.summary}</p> : null}
-            {probe.escalation ? <p>Escalation：{probe.escalation}</p> : null}
-            <p>操作者：{probe.actor || "unknown"}</p>
+            {probe.escalation ? <p>升级异常：{probe.escalation}</p> : null}
+            <p>操作者：{probe.actor || "未知"}</p>
             {probe.note ? <p>备注：{probe.note}</p> : null}
             <p>时间：{probe.created_at}</p>
             {onOpenTargetedProbe ? (
-              <button type="button" onClick={() => onOpenTargetedProbe(probe.probe_job_id)}>
-                Open targeted probe {probe.probe_job_id}
+              <button
+                type="button"
+                aria-label={`打开定向探测 ${probe.probe_job_id}`}
+                onClick={() => onOpenTargetedProbe(probe.probe_job_id)}
+              >
+                打开定向探测 {probe.probe_job_id}
               </button>
             ) : null}
           </li>
@@ -213,20 +231,20 @@ function TargetedProbeEscalationChain({ probes }: TargetedProbeEscalationChainPr
   }
 
   return (
-    <section aria-label="Targeted probe escalation chain">
-      <h2>Targeted Probe Escalation Chain</h2>
+    <section aria-label="定向探测升级链">
+      <h2>定向探测升级链</h2>
       {chains.map((chain) => (
         <div key={`${chain[0].target_id}:${chain.map((probe) => probe.probe_job_id).join(":")}`}>
           <p>
-            Chain target {chain[0].target_id} depth：{chain.length}
+            链目标 {chain[0].target_id} 深度：{chain.length}
           </p>
           {chain.map((probe, index) => (
             <div key={probe.probe_job_id}>
               <p>
-                Chain step {index + 1}：{probe.source}/{probe.probe_job_id}
+                执行步骤 {index + 1}：{probe.source}/{probe.probe_job_id}
               </p>
-              {probe.parent_probe_job_id ? <p>Parent probe：{probe.parent_probe_job_id}</p> : null}
-              {probe.trigger_outcome ? <p>Trigger outcome：{probe.trigger_outcome}</p> : null}
+              {probe.parent_probe_job_id ? <p>父节点探测：{probe.parent_probe_job_id}</p> : null}
+              {probe.trigger_outcome ? <p>触发结果：{probe.trigger_outcome}</p> : null}
             </div>
           ))}
         </div>
@@ -301,34 +319,51 @@ function ExplainabilityWorkspace({
   }
 
   return (
-    <section aria-label="Explainability workspace">
-      <h2>Explainability Workspace</h2>
+    <section aria-label="可解释性分析">
+      <h2>可解释性分析</h2>
       {firstTrace ? (
         <>
-          <p>Evidence spine：{firstTrace.evidence_id}</p>
-          {firstTrace.next_probe ? <p>Next probe：{firstTrace.next_probe}</p> : null}
+          <p>证据追踪：{firstTrace.evidence_id}</p>
+          {firstTrace.next_probe ? <p>下一步探测：{firstTrace.next_probe}</p> : null}
         </>
       ) : null}
       {firstDiagnostic ? (
         <p>
-          Diagnostic coverage：{firstDiagnostic.source}/{firstDiagnostic.status}/{firstDiagnostic.severity}
+          诊断覆盖情况：{firstDiagnostic.source}/{firstDiagnostic.status}/{firstDiagnostic.severity}
         </p>
       ) : null}
       {firstConfidenceReason ? (
         <p>
-          Confidence coverage：{firstConfidenceReason.source}/{firstConfidenceReason.level}
+          置信度覆盖：{firstConfidenceReason.source}/{firstConfidenceReason.level}
         </p>
       ) : null}
       {firstAction ? (
         <p>
-          Action coverage：{firstAction.category}/{firstAction.priority}/{firstAction.status ?? "pending"}
+          操作覆盖情况：{firstAction.category}/{firstAction.priority}/{firstAction.status ?? "pending"}
         </p>
       ) : null}
       {firstVerification && firstVerificationResult ? (
         <p>
-          Verification coverage：{firstVerification.verification_job_id}/{firstVerificationResult.result}
+          验证覆盖情况：{firstVerification.verification_job_id}/{statusLabel(firstVerificationResult.result)}
         </p>
       ) : null}
     </section>
   );
+}
+
+function statusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    accepted: "已接受",
+    acknowledged: "已确认",
+    applied: "已应用",
+    closed: "已关闭",
+    failed: "失败",
+    in_progress: "进行中",
+    pending: "待处理",
+    rejected: "已拒绝",
+    resolved: "已解决",
+    skipped: "跳过",
+    succeeded: "成功"
+  };
+  return labels[status] ?? status;
 }

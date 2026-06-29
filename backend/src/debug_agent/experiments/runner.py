@@ -1,10 +1,16 @@
+import asyncio
+import os
+from dataclasses import dataclass
 from pathlib import Path
+from collections.abc import Callable
+from contextlib import suppress
 from time import perf_counter
 from typing import Self
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 from pydantic import BaseModel, Field, model_validator
 
+from debug_agent.artifacts.files import materialize_local_file_snapshot
 from debug_agent.artifacts.images import (
     EvidenceArtifact,
     ImageArtifact,
@@ -38,12 +44,25 @@ from debug_agent.judging.runner import (
     JudgeResult,
     judge_answer,
     judge_classification_output,
+    judge_generic_json_output,
     judge_image_detection_output,
     judge_multimodal_detection_output,
     judge_video_detection_output,
 )
-from debug_agent.models.adapters import ModelAdapter
+from debug_agent.models.adapters import ModelAdapter, ModelResponse
 from debug_agent.recipes import recipe_for_task_type
+
+
+VIDEO_TASK_TYPES = {"video_detection", "generic_video_json"}
+VIDEO_EXTENSIONS = {".mp4", ".mov", ".mkv", ".webm", ".avi", ".m4v"}
+RESOLVED_REMOTE_MEDIA_SCHEMES = {"http", "https", "data"}
+
+
+@dataclass(frozen=True)
+class MediaInputStatus:
+    media_type: str
+    media_uri_scheme: str
+    media_uri_resolved: bool
 
 
 class ExperimentEvidence(BaseModel):
@@ -53,7 +72,9 @@ class ExperimentEvidence(BaseModel):
     model_name: str = ""
     model_provider: str = ""
     model_id: str = ""
+    model_usage: dict[str, int | float] = Field(default_factory=dict)
     request_summary: dict[str, object] = {}
+    input_excerpt: str = ""
     latency_ms: int = 0
     response_parse_error: str = ""
     model_call_error_type: str = ""
@@ -81,12 +102,24 @@ async def run_experiments(
     case: DebugCase,
     plan: ExperimentPlan,
     adapter: ModelAdapter,
+    adapter_resolver: Callable[[ExperimentStep], ModelAdapter] | None = None,
     image_artifact_dir: Path | None = None,
+    should_cancel: Callable[[], bool] | None = None,
 ) -> ExperimentRunResult:
     evidence: list[ExperimentEvidence] = []
     success_count = 0
     for step in plan.steps:
+        if should_cancel is not None and should_cancel():
+            break
+        step_adapter = adapter_resolver(step) if adapter_resolver is not None else adapter
         for trial_index in range(step.trials):
+            if should_cancel is not None and should_cancel():
+                return ExperimentRunResult(
+                    case_id=case.case_id,
+                    total_trials=len(evidence),
+                    success_count=success_count,
+                    evidence=evidence,
+                )
             started_at = perf_counter()
             model_call_error_type = ""
             model_call_error_message = ""
@@ -97,8 +130,57 @@ async def run_experiments(
                 ablation_variant=ablation_variant,
             )
             request_image_uri = _image_uri_for_variant(case=case, ablation_variant=ablation_variant)
+            media_input = _inspect_media_input(case=case, image_uri=request_image_uri)
+            if media_input.media_type == "video" and not media_input.media_uri_resolved:
+                latency_ms = int((perf_counter() - started_at) * 1000)
+                judge = JudgeResult(score=0, reasons=["model_call_error"])
+                evidence.append(
+                    ExperimentEvidence(
+                        evidence_id=f"{case.case_id}:{step.name}:{trial_index}",
+                        step_name=step.name,
+                        trial=trial_index,
+                        request_summary=_build_request_summary(
+                            prompt=prompt,
+                            image_uri=request_image_uri,
+                            scoring_standard=case.scoring_standard,
+                            media_input=media_input,
+                            ablation_variant=ablation_variant,
+                        ),
+                        input_excerpt=_clip_trace_input(prompt),
+                        latency_ms=latency_ms,
+                        model_call_error_type="UnresolvedMediaInput",
+                        model_call_error_message=(
+                            f"Video media input is unresolved: {request_image_uri}"
+                        ),
+                        artifacts=_build_generic_artifacts(
+                            case=case,
+                            step_name=step.name,
+                            trial_index=trial_index,
+                            raw_output="",
+                            image_artifacts=[],
+                            response_parse_error="",
+                            judge=judge,
+                            request_image_uri=request_image_uri,
+                            ablation_variant=ablation_variant,
+                            image_artifact_dir=image_artifact_dir,
+                        ),
+                        raw_output="",
+                        judge=judge,
+                    )
+                )
+                return ExperimentRunResult(
+                    case_id=case.case_id,
+                    total_trials=len(evidence),
+                    success_count=success_count,
+                    evidence=evidence,
+                )
             try:
-                response = await adapter.generate(prompt=prompt, image_uri=request_image_uri)
+                response = await _generate_model_response(
+                    adapter=step_adapter,
+                    prompt=prompt,
+                    image_uri=request_image_uri,
+                    should_cancel=should_cancel,
+                )
             except Exception as exc:
                 latency_ms = int((perf_counter() - started_at) * 1000)
                 model_call_error_type = type(exc).__name__
@@ -113,8 +195,10 @@ async def run_experiments(
                             prompt=prompt,
                             image_uri=request_image_uri,
                             scoring_standard=case.scoring_standard,
+                            media_input=media_input,
                             ablation_variant=ablation_variant,
                         ),
+                        input_excerpt=_clip_trace_input(prompt),
                         latency_ms=latency_ms,
                         model_call_error_type=model_call_error_type,
                         model_call_error_message=model_call_error_message,
@@ -134,22 +218,55 @@ async def run_experiments(
                         judge=judge,
                     )
                 )
+                if should_cancel is not None and should_cancel():
+                    return ExperimentRunResult(
+                        case_id=case.case_id,
+                        total_trials=len(evidence),
+                        success_count=success_count,
+                        evidence=evidence,
+                    )
                 continue
+            if response is None:
+                return ExperimentRunResult(
+                    case_id=case.case_id,
+                    total_trials=len(evidence),
+                    success_count=success_count,
+                    evidence=evidence,
+                )
+            if should_cancel is not None and should_cancel():
+                return ExperimentRunResult(
+                    case_id=case.case_id,
+                    total_trials=len(evidence),
+                    success_count=success_count,
+                    evidence=evidence,
+                )
             latency_ms = int((perf_counter() - started_at) * 1000)
             response_parse_error = ""
             image_artifacts: list[ImageArtifact] = []
             try:
                 if case.task_type == "classification":
-                    judge = _judge_classification_response(case=case, raw_output=response.raw_output)
+                    judge = _judge_classification_response(
+                        case=case, raw_output=response.raw_output
+                    )
                 elif case.task_type == "image_detection":
-                    judge = _judge_image_detection_response(case=case, raw_output=response.raw_output)
+                    judge = _judge_image_detection_response(
+                        case=case, raw_output=response.raw_output
+                    )
                 elif case.task_type == "video_detection":
-                    judge = _judge_video_detection_response(case=case, raw_output=response.raw_output)
+                    judge = _judge_video_detection_response(
+                        case=case, raw_output=response.raw_output
+                    )
                 elif case.task_type == "multimodal_detection":
-                    judge = _judge_multimodal_detection_response(case=case, raw_output=response.raw_output)
+                    judge = _judge_multimodal_detection_response(
+                        case=case, raw_output=response.raw_output
+                    )
+                elif case.task_type in {"generic_json", "generic_video_json"}:
+                    judge = _judge_generic_json_response(case=case, raw_output=response.raw_output)
                 else:
                     predicted = parse_prediction_answer(response.raw_output)
-                    judge = judge_answer(case.golden_answer, predicted, scoring_standard=case.scoring_standard)
+                    judge = judge_answer(
+                        case.golden_answer, predicted, scoring_standard=case.scoring_standard
+                    )
                     image_artifacts = _build_localized_image_artifacts(
                         case=case,
                         step_name=step.name,
@@ -168,12 +285,15 @@ async def run_experiments(
                     model_name=response.model_name,
                     model_provider=response.model_provider,
                     model_id=response.model_id,
+                    model_usage=response.usage,
                     request_summary=_build_request_summary(
                         prompt=prompt,
                         image_uri=request_image_uri,
                         scoring_standard=case.scoring_standard,
+                        media_input=media_input,
                         ablation_variant=ablation_variant,
                     ),
+                    input_excerpt=_clip_trace_input(prompt),
                     latency_ms=latency_ms,
                     response_parse_error=response_parse_error,
                     model_call_error_type=model_call_error_type,
@@ -203,10 +323,33 @@ async def run_experiments(
     )
 
 
+async def _generate_model_response(
+    *,
+    adapter: ModelAdapter,
+    prompt: str,
+    image_uri: str,
+    should_cancel: Callable[[], bool] | None,
+) -> ModelResponse | None:
+    if should_cancel is None:
+        return await adapter.generate(prompt=prompt, image_uri=image_uri)
+    task = asyncio.create_task(adapter.generate(prompt=prompt, image_uri=image_uri))
+    while True:
+        if should_cancel():
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
+            return None
+        try:
+            return await asyncio.wait_for(asyncio.shield(task), timeout=0.1)
+        except TimeoutError:
+            continue
+
+
 def _build_request_summary(
     prompt: str,
     image_uri: str,
     scoring_standard: str,
+    media_input: MediaInputStatus,
     ablation_variant: AblationVariant | None = None,
 ) -> dict[str, object]:
     parsed_uri = urlparse(image_uri)
@@ -215,12 +358,70 @@ def _build_request_summary(
         "prompt_length": len(prompt),
         "has_image": bool(image_uri),
         "image_uri_scheme": parsed_uri.scheme,
+        "media_type": media_input.media_type,
+        "media_uri_scheme": media_input.media_uri_scheme,
+        "media_uri_resolved": media_input.media_uri_resolved,
         "scoring_standard_present": bool(scoring_standard.strip()),
     }
     if ablation_variant is not None:
         summary["ablation_variant"] = ablation_variant.name
         summary["ablation_modalities"] = ablation_variant.modalities
     return summary
+
+
+def _inspect_media_input(*, case: DebugCase, image_uri: str) -> MediaInputStatus:
+    return MediaInputStatus(
+        media_type=_media_type_for_case(case=case, image_uri=image_uri),
+        media_uri_scheme=urlparse(image_uri).scheme,
+        media_uri_resolved=_media_uri_is_resolved(image_uri),
+    )
+
+
+def _media_type_for_case(*, case: DebugCase, image_uri: str) -> str:
+    if case.task_type in VIDEO_TASK_TYPES or _uri_has_video_extension(image_uri):
+        return "video"
+    if image_uri:
+        return "image"
+    return "none"
+
+
+def _uri_has_video_extension(uri: str) -> bool:
+    parsed = urlparse(uri)
+    path = parsed.path or uri.split("?", 1)[0]
+    return Path(path).suffix.lower() in VIDEO_EXTENSIONS
+
+
+def _media_uri_is_resolved(uri: str) -> bool:
+    if not uri:
+        return False
+    parsed = urlparse(uri)
+    if parsed.scheme in RESOLVED_REMOTE_MEDIA_SCHEMES:
+        return True
+    return _resolve_local_media_path(uri) is not None
+
+
+def _resolve_local_media_path(uri: str) -> Path | None:
+    parsed = urlparse(uri)
+    if parsed.scheme == "file":
+        local_path = Path(unquote(parsed.path))
+        if (
+            os.name == "nt"
+            and len(local_path.as_posix()) > 3
+            and local_path.as_posix()[0] == "/"
+            and local_path.as_posix()[2] == ":"
+        ):
+            local_path = Path(local_path.as_posix()[1:])
+        if parsed.netloc:
+            local_path = Path(f"//{parsed.netloc}{unquote(parsed.path)}")
+        return local_path if local_path.is_file() else None
+    return None
+
+
+def _clip_trace_input(value: str, limit: int = 4000) -> str:
+    normalized = value.strip()
+    if len(normalized) <= limit:
+        return normalized
+    return f"{normalized[: limit - 3]}..."
 
 
 def _judge_classification_response(case: DebugCase, raw_output: str) -> JudgeResult:
@@ -257,7 +458,17 @@ def _judge_video_detection_response(case: DebugCase, raw_output: str) -> JudgeRe
 def _judge_multimodal_detection_response(case: DebugCase, raw_output: str) -> JudgeResult:
     predicted = parse_multimodal_detection_output(raw_output)
     expected = MultimodalDetectionOutput.model_validate(case.expected_output)
-    return judge_multimodal_detection_output(expected, predicted, scoring_standard=case.scoring_standard)
+    return judge_multimodal_detection_output(
+        expected, predicted, scoring_standard=case.scoring_standard
+    )
+
+
+def _judge_generic_json_response(case: DebugCase, raw_output: str) -> JudgeResult:
+    return judge_generic_json_output(
+        expected_payload=case.expected_output.get("reference_answer", case.expected_output),
+        raw_output=raw_output,
+        scoring_standard=case.scoring_standard,
+    )
 
 
 def _build_step_prompt(
@@ -301,7 +512,9 @@ def _build_generic_artifacts(
                 step_name=step_name,
                 trial_index=trial_index,
                 deltas=judge.deltas,
-                source_image_uri=request_image_uri if request_image_uri is not None else case.image_uri,
+                source_image_uri=request_image_uri
+                if request_image_uri is not None
+                else case.image_uri,
                 image_artifact_dir=image_artifact_dir,
             )
         )
@@ -311,6 +524,11 @@ def _build_generic_artifacts(
             kind="input_snapshot",
             artifact_type="request",
             source_uri=request_image_uri if request_image_uri is not None else case.image_uri,
+            derived_uri=materialize_local_file_snapshot(
+                source_uri=request_image_uri if request_image_uri is not None else case.image_uri,
+                output_dir=_artifact_subdir(image_artifact_dir, "input"),
+                artifact_id=f"{case.case_id}:{step_name}:{trial_index}:input-snapshot",
+            ),
             metadata=_input_snapshot_metadata(
                 case=case,
                 ablation_variant=ablation_variant,
@@ -324,7 +542,7 @@ def _build_generic_artifacts(
             artifact_type="model_output",
             derived_uri=_materialize_structured_output(
                 raw_output=raw_output,
-                output_dir=image_artifact_dir,
+                output_dir=_artifact_subdir(image_artifact_dir, "model_outputs"),
                 artifact_id=f"{case.case_id}:{step_name}:{trial_index}:structured-output",
             ),
             metadata={
@@ -337,7 +555,9 @@ def _build_generic_artifacts(
     return artifacts
 
 
-def _materialize_structured_output(*, raw_output: str, output_dir: Path | None, artifact_id: str) -> str:
+def _materialize_structured_output(
+    *, raw_output: str, output_dir: Path | None, artifact_id: str
+) -> str:
     if output_dir is None:
         return ""
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -347,7 +567,16 @@ def _materialize_structured_output(*, raw_output: str, output_dir: Path | None, 
 
 
 def _safe_artifact_filename(artifact_id: str) -> str:
-    return "".join(character if character.isalnum() or character in {"-", "_"} else "_" for character in artifact_id)
+    return "".join(
+        character if character.isalnum() or character in {"-", "_"} else "_"
+        for character in artifact_id
+    )
+
+
+def _artifact_subdir(image_artifact_dir: Path | None, name: str) -> Path | None:
+    if image_artifact_dir is None:
+        return None
+    return image_artifact_dir / name
 
 
 def _input_snapshot_metadata(
@@ -366,7 +595,9 @@ def _input_snapshot_metadata(
     return metadata
 
 
-def _ablation_variant_for_trial(*, step: ExperimentStep, trial_index: int) -> AblationVariant | None:
+def _ablation_variant_for_trial(
+    *, step: ExperimentStep, trial_index: int
+) -> AblationVariant | None:
     if not step.ablation_variants:
         return None
     return step.ablation_variants[trial_index % len(step.ablation_variants)]
@@ -398,33 +629,37 @@ def _build_native_delta_artifacts(
         region = _image_region_from_delta(delta) if artifact_type == "image_region" else None
         derived_uri = ""
         preview_url = ""
-        if image_artifact_dir is not None and region is not None:
+        image_output_dir = _artifact_subdir(image_artifact_dir, "images")
+        manifest_output_dir = _artifact_subdir(image_artifact_dir, "manifests")
+        if image_output_dir is not None and region is not None:
             try:
                 derived_uri = materialize_image_crop(
                     source_image_uri=source_image_uri,
                     region=region,
-                    output_dir=image_artifact_dir,
+                    output_dir=image_output_dir,
                     artifact_id=artifact_id,
                 )
                 preview_url = image_artifact_preview_url(artifact_id)
             except (OSError, ValueError):
                 derived_uri = ""
                 preview_url = ""
-        if image_artifact_dir is not None and artifact_type == "video_segment":
-            metadata["keyframe_thumbnails"] = video_keyframe_thumbnails(artifact_id=artifact_id, metadata=metadata)
+        if manifest_output_dir is not None and artifact_type == "video_segment":
+            metadata["keyframe_thumbnails"] = video_keyframe_thumbnails(
+                artifact_id=artifact_id, metadata=metadata
+            )
             derived_uri = materialize_video_segment_manifest(
                 artifact_id=artifact_id,
                 source_uri=source_image_uri,
                 metadata=metadata,
-                output_dir=image_artifact_dir,
+                output_dir=manifest_output_dir,
             )
             metadata["manifest_type"] = "video_segment_delta"
-        if image_artifact_dir is not None and artifact_type == "multimodal_conflict":
+        if manifest_output_dir is not None and artifact_type == "multimodal_conflict":
             derived_uri = materialize_multimodal_conflict_manifest(
                 artifact_id=artifact_id,
                 source_uri=source_image_uri,
                 metadata=metadata,
-                output_dir=image_artifact_dir,
+                output_dir=manifest_output_dir,
             )
             metadata["manifest_type"] = "multimodal_conflict_delta"
         artifacts.append(
@@ -502,7 +737,9 @@ def _metadata_value(value: object) -> object:
     return str(value)
 
 
-def _image_artifacts_to_evidence_artifacts(image_artifacts: list[ImageArtifact]) -> list[EvidenceArtifact]:
+def _image_artifacts_to_evidence_artifacts(
+    image_artifacts: list[ImageArtifact],
+) -> list[EvidenceArtifact]:
     return [_image_artifact_to_evidence_artifact(artifact) for artifact in image_artifacts]
 
 
@@ -559,12 +796,13 @@ def _build_localized_image_artifacts(
         region = regions_by_box_id.get(box_id)
         derived_image_uri = ""
         preview_image_url = ""
-        if image_artifact_dir is not None and region is not None:
+        image_output_dir = _artifact_subdir(image_artifact_dir, "images")
+        if image_output_dir is not None and region is not None:
             try:
                 derived_image_uri = materialize_image_crop(
                     source_image_uri=case.image_uri,
                     region=region,
-                    output_dir=image_artifact_dir,
+                    output_dir=image_output_dir,
                     artifact_id=artifact_id,
                 )
                 preview_image_url = image_artifact_preview_url(artifact_id)

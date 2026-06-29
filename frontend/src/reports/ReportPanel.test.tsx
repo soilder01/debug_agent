@@ -8,7 +8,6 @@ import { ReportPanel } from "./ReportPanel";
 afterEach(() => {
   cleanup();
 });
-
 describe("ReportPanel", () => {
   it("renders generic artifact summary from experiment evidence", () => {
     const report: DebugReport = {
@@ -52,16 +51,390 @@ describe("ReportPanel", () => {
 
     render(<ReportPanel report={report} />);
 
-    expect(screen.getByRole("region", { name: "Root Cause" })).toHaveClass("root-cause-panel");
-    expect(screen.getByLabelText("Evidence artifact spine")).toHaveClass("evidence-spine");
-    expect(screen.getByText("Evidence Artifacts")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "根因分析" })).toHaveClass("root-cause-panel");
+    expect(screen.getByLabelText("证据产物列表")).toHaveClass("evidence-spine");
+    expect(screen.getByRole("heading", { name: "证据产物" })).toBeInTheDocument();
     expect(screen.getByText("证据产物：1")).toBeInTheDocument();
     expect(screen.getByText("case-1:localized_observation_request:0:input-snapshot")).toBeInTheDocument();
-    expect(screen.getByText("Evidence Citations")).toBeInTheDocument();
+    expect(screen.getByText("证据引用")).toBeInTheDocument();
     expect(screen.getByText("引用证据：case-1:localized_observation_request:0")).toBeInTheDocument();
     expect(screen.getByText("引用步骤：localized_observation_request")).toBeInTheDocument();
     expect(screen.getByText("引用目标/区域：7")).toBeInTheDocument();
     expect(screen.getByText("引用原因：student_answer_mismatch")).toBeInTheDocument();
+  });
+
+  it("renders product summary labels instead of raw report taxonomy", () => {
+    const report: DebugReport = {
+      job_id: "job-product",
+      case_id: "case-product",
+      status: "needs_human_review",
+      product_summary: {
+        root_cause_label: "模型时序输出不稳定 / 高置信",
+        failure_summary: "同一视频片段多次输出不一致。",
+        evidence_source: "4 次 baseline/实验 evidence、定向深挖任务",
+        confidence_explanation: "高置信；4 条 evidence 支撑当前判断。",
+        next_action: "P0：补充时间窗约束后重跑验证"
+      },
+      observed_failure: {
+        type: "video_timestamp_mismatch",
+        summary: "同一视频片段多次输出不一致。",
+        affected_box_ids: []
+      },
+      planned_experiments: ["baseline_replay"],
+      experiment_summary: {
+        total_trials: 4,
+        success_count: 1,
+        failed_trial_count: 3,
+        success_rate: 0.25,
+        stability_label: "unstable",
+        evidence_ids: ["e-1"]
+      },
+      root_cause: {
+        label: "model_instability",
+        confidence: "high",
+        evidence_summary: "baseline 多次复测不稳定。"
+      },
+      suggested_sheet_fields: {
+        错误原因: "模型时序输出不稳定"
+      }
+    };
+
+    render(<ReportPanel report={report} />);
+
+    expect(screen.getByText("类型：模型时序输出不稳定 / 高置信")).toBeInTheDocument();
+    expect(screen.queryByText("类型：model_instability")).not.toBeInTheDocument();
+    expect(screen.getByText("证据来源：4 次 baseline/实验 evidence、定向深挖任务")).toBeInTheDocument();
+    expect(screen.getByText("下一步：P0：补充时间窗约束后重跑验证")).toBeInTheDocument();
+  });
+
+  it("renders action queue as stateful follow-up actions", () => {
+    const report: DebugReport = {
+      job_id: "job-action-queue",
+      case_id: "case-action-queue",
+      status: "needs_human_review",
+      observed_failure: {
+        type: "video_timestamp_mismatch",
+        summary: "同一视频片段多次输出不一致。",
+        affected_box_ids: []
+      },
+      planned_experiments: ["baseline_replay"],
+      experiment_summary: null,
+      root_cause: {
+        label: "model_instability",
+        confidence: "high",
+        evidence_summary: "baseline 多次复测不稳定。"
+      },
+      action_queue: [
+        {
+          id: "recommended:0",
+          kind: "recommended_action",
+          title: "补充视频时间窗约束后重跑验证。",
+          detail: "在 prompt 中补充 2s-4s 时间窗。",
+          priority: "P0",
+          state: "verifying",
+          state_label: "验证中",
+          source: "stability",
+          source_ref: "report.recommended_actions[0]",
+          owner: "case-owner",
+          status: "applied",
+          status_updated_at: "2026-06-26T12:00:00Z",
+          verification_job_id: "job-verify-1",
+          verification_result: "pending",
+          verification_summary: "推荐动作验证任务尚未完成。",
+          writeback_status: "succeeded",
+          writeback_row_id: "row-42",
+          writeback_report_url: "https://debug-agent.local/jobs/job-action-queue/report",
+          evidence_ids: "e-1",
+          artifact_ids: "artifact-1",
+          trace_refs: "baseline_replay",
+          available_operations: ["accept", "verify", "writeback", "manual_handoff"],
+          next_operation: "等待验证任务完成"
+        }
+      ],
+      recommended_actions: [
+        {
+          category: "stability",
+          priority: "P0",
+          status: "applied",
+          summary: "补充视频时间窗约束后重跑验证。",
+          detail: "在 prompt 中补充 2s-4s 时间窗。"
+        }
+      ],
+      suggested_sheet_fields: {
+        错误原因: "模型时序输出不稳定"
+      }
+    };
+    const onVerifyRecommendedAction = vi.fn();
+    const onUpdateRecommendedActionStatus = vi.fn();
+
+    render(
+      <ReportPanel
+        report={report}
+        onVerifyRecommendedAction={onVerifyRecommendedAction}
+        onUpdateRecommendedActionStatus={onUpdateRecommendedActionStatus}
+      />
+    );
+
+    expect(screen.getByRole("heading", { name: "Action Queue" })).toBeInTheDocument();
+    expect(screen.getByText("P0 / 验证中：补充视频时间窗约束后重跑验证。")).toBeInTheDocument();
+    expect(screen.getByText("负责人：case-owner")).toBeInTheDocument();
+    expect(screen.getByText("验证任务：job-verify-1 / pending")).toBeInTheDocument();
+    expect(screen.getByText("写回：succeeded / row-42")).toBeInTheDocument();
+    expect(screen.getByText("下一步：等待验证任务完成")).toBeInTheDocument();
+    expect(screen.getByText("来源：stability / report.recommended_actions[0]")).toBeInTheDocument();
+  });
+
+  it("renders DebugRunView as the unified runtime state source", () => {
+    const report: DebugReport = {
+      job_id: "job-run-view",
+      case_id: "case-run-view",
+      status: "completed",
+      run_view: {
+        job: {
+          job_id: "job-run-view",
+          case_id: "case-run-view",
+          status: "completed",
+          status_label: "已完成",
+          created_at: "2026-06-26T12:00:00Z",
+          updated_at: "2026-06-26T12:05:00Z"
+        },
+        summary: {
+          headline: "Debug 任务已完成",
+          current_phase: "auto_closure",
+          next_step: "确认报告后执行写回。",
+          evidence_count: 2,
+          agent_trace_count: 1
+        },
+        timeline: [
+          {
+            key: "auto_closure",
+            label: "自动闭环",
+            status: "completed",
+            status_label: "已完成",
+            summary: "auto closure completed",
+            started_at: "2026-06-26T12:04:00Z",
+            updated_at: "2026-06-26T12:05:00Z"
+          }
+        ],
+        agent_traces: [
+          {
+            agent_role: "report_root_cause",
+            reasoning_summary: "多轮复测显示模型时序输出不稳定。"
+          }
+        ],
+        auto_closure: {
+          status: "completed",
+          status_label: "已完成",
+          summary: "auto closure completed",
+          stage_count: 1
+        },
+        debug_loop: {
+          status: "completed",
+          status_label: "已完成",
+          summary: "第 1 轮探索已找到 verified root cause；prompt probe supported.",
+          current_iteration: 1,
+          decision: "verified_root_cause_found",
+          next_action: "查看已验证根因并决定是否同步报告。",
+          stop_reason: "prompt probe supported.",
+          iterations: [
+            {
+              iteration: 1,
+              decision: "verified_root_cause_found",
+              pending_probe_count: 0,
+              completed_probe_count: 1,
+              supported_comparison_count: 1
+            }
+          ]
+        },
+        hypothesis_closure: {
+          status: "completed",
+          status_label: "已完成",
+          summary: "已生成 1 个候选假设、1 个 probe 计划、1 个因果比较；prompt probe 已完成。",
+          hypothesis_count: 1,
+          probe_plan_count: 1,
+          probe_result_count: 1,
+          causal_comparison_count: 1,
+          verified_root_cause_count: 1,
+          unverified_hypothesis_count: 0,
+          fairness_lock: {
+            model_runner_config_ref: "locked_source"
+          },
+          hypotheses: [
+            {
+              hypothesis_id: "h-prompt",
+              category: "prompt_constraint",
+              claim: "原 prompt 没有强制要求描述右臂和双臂配合。",
+              status: "candidate"
+            }
+          ],
+          probe_plans: [
+            {
+              probe_id: "probe-h-prompt",
+              hypothesis_id: "h-prompt",
+              intervention_type: "prompt_patch",
+              model_runner_config_ref: "locked_source"
+            }
+          ],
+          probe_results: [
+            {
+              probe_id: "probe-h-prompt",
+              hypothesis_id: "h-prompt",
+              status: "completed",
+              probe_job_id: "job-probe-h-prompt",
+              evidence_ids: ["job-probe-h-prompt:success"]
+            }
+          ],
+          causal_comparisons: [
+            {
+              hypothesis_id: "h-prompt",
+              probe_id: "probe-h-prompt",
+              verdict: "supported",
+              delta: 1
+            }
+          ],
+          verified_root_causes: [
+            {
+              hypothesis_id: "h-prompt",
+              probe_id: "probe-h-prompt",
+              summary: "Prompt patch improved success rate with locked source runner."
+            }
+          ],
+          unverified_hypotheses: []
+        },
+        writeback: {
+          status: "succeeded",
+          status_label: "成功",
+          row_id: "row-42",
+          report_url: "https://debug-agent.local/jobs/job-run-view/report",
+          error_message: "",
+          updated_at: "2026-06-26T12:06:00Z"
+        },
+        action_queue: {
+          summary: { total: 1, verified: 1 },
+          items: [
+            {
+              id: "recommended:0",
+              kind: "recommended_action",
+              title: "补充视频时间窗约束后重跑验证。",
+              detail: "",
+              priority: "P0",
+              state: "verified",
+              state_label: "已通过",
+              source: "prompt",
+              source_ref: "report.recommended_actions[0]",
+              owner: "case-owner",
+              status: "applied",
+              status_updated_at: "2026-06-26T12:03:00Z",
+              verification_job_id: "job-verify-1",
+              verification_result: "resolved",
+              verification_summary: "推荐操作可能已修复该问题。",
+              writeback_status: "succeeded",
+              writeback_row_id: "row-42",
+              writeback_report_url: "https://debug-agent.local/jobs/job-run-view/report",
+              evidence_ids: "e-1",
+              artifact_ids: "",
+              trace_refs: "",
+              available_operations: ["verify", "writeback", "manual_handoff"],
+              next_operation: "已验证通过并写回，可以沉淀修复结论。"
+            }
+          ]
+        }
+      },
+      observed_failure: {
+        type: "video_timestamp_mismatch",
+        summary: "同一视频片段多次输出不一致。",
+        affected_box_ids: []
+      },
+      planned_experiments: ["baseline_replay"],
+      experiment_summary: null,
+      root_cause: {
+        label: "model_instability",
+        confidence: "high",
+        evidence_summary: "baseline 多次复测不稳定。"
+      },
+      suggested_sheet_fields: {
+        错误原因: "模型时序输出不稳定"
+      }
+    };
+
+    render(<ReportPanel report={report} />);
+
+    expect(screen.getByRole("heading", { name: "DebugRunView" })).toBeInTheDocument();
+    expect(screen.getByText("统一状态：Debug 任务已完成")).toBeInTheDocument();
+    expect(screen.getByText("下一步：确认报告后执行写回。")).toBeInTheDocument();
+    expect(screen.getByText("自动闭环：已完成｜auto closure completed")).toBeInTheDocument();
+    expect(screen.getByText("写回：成功｜row-42")).toBeInTheDocument();
+    expect(screen.getByText("循环探索：第 1 轮｜verified_root_cause_found")).toBeInTheDocument();
+    expect(screen.getByText("循环下一步：查看已验证根因并决定是否同步报告。")).toBeInTheDocument();
+    expect(screen.getByText("循环摘要：第 1 轮探索已找到 verified root cause；prompt probe supported.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Debug Loop Iterations")).toBeInTheDocument();
+    expect(screen.getByText("循环轮次：第 1 轮 / verified_root_cause_found / pending=0 / completed=1 / supported=1")).toBeInTheDocument();
+    expect(screen.getByText("假设闭环：已完成｜已生成 1 个候选假设、1 个 probe 计划、1 个因果比较；prompt probe 已完成。")).toBeInTheDocument();
+    expect(screen.getByText("候选假设：1｜Probe 计划：1｜因果比较：1｜已验证根因：1")).toBeInTheDocument();
+    expect(screen.getByText("公平性锁：locked_source")).toBeInTheDocument();
+    expect(screen.getByLabelText("Hypothesis Matrix")).toBeInTheDocument();
+    expect(screen.getByText("h-prompt / prompt_constraint / candidate：原 prompt 没有强制要求描述右臂和双臂配合。")).toBeInTheDocument();
+    expect(screen.getByText("probe-h-prompt / prompt_patch / locked_source")).toBeInTheDocument();
+    expect(screen.getByText("probe-h-prompt：supported｜delta=1")).toBeInTheDocument();
+    expect(screen.getByText("Probe 结果：probe-h-prompt / completed / job-probe-h-prompt")).toBeInTheDocument();
+    expect(screen.getByText("已验证根因：h-prompt / probe-h-prompt：Prompt patch improved success rate with locked source runner.")).toBeInTheDocument();
+    expect(screen.getByText("auto_closure：已完成｜auto closure completed")).toBeInTheDocument();
+    expect(screen.getByText("report_root_cause：多轮复测显示模型时序输出不稳定。")).toBeInTheDocument();
+  });
+
+  it("renders meta agent execution telemetry", () => {
+    const report: DebugReport = {
+      job_id: "job-meta",
+      case_id: "case-meta",
+      status: "needs_human_review",
+      observed_failure: {
+        type: "output_mismatch",
+        summary: "failed",
+        affected_box_ids: []
+      },
+      planned_experiments: ["baseline_replay"],
+      experiment_summary: null,
+      root_cause: {
+        label: "schema_drift",
+        confidence: "medium",
+        evidence_summary: "rule fallback plus meta agent."
+      },
+      meta_agent_enrichment: {
+        status: "completed",
+        telemetry: [
+          {
+            agent_role: "report_root_cause",
+            status: "completed",
+            model_id: "seed2-pro",
+            model_name: "Seed2 Pro",
+            mode: "",
+            thinking: "enabled",
+            latency_ms: 123,
+            error_message: ""
+          }
+        ]
+      },
+      judge_comparison_notes: [
+        {
+          evidence_id: "e-judge-1",
+          target_id: "label",
+          deterministic_reason: "label_mismatch",
+          llm_note: "Label mismatch is consistent with schema drift.",
+          risk: "medium"
+        }
+      ],
+      suggested_sheet_fields: {
+        错误原因: "schema drift"
+      }
+    };
+
+    render(<ReportPanel report={report} />);
+
+    expect(screen.getByLabelText("Meta Agent 执行记录")).toBeInTheDocument();
+    expect(screen.getByText("report_root_cause/completed：seed2-pro")).toBeInTheDocument();
+    expect(screen.getByText("thinking=enabled · mode=默认 · latency=123ms")).toBeInTheDocument();
+    expect(screen.getByLabelText("Judge Comparator 辅助备注")).toBeInTheDocument();
+    expect(screen.getByText("模型辅助备注：Label mismatch is consistent with schema drift.")).toBeInTheDocument();
   });
 
   it("renders evaluation asset diagnostics", () => {
@@ -110,8 +483,8 @@ describe("ReportPanel", () => {
 
     render(<ReportPanel report={report} />);
 
-    expect(screen.getByLabelText("Evaluation asset diagnostics")).toHaveClass("evidence-spine");
-    expect(screen.getByText("Evaluation Asset Diagnostics")).toBeInTheDocument();
+    expect(screen.getByLabelText("评估资产诊断")).toHaveClass("evidence-spine");
+    expect(screen.getByText("评估资产诊断")).toBeInTheDocument();
     expect(screen.getByText("prompt/pass/info")).toBeInTheDocument();
     expect(screen.getByText("Prompt 已要求结构化 JSON 输出。")).toBeInTheDocument();
     expect(screen.getByText("建议：保持 prompt 中明确的输出 schema、证据引用和约束条件。")).toBeInTheDocument();
@@ -166,7 +539,7 @@ describe("ReportPanel", () => {
 
     render(<ReportPanel report={report} onSelectEvidence={onSelectEvidence} />);
 
-    await userEvent.click(screen.getByRole("button", { name: "Open artifact citation:video_segment_1:delta" }));
+    await userEvent.click(screen.getByRole("button", { name: "打开证据产物 citation:video_segment_1:delta" }));
 
     expect(onSelectEvidence).toHaveBeenCalledWith("citation-evidence-1");
   });
@@ -211,7 +584,7 @@ describe("ReportPanel", () => {
 
     render(<ReportPanel report={report} onSelectEvidence={onSelectEvidence} />);
 
-    await userEvent.click(screen.getByRole("button", { name: "Open artifact global:video_segment_1:delta" }));
+    await userEvent.click(screen.getByRole("button", { name: "打开证据产物 global:video_segment_1:delta" }));
 
     expect(onSelectEvidence).toHaveBeenCalledWith("global-artifact-evidence-1");
   });
@@ -312,7 +685,7 @@ describe("ReportPanel", () => {
 
     render(<ReportPanel report={report} />);
 
-    expect(screen.getByText("Experiment Trajectory")).toBeInTheDocument();
+    expect(screen.getByText("实验轨迹")).toBeInTheDocument();
     expect(screen.getByText("步骤：baseline_replay")).toBeInTheDocument();
     expect(screen.getByText("步骤通过率：50%")).toBeInTheDocument();
     expect(screen.getByText("步骤失败次数：1/2")).toBeInTheDocument();
@@ -443,10 +816,10 @@ describe("ReportPanel", () => {
 
     await userEvent.click(
       screen.getByRole("button", {
-        name: "Open artifact case-artifact-links:baseline_replay:0:video_segment_1:delta"
+        name: "打开证据产物 case-artifact-links:baseline_replay:0:video_segment_1:delta"
       })
     );
-    await userEvent.click(screen.getByRole("button", { name: "Open artifact trace:video_segment_1:delta" }));
+    await userEvent.click(screen.getByRole("button", { name: "打开证据产物 trace:video_segment_1:delta" }));
 
     expect(onSelectEvidence).toHaveBeenNthCalledWith(1, "evidence-with-artifacts");
     expect(onSelectEvidence).toHaveBeenNthCalledWith(2, "trace-evidence");
@@ -554,17 +927,17 @@ describe("ReportPanel", () => {
 
     render(<ReportPanel report={report} onCreateStrategyFollowUp={onCreateStrategyFollowUp} />);
 
-    expect(screen.getByText("Ablation Diagnosis")).toBeInTheDocument();
-    const diagnosis = within(screen.getByLabelText("Ablation diagnosis"));
+    expect(screen.getByText("消融诊断")).toBeInTheDocument();
+    const diagnosis = within(screen.getByLabelText("消融诊断"));
     expect(
       diagnosis.getByText("单模态变体 image_only, text_only 可通过，但跨模态变体 cross_modal_compare 失败。")
     ).toBeInTheDocument();
-    expect(screen.getByText("Root Cause Trace")).toBeInTheDocument();
-    expect(screen.getByLabelText("Root cause trace")).toHaveClass("evidence-spine");
+    expect(screen.getByText("根因追踪")).toBeInTheDocument();
+    expect(screen.getByLabelText("根因追踪")).toHaveClass("evidence-spine");
     expect(screen.getByText("变体：cross_modal_compare")).toBeInTheDocument();
     expect(screen.getByText("模态：image, text")).toBeInTheDocument();
     expect(screen.getByText("证据：e-cross-modal")).toBeInTheDocument();
-    expect(screen.getByText("Delta：conflict_actual_mismatch")).toBeInTheDocument();
+    expect(screen.getByText("缺失/偏差：conflict_actual_mismatch")).toBeInTheDocument();
     expect(screen.getByText("目标：multimodal:conflict:1")).toBeInTheDocument();
     expect(screen.getByText("产物：ablation:delta")).toBeInTheDocument();
     expect(screen.getByText("假设：检查 cross_modal_compare 是否暴露跨模态对齐或融合问题。")).toBeInTheDocument();
@@ -573,26 +946,26 @@ describe("ReportPanel", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("结论：cross_modal_compare 失败，当前证据支持继续定位该变体覆盖的能力链路。")).toBeInTheDocument();
     expect(screen.getByText("下一步：围绕 multimodal:conflict:1 执行 targeted evidence replay。")).toBeInTheDocument();
-    expect(screen.getByText("Recommended Actions")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "建议操作" })).toBeInTheDocument();
     expect(screen.getByText("prompt/high：强化跨模态对比步骤。")).toBeInTheDocument();
-    expect(screen.getAllByText("状态：pending")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("状态：待处理")[0]).toBeInTheDocument();
     expect(screen.getByText("要求模型先分别列出 image/text 证据，再输出冲突结论。")).toBeInTheDocument();
     expect(screen.getByText("model_capability/high：将跨模态融合短板纳入模型能力归因。")).toBeInTheDocument();
-    expect(screen.getByLabelText("Recommended actions")).toHaveClass("action-console");
-    expect(screen.getByText("Debug Strategy")).toBeInTheDocument();
-    expect(screen.getByLabelText("Debug strategy")).toHaveClass("evidence-spine");
+    expect(screen.getByLabelText("建议操作")).toHaveClass("action-console");
+    expect(screen.getByText("调试策略")).toBeInTheDocument();
+    expect(screen.getByLabelText("调试策略")).toHaveClass("evidence-spine");
     expect(screen.getByText("ablation_expansion：验证跨模态失败是否稳定复现，且不是单模态感知失败。")).toBeInTheDocument();
     expect(screen.getByText("触发：trace_refs=modality_ablation_check:cross_modal_compare")).toBeInTheDocument();
     expect(screen.getByText("探测：对比 image/text 单模态结果与 cross_modal_compare 结果。")).toBeInTheDocument();
     expect(screen.getByText("停止条件：单模态通过且 cross-modal probe 失败时，确认跨模态对齐/融合链路为主因。")).toBeInTheDocument();
     expect(screen.getByText("升级：如果单模态也失败，切换到 single_modality_capability_gap 策略。")).toBeInTheDocument();
-    expect(screen.getByText("Follow-up Experiments")).toBeInTheDocument();
-    expect(screen.getByLabelText("Follow-up experiments")).toHaveClass("evidence-spine");
+    expect(screen.getByText("跟进实验")).toBeInTheDocument();
+    expect(screen.getByLabelText("跟进实验")).toHaveClass("evidence-spine");
     expect(screen.getByText("debug_strategy/ablation_expansion：strategy_ablation_expansion_probe")).toBeInTheDocument();
     expect(screen.getByText("策略阶段 ablation_expansion 已转为 follow-up experiment：strategy_ablation_expansion_probe。")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Run strategy follow-up ablation_expansion" }));
+    await userEvent.click(screen.getByRole("button", { name: "运行策略跟进 ablation_expansion" }));
     expect(onCreateStrategyFollowUp).toHaveBeenCalledWith("ablation_expansion");
-    expect(screen.getByText("Confidence Reasons")).toBeInTheDocument();
+    expect(screen.getByText("置信度理由")).toBeInTheDocument();
     expect(screen.getByText("evidence_count/high：3 条 evidence 支撑当前判断。")).toBeInTheDocument();
     expect(
       screen.getByText("ablation_pattern/high：root cause trace 包含 cross_modal_compare 变体，支持跨模态归因。")
@@ -636,9 +1009,9 @@ describe("ReportPanel", () => {
       <ReportPanel report={report} onUpdateRecommendedActionStatus={onUpdateRecommendedActionStatus} />
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "Accept recommended action 1" }));
-    await userEvent.click(screen.getByRole("button", { name: "Reject recommended action 1" }));
-    await userEvent.click(screen.getByRole("button", { name: "Mark recommended action 1 applied" }));
+    await userEvent.click(screen.getByRole("button", { name: "接受建议操作 1" }));
+    await userEvent.click(screen.getByRole("button", { name: "拒绝建议操作 1" }));
+    await userEvent.click(screen.getByRole("button", { name: "标记建议操作 1 已应用" }));
 
     expect(onUpdateRecommendedActionStatus).toHaveBeenNthCalledWith(1, 0, "accepted");
     expect(onUpdateRecommendedActionStatus).toHaveBeenNthCalledWith(2, 0, "rejected");
@@ -683,7 +1056,7 @@ describe("ReportPanel", () => {
     expect(
       screen.getByText("strategy_outcome/ablation_expansion：strategy_escalation_single_modality_probe")
     ).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Run strategy follow-up ablation_expansion" }));
+    await userEvent.click(screen.getByRole("button", { name: "运行策略跟进 ablation_expansion" }));
 
     expect(onCreateStrategyFollowUp).toHaveBeenCalledWith("ablation_expansion");
   });
@@ -722,7 +1095,7 @@ describe("ReportPanel", () => {
     render(<ReportPanel report={report} onCreateTargetedProbe={onCreateTargetedProbe} />);
 
     expect(screen.getByText("targeted_probe/unknown：targeted_multimodal_conflict_probe")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Run targeted probe multimodal:conflict:1" }));
+    await userEvent.click(screen.getByRole("button", { name: "运行定向深挖 multimodal:conflict:1" }));
 
     expect(onCreateTargetedProbe).toHaveBeenCalledWith("multimodal:conflict:1");
   });
@@ -765,7 +1138,7 @@ describe("ReportPanel", () => {
     expect(
       screen.getByText("targeted_probe_outcome/target_still_failing：targeted_escalation_multimodal_conflict_probe")
     ).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Run targeted probe multimodal:conflict:1" }));
+    await userEvent.click(screen.getByRole("button", { name: "运行定向深挖 multimodal:conflict:1" }));
 
     expect(onCreateTargetedProbe).toHaveBeenCalledWith("multimodal:conflict:1");
   });
@@ -892,51 +1265,51 @@ describe("ReportPanel", () => {
     );
 
     expect(screen.getByText("targeted_probe_guardrail/target_still_failing：")).toBeInTheDocument();
-    expect(screen.getByText("Stop condition：max_targeted_probe_depth_reached")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Human Handoff Requests" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Human handoff requests")).toHaveClass("action-console");
-    expect(screen.getByText("Handoff target：multimodal:conflict:1")).toBeInTheDocument();
-    expect(screen.getByText("Handoff priority：high")).toBeInTheDocument();
-    expect(screen.getByText("Handoff reason：max_targeted_probe_depth_reached")).toBeInTheDocument();
-    expect(screen.getByText("Handoff status：in_progress")).toBeInTheDocument();
-    expect(screen.getByText("Handoff actor：human-debugger")).toBeInTheDocument();
-    expect(screen.getByText("Handoff note：reviewing full probe chain")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Final Attributions" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Final attributions")).toHaveClass("evidence-spine");
-    expect(screen.getByText("Attribution target：multimodal:conflict:1")).toBeInTheDocument();
-    expect(screen.getByText("Attribution category：prompt_issue")).toBeInTheDocument();
-    expect(screen.getByText("Attribution status：resolved")).toBeInTheDocument();
-    expect(screen.getByText("Attribution actor：human-debugger")).toBeInTheDocument();
+    expect(screen.getByText("停止条件：max_targeted_probe_depth_reached")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "人工接管请求" })).toBeInTheDocument();
+    expect(screen.getByLabelText("人工接管请求")).toHaveClass("action-console");
+    expect(screen.getByText("接管目标：multimodal:conflict:1")).toBeInTheDocument();
+    expect(screen.getByText("接管优先级：high")).toBeInTheDocument();
+    expect(screen.getByText("接管理由：max_targeted_probe_depth_reached")).toBeInTheDocument();
+    expect(screen.getByText("接管状态：进行中")).toBeInTheDocument();
+    expect(screen.getByText("接管处理人：human-debugger")).toBeInTheDocument();
+    expect(screen.getByText("接管备注：reviewing full probe chain")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "最终归因" })).toBeInTheDocument();
+    expect(screen.getByLabelText("最终归因")).toHaveClass("evidence-spine");
+    expect(screen.getByText("归因目标：multimodal:conflict:1")).toBeInTheDocument();
+    expect(screen.getByText("归因类别：prompt_issue")).toBeInTheDocument();
+    expect(screen.getByText("归因状态：已解决")).toBeInTheDocument();
+    expect(screen.getByText("归因操作者：human-debugger")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Attribution recommendation：Update prompt instructions and rerun verification before assigning model capability blame."
+        "归因建议：Update prompt instructions and rerun verification before assigning model capability blame."
       )
     ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Final Attribution Verification Results" })).toBeInTheDocument();
-    expect(screen.getByText("Attribution verification target：multimodal:conflict:1")).toBeInTheDocument();
-    expect(screen.getByText("Attribution verification result：resolved")).toBeInTheDocument();
-    expect(screen.getByText("Attribution verification job：job-final-attribution-verify")).toBeInTheDocument();
-    expect(screen.getByText("Attribution verification success rate：100%")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Final Attribution Recovery Results" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Final attribution recovery results")).toHaveClass("evidence-spine");
-    expect(screen.getByText("Attribution recovery target：multimodal:conflict:1")).toBeInTheDocument();
-    expect(screen.getByText("Attribution recovery result：closed")).toBeInTheDocument();
-    expect(screen.getByText("Attribution recovery job：job-final-attribution-recovery")).toBeInTheDocument();
-    expect(screen.getByText("Attribution recovery success rate：100%")).toBeInTheDocument();
-    expect(screen.getByText("Handoff owner：human-debugger")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "最终归因验证结果" })).toBeInTheDocument();
+    expect(screen.getByText("归因验证目标：multimodal:conflict:1")).toBeInTheDocument();
+    expect(screen.getByText("归因验证结果：已解决")).toBeInTheDocument();
+    expect(screen.getByText("归因验证任务：job-final-attribution-verify")).toBeInTheDocument();
+    expect(screen.getByText("归因验证通过率：100%")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "最终归因恢复结果" })).toBeInTheDocument();
+    expect(screen.getByLabelText("最终归因恢复结果")).toHaveClass("evidence-spine");
+    expect(screen.getByText("归因恢复目标：multimodal:conflict:1")).toBeInTheDocument();
+    expect(screen.getByText("归因恢复结果：已关闭")).toBeInTheDocument();
+    expect(screen.getByText("归因恢复任务：job-final-attribution-recovery")).toBeInTheDocument();
+    expect(screen.getByText("归因恢复通过率：100%")).toBeInTheDocument();
+    expect(screen.getByText("建议负责人：human-debugger")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Handoff next action：Review the full targeted probe chain, inspect evidence artifacts, and decide whether to update prompt, evaluation assets, or model capability attribution."
+        "下一步动作：Review the full targeted probe chain, inspect evidence artifacts, and decide whether to update prompt, evaluation assets, or model capability attribution."
       )
     ).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Run targeted probe multimodal:conflict:1" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "运行定向深挖 multimodal:conflict:1" })).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Run final attribution follow-up multimodal:conflict:1" }));
+    await userEvent.click(screen.getByRole("button", { name: "运行最终归因跟进 multimodal:conflict:1" }));
     expect(onCreateFinalAttributionFollowUp).toHaveBeenCalledWith("multimodal:conflict:1");
-    await userEvent.click(screen.getByRole("button", { name: "Run final attribution recovery multimodal:conflict:1" }));
+    await userEvent.click(screen.getByRole("button", { name: "运行最终归因恢复 multimodal:conflict:1" }));
     expect(onCreateFinalAttributionRecovery).toHaveBeenCalledWith("multimodal:conflict:1");
 
-    await userEvent.click(screen.getByRole("button", { name: "Resolve handoff multimodal:conflict:1" }));
+    await userEvent.click(screen.getByRole("button", { name: "完成接管 multimodal:conflict:1" }));
 
     expect(onUpdateHumanHandoffStatus).toHaveBeenCalledWith("multimodal:conflict:1", "resolved");
   });
@@ -976,7 +1349,7 @@ describe("ReportPanel", () => {
 
     render(<ReportPanel report={report} onVerifyRecommendedAction={onVerifyRecommendedAction} />);
 
-    await userEvent.click(screen.getByRole("button", { name: "Verify recommended action 1" }));
+    await userEvent.click(screen.getByRole("button", { name: "验证建议操作 1" }));
 
     expect(onVerifyRecommendedAction).toHaveBeenCalledWith(0);
   });
@@ -1029,8 +1402,8 @@ describe("ReportPanel", () => {
       />
     );
 
-    expect(screen.getByText("Recommended Action Status Events")).toBeInTheDocument();
-    expect(screen.getByText("操作 1：accepted")).toBeInTheDocument();
+    expect(screen.getByText("建议操作状态事件")).toBeInTheDocument();
+    expect(screen.getByText("操作 1：已接受")).toBeInTheDocument();
     expect(screen.getByText("操作者：qa-reviewer")).toBeInTheDocument();
     expect(screen.getByText("备注：approved prompt update")).toBeInTheDocument();
     expect(screen.getByText("时间：2026-06-14T00:00:01+00:00")).toBeInTheDocument();
@@ -1096,11 +1469,11 @@ describe("ReportPanel", () => {
       />
     );
 
-    expect(screen.getByText("Recommended Action Verification Jobs")).toBeInTheDocument();
+    expect(screen.getByText("建议操作验证任务")).toBeInTheDocument();
     expect(screen.getByText("操作 1 验证任务：job-verify-1")).toBeInTheDocument();
     expect(screen.getByText("操作者：qa-reviewer")).toBeInTheDocument();
     expect(screen.getByText("备注：verify prompt fix")).toBeInTheDocument();
-    expect(screen.getByText("验证结果：resolved")).toBeInTheDocument();
+    expect(screen.getByText("验证结果：已解决")).toBeInTheDocument();
     expect(screen.getByText("验证通过率：100%｜原通过率：50%")).toBeInTheDocument();
     expect(screen.getByText("验证任务通过率 100%，高于原任务 50%，推荐操作可能已修复该问题。")).toBeInTheDocument();
   });
@@ -1174,34 +1547,34 @@ describe("ReportPanel", () => {
           writeback_status: "succeeded"
         }}
         autoDebugClosureMarkdown={
-          "# case-auto-closure 最终 Debug 报告\n\n## Evidence 明细\n\n| Job | Evidence | Step | Trial | Score | Delta | Raw Output 摘录 |\n"
+          "# case-auto-closure 最终 Debug 报告\n\n## 证据明细\n\n| 任务 | 证据 | 阶段 | 轮次 | 得分 | 缺失/偏差 | 模型原始输出摘录 |\n"
         }
         autoDebugClosureReportUrl="/api/artifacts/files/case-auto-closure-report.md"
       />
     );
 
-    await user.click(screen.getByRole("button", { name: "Run auto debug closure" }));
+    await user.click(screen.getByRole("button", { name: "运行自动闭环调试" }));
 
     expect(onRunAutoDebugClosure).toHaveBeenCalledTimes(1);
-    expect(screen.getByText("自动 Targeted Probe：job-probe-1")).toBeInTheDocument();
-    expect(screen.getByText("自动稳定性 Follow-up：job-stability-1")).toBeInTheDocument();
-    expect(screen.getByText("自动验证任务：job-verify-1")).toBeInTheDocument();
+    expect(screen.getByText("自动定向深挖任务：job-probe-1")).toBeInTheDocument();
+    expect(screen.getByText("自动稳定性跟进任务：job-stability-1")).toBeInTheDocument();
+    expect(screen.getByText("自动闭环验证任务：job-verify-1")).toBeInTheDocument();
     expect(screen.getByText("原始 badcase：原 badcase：0/1 通过，avg_score=0.0。")).toBeInTheDocument();
     expect(screen.getByText("Live 复测对比：Live 复测：4/5 通过，success_rate=80%。")).toBeInTheDocument();
     expect(screen.getByText("闭环判断：model_instability")).toBeInTheDocument();
     expect(screen.getByText("model_instability/high：Live rerun passed 4/5 trials.")).toBeInTheDocument();
-    expect(screen.getByText("Auto Closure Evidence Summaries")).toBeInTheDocument();
-    expect(screen.getByText("Targeted Probe Outcomes")).toBeInTheDocument();
+    expect(screen.getByText("自动闭环证据摘要")).toBeInTheDocument();
+    expect(screen.getByText("定向深挖结果")).toBeInTheDocument();
     expect(screen.getByText("video:segment:1/corrected_boundary：Clipped targeted probe cleared video:segment:1.")).toBeInTheDocument();
-    expect(screen.getByText("证据 job-auto-closure:baseline_replay:0 / baseline_replay / score=0")).toBeInTheDocument();
-    expect(screen.getByText("Delta：timestamp_end_out_of_range")).toBeInTheDocument();
+    expect(screen.getByText("证据 job-auto-closure:baseline_replay:0 / baseline_replay / 得分=0")).toBeInTheDocument();
+    expect(screen.getByText("缺失/偏差：timestamp_end_out_of_range")).toBeInTheDocument();
     expect(screen.getByText("原始输出：{\"video_action_segments\":[{\"start_s\":0.0,\"end_s\":34.0}]}")).toBeInTheDocument();
-    expect(screen.getByText("Auto Closure Markdown Report")).toBeInTheDocument();
+    expect(screen.getByText("自动闭环 Markdown 报告")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "打开自动闭环 Markdown 报告" })).toHaveAttribute(
       "href",
       "/api/artifacts/files/case-auto-closure-report.md"
     );
     expect(screen.getByText(/# case-auto-closure 最终 Debug 报告/)).toBeInTheDocument();
-    expect(screen.getByText(/## Evidence 明细/)).toBeInTheDocument();
+    expect(screen.getByText(/## 证据明细/)).toBeInTheDocument();
   });
 });

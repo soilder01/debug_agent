@@ -41,7 +41,7 @@ type MetricStripProps = {
   label?: string;
 };
 
-export function MetricStrip({ metrics, label = "Metrics" }: MetricStripProps) {
+export function MetricStrip({ metrics, label = "指标" }: MetricStripProps) {
   return (
     <dl className="metric-strip" aria-label={label}>
       {metrics.map((metric) => (
@@ -69,7 +69,7 @@ type ActionRowProps = {
   label?: string;
 };
 
-export function ActionRow({ children, label = "Actions" }: ActionRowProps) {
+export function ActionRow({ children, label = "操作" }: ActionRowProps) {
   return (
     <div className="action-row" aria-label={label}>
       {children}

@@ -1,0 +1,38 @@
+{
+  "case_id": "multimodal_image_text_alignment_001",
+  "task_type": "multimodal_detection",
+  "image_uri": "file:///fixtures/multimodal_image_text_alignment_001.png",
+  "prompt": "Compare the product image with the caption and return conflicts as JSON.",
+  "golden_answer": {
+    "answers": []
+  },
+  "expected_output": {
+    "conflicts": [
+      {
+        "target_id": "multimodal:conflict:1",
+        "conflict_type": "visual_text_conflict",
+        "modalities": ["image", "text"],
+        "expected": "caption describes a red mug matching the image",
+        "actual": "caption says blue bottle while the image shows a red mug",
+        "confidence": 0.95
+      }
+    ]
+  },
+  "output_schema": {
+    "type": "object",
+    "required": ["conflicts"]
+  },
+  "scoring_standard": "The conflict list must identify the mismatched visual object/color and cite both image and text modalities.",
+  "predictions": [
+    {
+      "trial": 0,
+      "raw_output": "{\"conflicts\":[]}",
+      "score": 0
+    }
+  ],
+  "avg_score": 0.0,
+  "human_notes": {
+    "debug_status": "fixture",
+    "root_cause": "Cross-modal comparison misses conflict between caption and image content."
+  }
+}

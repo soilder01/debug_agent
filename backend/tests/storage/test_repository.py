@@ -26,7 +26,7 @@ def make_case(case_id: str, box_region_count: int = 0) -> DebugCase:
         prompt="Read the answer.",
         golden_answer=AnswerSet(answers=[]),
         scoring_standard="exact match",
-        predictions=[Prediction(trial=0, raw_output="{\"answers\":[]}", score=1)],
+        predictions=[Prediction(trial=0, raw_output='{"answers":[]}', score=1)],
         avg_score=1.0,
         box_regions=[
             {
@@ -61,8 +61,8 @@ def test_storage_tables_can_be_created() -> None:
                 model_provider="fake",
                 model_id="fake",
                 score=0,
-                reasons_json="[\"box 1 mismatch\"]",
-                raw_output="{\"answers\":[]}",
+                reasons_json='["box 1 mismatch"]',
+                raw_output='{"answers":[]}',
             )
         )
         session.commit()
@@ -133,7 +133,11 @@ def test_repository_filters_and_counts_cases_with_regions_without_parsing_non_re
     repository = DebugJobRepository(session_factory)
     repository.save_case(make_case("case-with-region", box_region_count=1))
     with session_factory() as session:
-        session.add(DebugCaseRow(case_id="case-without-region", case_json="{not valid json", box_region_count=0))
+        session.add(
+            DebugCaseRow(
+                case_id="case-without-region", case_json="{not valid json", box_region_count=0
+            )
+        )
         session.commit()
 
     cases = repository.list_cases(has_regions=True)
@@ -159,7 +163,7 @@ def test_repository_tracks_job_state_and_evidence() -> None:
         response_parse_error="Expecting value: line 1 column 1 (char 0)",
         model_call_error_type="TimeoutError",
         model_call_error_message="model request timed out",
-        raw_output="{\"answers\":[]}",
+        raw_output='{"answers":[]}',
         judge=JudgeResult(
             score=0,
             reasons=["box 1 mismatch"],
@@ -192,7 +196,7 @@ def test_repository_tracks_job_state_and_evidence() -> None:
         assert row.model_provider == "ark"
         assert row.model_id == "ep-seed2-lite"
         assert row.request_summary_json == (
-            "{\"prompt_length\": 31, \"has_image\": true, \"image_uri_scheme\": \"tos\"}"
+            '{"prompt_length": 31, "has_image": true, "image_uri_scheme": "tos"}'
         )
         assert row.latency_ms == 42
         assert row.response_parse_error == "Expecting value: line 1 column 1 (char 0)"
@@ -216,7 +220,7 @@ def test_repository_tracks_job_state_and_evidence() -> None:
     assert restored.response_parse_error == "Expecting value: line 1 column 1 (char 0)"
     assert restored.model_call_error_type == "TimeoutError"
     assert restored.model_call_error_message == "model request timed out"
-    assert restored.raw_output == "{\"answers\":[]}"
+    assert restored.raw_output == '{"answers":[]}'
     assert restored.judge.score == 0
     assert restored.judge.reasons == ["box 1 mismatch"]
     assert restored.judge.scoring_standard == "box_id and student_answer must match exactly."
@@ -255,7 +259,7 @@ def test_repository_persists_evidence_image_artifacts() -> None:
                 },
             }
         ],
-        raw_output="{\"answers\":[]}",
+        raw_output='{"answers":[]}',
         judge=JudgeResult(score=0, reasons=["box 7 mismatch"]),
     )
 
@@ -309,7 +313,7 @@ def test_repository_persists_generic_evidence_artifacts() -> None:
                 "metadata": {"raw_output_length": 128},
             },
         ],
-        raw_output="{\"label\":\"negative\"}",
+        raw_output='{"label":"negative"}',
         judge=JudgeResult(score=0, reasons=["label mismatch"]),
     )
 
@@ -325,7 +329,10 @@ def test_repository_persists_generic_evidence_artifacts() -> None:
     restored = repository.get_evidence("job-1", "case-1:baseline:0")
 
     assert restored is not None
-    assert [artifact.kind for artifact in restored.artifacts] == ["input_snapshot", "structured_output"]
+    assert [artifact.kind for artifact in restored.artifacts] == [
+        "input_snapshot",
+        "structured_output",
+    ]
     assert restored.artifacts[0].metadata == {"task_type": "classification", "prompt_length": 42}
 
 
@@ -449,6 +456,68 @@ def test_repository_claims_created_job_once() -> None:
     assert second_claim is None
 
 
+def test_repository_claims_interactive_created_job_before_older_default_job() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    repository.create_batch(batch_id="old-default", total_jobs=1, retry_policy={})
+    repository.create_job(job_id="job-old", case_id="case-old", artifact_group_id="old-default")
+    repository.create_batch(
+        batch_id="interactive",
+        total_jobs=1,
+        retry_policy={"queue_priority": "interactive"},
+    )
+    repository.create_job(
+        job_id="job-interactive",
+        case_id="case-interactive",
+        artifact_group_id="interactive",
+    )
+
+    claimed = repository.claim_next_created_job()
+
+    assert claimed is not None
+    assert claimed.job_id == "job-interactive"
+
+
+def test_repository_claims_newer_interactive_job_before_stale_interactive_job() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    repository.create_batch(
+        batch_id="stale-interactive",
+        total_jobs=1,
+        retry_policy={"queue_priority": "interactive"},
+    )
+    repository.create_job(
+        job_id="job-stale",
+        case_id="case-stale",
+        artifact_group_id="stale-interactive",
+    )
+    repository.create_batch(
+        batch_id="fresh-interactive",
+        total_jobs=1,
+        retry_policy={"queue_priority": "interactive"},
+    )
+    repository.create_job(
+        job_id="job-fresh",
+        case_id="case-fresh",
+        artifact_group_id="fresh-interactive",
+    )
+    with session_factory() as session:
+        stale = session.get(DebugJobRow, "job-stale")
+        fresh = session.get(DebugJobRow, "job-fresh")
+        assert stale is not None
+        assert fresh is not None
+        stale.created_at = "2026-06-28T00:00:00+00:00"
+        fresh.created_at = "2026-06-29T00:00:00+00:00"
+        session.commit()
+
+    claimed = repository.claim_next_created_job()
+
+    assert claimed is not None
+    assert claimed.job_id == "job-fresh"
+
+
 def test_repository_releases_running_job_for_retry() -> None:
     session_factory, engine = create_sqlite_memory_session_factory()
     Base.metadata.create_all(engine)
@@ -479,7 +548,7 @@ def test_repository_keeps_same_evidence_ids_for_different_jobs() -> None:
         model_id="fake",
         request_summary={"prompt_length": 1, "has_image": False, "image_uri_scheme": ""},
         latency_ms=1,
-        raw_output="{\"answers\":[]}",
+        raw_output='{"answers":[]}',
         judge=JudgeResult(score=0, reasons=["box 1 mismatch"]),
     )
 
@@ -501,14 +570,14 @@ def test_repository_lists_evidence_objects_for_job() -> None:
             evidence_id="case-1:baseline:1",
             step_name="baseline",
             trial=1,
-            raw_output="{\"answers\":[]}",
+            raw_output='{"answers":[]}',
             judge=JudgeResult(score=1, reasons=[]),
         ),
         ExperimentEvidence(
             evidence_id="case-1:baseline:0",
             step_name="baseline",
             trial=0,
-            raw_output="{\"answers\":[]}",
+            raw_output='{"answers":[]}',
             judge=JudgeResult(score=0, reasons=["student_answer_mismatch"]),
         ),
     ]
@@ -534,7 +603,7 @@ def test_repository_counts_evidence_error_categories() -> None:
                 evidence_id="case-1:baseline:0",
                 step_name="baseline",
                 trial=0,
-                raw_output="{\"answers\":[]}",
+                raw_output='{"answers":[]}',
                 judge=JudgeResult(score=0, reasons=["student_answer_mismatch"]),
             ),
             ExperimentEvidence(
@@ -677,7 +746,7 @@ def test_database_schema_migrates_legacy_global_evidence_primary_key() -> None:
                 trial=0,
                 score=1,
                 reasons_json="[]",
-                raw_output="{\"answers\":[]}",
+                raw_output='{"answers":[]}',
             )
         )
         session.commit()
@@ -1125,4 +1194,6 @@ def test_database_schema_backfills_case_box_region_count_from_legacy_json() -> N
     repository = DebugJobRepository(session_factory)
 
     assert repository.count_cases(has_regions=True) == 1
-    assert [case.case_id for case in repository.list_cases(has_regions=True)] == ["case-with-regions"]
+    assert [case.case_id for case in repository.list_cases(has_regions=True)] == [
+        "case-with-regions"
+    ]

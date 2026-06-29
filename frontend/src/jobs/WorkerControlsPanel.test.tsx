@@ -25,13 +25,13 @@ describe("WorkerControlsPanel", () => {
 
     render(<WorkerControlsPanel status={makeStatus()} onStart={onStart} onStop={onStop} />);
 
-    expect(screen.getByRole("heading", { name: "Worker" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Worker" })).toHaveClass("worker-panel");
-    expect(screen.getByLabelText("Worker actions")).toHaveClass("action-row");
-    expect(screen.getByText("Worker running：true")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "后台进程" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "后台进程" })).toHaveClass("worker-panel");
+    expect(screen.getByLabelText("后台进程操作")).toHaveClass("action-row");
+    expect(screen.getByText("进程运行中：是")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Start worker" }));
-    await userEvent.click(screen.getByRole("button", { name: "Stop worker" }));
+    await userEvent.click(screen.getByRole("button", { name: "启动后台进程" }));
+    await userEvent.click(screen.getByRole("button", { name: "停止后台进程" }));
 
     expect(onStart).toHaveBeenCalledTimes(1);
     expect(onStop).toHaveBeenCalledTimes(1);
@@ -40,6 +40,6 @@ describe("WorkerControlsPanel", () => {
   it("hides worker status before it has loaded", () => {
     render(<WorkerControlsPanel status={null} onStart={vi.fn()} onStop={vi.fn()} />);
 
-    expect(screen.queryByText(/Worker running/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/进程运行中/)).not.toBeInTheDocument();
   });
 });

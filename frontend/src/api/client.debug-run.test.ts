@@ -1,12 +1,18 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-
 import {
+  describe,
+  expect,
+  it,
+  vi,
   createFinalAttributionRecoveryJob,
   createFinalAttributionVerificationJob,
   createRecommendedActionVerificationJob,
   createStrategyFollowUpJob,
   createTargetedProbeJob,
   fetchHumanHandoffStatuses,
+  fetchActionQueue,
+  fetchDebugRunView,
+  fetchDebugRunStages,
+  fetchEvidenceLedger,
   fetchRecommendedActionStatuses,
   fetchStrategyFollowUpJobs,
   fetchTargetedProbeJobs,
@@ -14,13 +20,110 @@ import {
   runAutoDebugClosureReport,
   updateHumanHandoffStatus,
   updateRecommendedActionStatus
-} from "./client";
+} from "./client.test.setup";
 
-afterEach(() => {
-  vi.restoreAllMocks();
-});
+describe("api client debug run actions", () => {
+  it("fetches DebugRunView for a job", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          job: {
+            job_id: "job-1",
+            case_id: "case-1",
+            status: "completed",
+            status_label: "已完成",
+            created_at: "2026-06-26T12:00:00Z",
+            updated_at: "2026-06-26T12:05:00Z"
+          },
+          summary: {
+            headline: "Debug 任务已完成",
+            current_phase: "auto_closure",
+            next_step: "确认报告后执行写回。",
+            evidence_count: 2,
+            agent_trace_count: 1
+          },
+          timeline: [],
+          agent_traces: [],
+          auto_closure: {
+            status: "completed",
+            status_label: "已完成",
+            summary: "auto closure completed",
+            stage_count: 1
+          },
+          writeback: {
+            status: "succeeded",
+            status_label: "成功",
+            row_id: "row-42",
+            report_url: "https://debug-agent.local/jobs/job-1/report",
+            error_message: "",
+            updated_at: "2026-06-26T12:06:00Z"
+          },
+          action_queue: { summary: { total: 0 }, items: [] }
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
 
-describe("api client recommended action status", () => {
+    const runView = await fetchDebugRunView("job-1");
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1/run-view");
+    expect(runView.summary.headline).toBe("Debug 任务已完成");
+    expect(runView.writeback.status).toBe("succeeded");
+  });
+
+
+  it("fetches action queue for a job", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          job_id: "job-1",
+          summary: {
+            total: 1,
+            pending: 0,
+            verifying: 1,
+            verified: 0,
+            needs_manual: 0
+          },
+          items: [
+            {
+              id: "recommended:0",
+              kind: "recommended_action",
+              title: "补充视频时间窗约束后重跑验证。",
+              detail: "在 prompt 中补充时间窗。",
+              priority: "P0",
+              state: "verifying",
+              state_label: "验证中",
+              source: "stability",
+              source_ref: "report.recommended_actions[0]",
+              owner: "case-owner",
+              status: "applied",
+              status_updated_at: "2026-06-26T12:00:00Z",
+              verification_job_id: "job-verify-1",
+              verification_result: "pending",
+              verification_summary: "推荐动作验证任务尚未完成。",
+              writeback_status: "not_requested",
+              writeback_row_id: "",
+              writeback_report_url: "",
+              evidence_ids: "e-1",
+              artifact_ids: "",
+              trace_refs: "",
+              available_operations: ["accept", "verify", "writeback", "manual_handoff"],
+              next_operation: "等待验证任务完成"
+            }
+          ]
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    const queue = await fetchActionQueue("job-1");
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1/action-queue");
+    expect(queue.items[0].state).toBe("verifying");
+    expect(queue.items[0].verification_job_id).toBe("job-verify-1");
+  });
+
+
   it("patches recommended action status with reviewer context", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(
@@ -55,6 +158,7 @@ describe("api client recommended action status", () => {
     expect(status.status).toBe("accepted");
     expect(status.action_index).toBe(2);
   });
+
 
   it("fetches recommended action status events", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
@@ -119,6 +223,7 @@ describe("api client recommended action status", () => {
     expect(response.verification_results[0].result).toBe("resolved");
   });
 
+
   it("creates recommended action verification jobs with reviewer context", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(
@@ -154,6 +259,7 @@ describe("api client recommended action status", () => {
     });
     expect(response.verification_job.job_id).toBe("job-verify-1");
   });
+
 
   it("creates strategy follow-up jobs with operator context", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
@@ -192,6 +298,7 @@ describe("api client recommended action status", () => {
     expect(response.follow_up_job.job_id).toBe("job-follow-up-1");
   });
 
+
   it("fetches strategy follow-up job lineage", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(
@@ -222,6 +329,7 @@ describe("api client recommended action status", () => {
     expect(response.follow_ups[0].follow_up_job_id).toBe("job-follow-up-1");
     expect(response.follow_ups[0].outcome).toBe("needs_escalation");
   });
+
 
   it("runs auto debug closure with writeback options", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
@@ -255,7 +363,8 @@ describe("api client recommended action status", () => {
       actor: "auto-debugger",
       note: "close loop",
       writeback: true,
-      report_url: "http://localhost:8000/jobs/job-1/report"
+      report_url: "http://localhost:8000/jobs/job-1/report",
+      submitControlledProbes: true
     });
 
     expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1/auto-closure", {
@@ -263,7 +372,8 @@ describe("api client recommended action status", () => {
         actor: "auto-debugger",
         note: "close loop",
         writeback: true,
-        report_url: "http://localhost:8000/jobs/job-1/report"
+        report_url: "http://localhost:8000/jobs/job-1/report",
+        submit_controlled_probes: true
       }),
       headers: { "Content-Type": "application/json" },
       method: "POST"
@@ -272,6 +382,7 @@ describe("api client recommended action status", () => {
     expect(response.badcase_live_comparison.decision).toBe("model_instability");
     expect(response.created_targeted_probe_jobs).toEqual(["job-probe-1"]);
   });
+
 
   it("runs auto debug closure report and returns markdown", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
@@ -293,7 +404,7 @@ describe("api client recommended action status", () => {
             },
             writeback_status: "succeeded"
           },
-          markdown: "# JSZN-131 最终 Debug 报告\n\n## Evidence 明细\n",
+          markdown: "# JSZN-131 最终 Debug 报告\n\n## 证据明细\n",
           report_artifact_url: "/api/artifacts/files/JSZN-131-auto-closure-report.md"
         }),
         { status: 202, headers: { "Content-Type": "application/json" } }
@@ -304,7 +415,8 @@ describe("api client recommended action status", () => {
       actor: "auto-debugger",
       note: "close loop with markdown",
       writeback: true,
-      report_url: "http://localhost:8000/jobs/job-1/report"
+      report_url: "http://localhost:8000/jobs/job-1/report",
+      submitControlledProbes: true
     });
 
     expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1/auto-closure/report", {
@@ -312,7 +424,8 @@ describe("api client recommended action status", () => {
         actor: "auto-debugger",
         note: "close loop with markdown",
         writeback: true,
-        report_url: "http://localhost:8000/jobs/job-1/report"
+        report_url: "http://localhost:8000/jobs/job-1/report",
+        submit_controlled_probes: true
       }),
       headers: { "Content-Type": "application/json" },
       method: "POST"
@@ -321,6 +434,69 @@ describe("api client recommended action status", () => {
     expect(response.markdown).toContain("最终 Debug 报告");
     expect(response.report_artifact_url).toBe("/api/artifacts/files/JSZN-131-auto-closure-report.md");
   });
+
+
+  it("fetches debug run stage state machine", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          stages: [
+            {
+              job_id: "job-1",
+              stage: "baseline",
+              status: "completed",
+              input: { baseline_trials: 5 },
+              output: { job_status: "completed" },
+              failure_reason: "",
+              retryable: false,
+              attempt_count: 1,
+              created_at: "2026-06-17T00:00:00+00:00",
+              updated_at: "2026-06-17T00:00:01+00:00"
+            }
+          ]
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    const response = await fetchDebugRunStages("job-1");
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1/run-stages");
+    expect(response.stages[0].stage).toBe("baseline");
+    expect(response.stages[0].output.job_status).toBe("completed");
+  });
+
+
+  it("fetches unified evidence ledger records", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          records: [
+            {
+              job_id: "job-1",
+              evidence_id: "job-1:baseline:0",
+              step_name: "baseline_replay",
+              prompt: { prompt_length: 128 },
+              enhanced_constraints: { target_id: "video:segment:1" },
+              raw_output: "{\"video_action_segments\":[]}",
+              parsed_result: { response_parse_error: "" },
+              judge_version: "debug-agent-judge-v1",
+              score_delta: { score: 0, reasons: ["timestamp_end_out_of_range"], deltas: [] },
+              artifact_links: [{ artifact_id: "raw-output", uri: "/api/artifacts/files/raw.txt" }]
+            }
+          ]
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    const response = await fetchEvidenceLedger("job-1");
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1/evidence-ledger");
+    expect(response.records[0].judge_version).toBe("debug-agent-judge-v1");
+    expect(response.records[0].artifact_links[0].artifact_id).toBe("raw-output");
+  });
+
 
   it("creates targeted probe jobs with operator context", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
@@ -359,6 +535,7 @@ describe("api client recommended action status", () => {
     expect(response.probe_job.job_id).toBe("job-targeted-probe-1");
   });
 
+
   it("fetches targeted probe job history with outcomes", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(
@@ -389,6 +566,7 @@ describe("api client recommended action status", () => {
     expect(response.probes[0].probe_job_id).toBe("job-targeted-probe-1");
     expect(response.probes[0].outcome).toBe("target_still_failing");
   });
+
 
   it("patches human handoff status with reviewer context", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
@@ -425,6 +603,7 @@ describe("api client recommended action status", () => {
     expect(status.target_id).toBe("multimodal:conflict:1");
   });
 
+
   it("fetches human handoff statuses", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(
@@ -450,6 +629,7 @@ describe("api client recommended action status", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/jobs/job-1/human-handoffs/statuses");
     expect(response.statuses[0].status).toBe("resolved");
   });
+
 
   it("creates final attribution verification jobs with operator context", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
@@ -490,6 +670,7 @@ describe("api client recommended action status", () => {
     );
     expect(response.follow_up_job_id).toBe("job-final-verify-1");
   });
+
 
   it("creates final attribution recovery jobs with operator context", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(

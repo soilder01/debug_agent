@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.pytest-cache/
 .mypy_cache/
 .ruff_cache/
 .venv/
@@ -22,6 +23,36 @@ coverage/
 .env.*
 !.env.example
 /artifacts/
+/backend/artifacts/
+.tmp/
+dogfood-output/
+
+# Local agent workspace / generated operational notes
+.trae/
+docs/operations/generated-*.md
+docs/operations/codebase-cleanup-*.md
+docs/operations/*implementation-log.md
+docs/operations/*dogfood*.md
+docs/operations/*debug-chain*.md
+docs/operations/*refactor-plan.md
+docs/operations/*integration-plan.md
+docs/operations/*inventory.md
+docs/operations/*audit.md
+docs/operations/*roadmap.md
+docs/superpowers/plans/
+
+# Local-only cleanup/smoke scripts
+scripts/case_intake_red_light.py
+scripts/cleanup_xiaod_dirty_state.py
+scripts/codebase_inventory.py
+scripts/find_unused_candidates.py
+scripts/round4_performance_smoke.py
+scripts/run_jszn096_bounded_loop_dogfood.py
+scripts/xiaod_bot_e2e_smoke.py
+scripts/xiaod_debug_chain_monitor.py
+backend/tests/test_codebase_cleanup_scripts.py
+backend/tests/scripts/test_xiaod_monitor.py
+backend/tests/scripts/test_xiaod_smoke.py
 
 # IDE / OS
 .vscode/

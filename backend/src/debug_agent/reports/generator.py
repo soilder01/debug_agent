@@ -1,66 +1,44 @@
-from pydantic import BaseModel, Field
-
 from debug_agent.cases.models import DebugCase
 from debug_agent.experiments.planner import (
     ExperimentPlan,
-    plan_experiments,
-    plan_strategy_follow_up_experiments,
-    plan_targeted_probe_experiments,
-    plan_verification_follow_up_experiments,
 )
 from debug_agent.experiments.runner import ExperimentEvidence, ExperimentRunResult
+from debug_agent.reports.agent_traces import build_model_runner_agent_traces
+from debug_agent.reports.followups import (
+    _build_debug_strategy,
+    _build_follow_up_experiments,
+    _build_strategy_follow_up_experiments,
+    _build_targeted_probe_follow_up_experiments,
+)
+from debug_agent.reports.citations import (
+    _artifact_ids_from_run_result,
+    _box_id_from_delta,
+    _build_evidence_citations,
+    _citation_context,
+    with_citations,
+)
+from debug_agent.reports.recommended_actions import build_recommended_actions
+from debug_agent.reports.root_cause_trace import (
+    _build_root_cause_trace,
+    _target_ids_from_evidence,
+)
+from debug_agent.reports.schemas import (
+    AgentTrace,
+    DebugReport,
+    ExperimentSummary,
+    ObservedFailure,
+    RootCause,
+)
 from debug_agent.reports.taxonomy import taxonomy_for_task_type
 
-
-class ObservedFailure(BaseModel):
-    type: str
-    summary: str
-    affected_box_ids: list[int]
-
-
-class RootCause(BaseModel):
-    label: str
-    confidence: str
-    evidence_summary: str
-
-
-class ExperimentSummary(BaseModel):
-    total_trials: int
-    success_count: int
-    failed_trial_count: int = 0
-    success_rate: float = 0.0
-    stability_label: str = "not_run"
-    evidence_ids: list[str]
-    artifact_ids: list[str] = Field(default_factory=list)
-    artifact_evidence_links: list[dict[str, str]] = Field(default_factory=list)
-    image_artifact_ids: list[str]
-    step_summaries: list[dict[str, object]] = Field(default_factory=list)
-
-
-class DebugReport(BaseModel):
-    job_id: str | None = None
-    case_id: str
-    status: str
-    observed_failure: ObservedFailure
-    planned_experiments: list[str]
-    experiment_summary: ExperimentSummary | None = None
-    root_cause: RootCause
-    evidence_citations: list[dict[str, object]] = Field(default_factory=list)
-    root_cause_trace: list[dict[str, object]] = Field(default_factory=list)
-    recommended_actions: list[dict[str, str]] = Field(default_factory=list)
-    verification_results: list[dict[str, object]] = Field(default_factory=list)
-    evaluation_asset_diagnostics: list[dict[str, str]] = Field(default_factory=list)
-    follow_up_experiments: list[dict[str, str]] = Field(default_factory=list)
-    strategy_follow_up_results: list[dict[str, object]] = Field(default_factory=list)
-    targeted_probe_results: list[dict[str, object]] = Field(default_factory=list)
-    human_handoff_requests: list[dict[str, str]] = Field(default_factory=list)
-    human_handoff_statuses: list[dict[str, str]] = Field(default_factory=list)
-    final_attributions: list[dict[str, str]] = Field(default_factory=list)
-    final_attribution_verification_results: list[dict[str, object]] = Field(default_factory=list)
-    final_attribution_recovery_results: list[dict[str, object]] = Field(default_factory=list)
-    confidence_reasons: list[dict[str, str]] = Field(default_factory=list)
-    debug_strategy: list[dict[str, str]] = Field(default_factory=list)
-    suggested_sheet_fields: dict[str, str]
+__all__ = [
+    "AgentTrace",
+    "DebugReport",
+    "ExperimentSummary",
+    "ObservedFailure",
+    "RootCause",
+    "generate_initial_report",
+]
 
 
 def generate_initial_report(
@@ -78,7 +56,9 @@ def generate_initial_report(
             success_count=run_result.success_count,
             failed_trial_count=failed_trial_count,
             success_rate=_success_rate(run_result.success_count, run_result.total_trials),
-            stability_label=_stability_label(run_result.success_count, failed_trial_count, run_result.total_trials),
+            stability_label=_stability_label(
+                run_result.success_count, failed_trial_count, run_result.total_trials
+            ),
             evidence_ids=[evidence.evidence_id for evidence in run_result.evidence],
             artifact_ids=[
                 artifact.artifact_id
@@ -93,7 +73,9 @@ def generate_initial_report(
             ],
             step_summaries=_build_step_summaries(run_result.evidence),
         )
-    observed_failure, root_cause, suggested_sheet_fields = _infer_report_findings(case=case, run_result=run_result)
+    observed_failure, root_cause, suggested_sheet_fields = _infer_report_findings(
+        case=case, run_result=run_result
+    )
     root_cause_trace = _build_root_cause_trace(run_result)
     citation_context = _citation_context(run_result=run_result, root_cause_trace=root_cause_trace)
     debug_strategy = _build_debug_strategy(root_cause=root_cause, citation_context=citation_context)
@@ -107,7 +89,9 @@ def generate_initial_report(
         root_cause=root_cause,
         evidence_citations=_build_evidence_citations(run_result),
         root_cause_trace=root_cause_trace,
-        recommended_actions=_build_recommended_actions(root_cause, citation_context=citation_context),
+        recommended_actions=build_recommended_actions(
+            root_cause, citation_context=citation_context
+        ),
         verification_results=verification_results or [],
         evaluation_asset_diagnostics=_build_evaluation_asset_diagnostics(
             case=case,
@@ -117,7 +101,9 @@ def generate_initial_report(
         follow_up_experiments=[
             *_build_follow_up_experiments(case, verification_results or []),
             *_build_strategy_follow_up_experiments(case=case, debug_strategy=debug_strategy),
-            *_build_targeted_probe_follow_up_experiments(case=case, root_cause_trace=root_cause_trace),
+            *_build_targeted_probe_follow_up_experiments(
+                case=case, root_cause_trace=root_cause_trace
+            ),
         ],
         confidence_reasons=_build_confidence_reasons(
             run_result=run_result,
@@ -126,6 +112,7 @@ def generate_initial_report(
             citation_context=citation_context,
         ),
         debug_strategy=debug_strategy,
+        agent_traces=build_model_runner_agent_traces(run_result),
         suggested_sheet_fields=suggested_sheet_fields,
     )
 
@@ -162,9 +149,13 @@ def _build_artifact_evidence_links(evidence: list[ExperimentEvidence]) -> list[d
     links: list[dict[str, str]] = []
     for item in evidence:
         for evidence_artifact in item.artifacts:
-            links.append({"artifact_id": evidence_artifact.artifact_id, "evidence_id": item.evidence_id})
+            links.append(
+                {"artifact_id": evidence_artifact.artifact_id, "evidence_id": item.evidence_id}
+            )
         for image_artifact in item.image_artifacts:
-            links.append({"artifact_id": image_artifact.artifact_id, "evidence_id": item.evidence_id})
+            links.append(
+                {"artifact_id": image_artifact.artifact_id, "evidence_id": item.evidence_id}
+            )
     return links
 
 
@@ -181,11 +172,7 @@ def _build_step_summary(step_name: str, evidence: list[ExperimentEvidence]) -> d
         "delta_reasons": _step_delta_reasons(evidence),
         "target_ids": _step_target_ids(evidence),
         "evidence_ids": [item.evidence_id for item in evidence],
-        "artifact_ids": [
-            artifact.artifact_id
-            for item in evidence
-            for artifact in item.artifacts
-        ],
+        "artifact_ids": [artifact.artifact_id for item in evidence for artifact in item.artifacts],
     }
     ablation_variants = _step_request_summary_strings(evidence, "ablation_variant")
     ablation_modalities = _step_request_summary_string_items(evidence, "ablation_modalities")
@@ -194,353 +181,6 @@ def _build_step_summary(step_name: str, evidence: list[ExperimentEvidence]) -> d
     if ablation_modalities:
         summary["ablation_modalities"] = ablation_modalities
     return summary
-
-
-def _build_root_cause_trace(run_result: ExperimentRunResult | None) -> list[dict[str, object]]:
-    if run_result is None:
-        return []
-    trace: list[dict[str, object]] = []
-    for item in run_result.evidence:
-        variant = _string_from_request_summary(item.request_summary.get("ablation_variant"))
-        if variant:
-            trace.append(_root_cause_trace_item(item=item, variant=variant))
-        elif _has_timestamp_delta(item):
-            trace.append(_root_cause_trace_item(item=item, variant="video_timestamp"))
-    return trace
-
-
-def _has_timestamp_delta(item: ExperimentEvidence) -> bool:
-    return any(str(delta.get("reason", "")).startswith("timestamp_") for delta in item.judge.deltas)
-
-
-def _root_cause_trace_item(item: ExperimentEvidence, variant: str) -> dict[str, object]:
-    modalities = _string_list_from_request_summary(item.request_summary.get("ablation_modalities"))
-    delta_reasons = _delta_reasons_from_evidence(item)
-    target_ids = _target_ids_from_evidence(item)
-    return {
-        "step_name": item.step_name,
-        "variant": variant,
-        "modalities": modalities,
-        "evidence_id": item.evidence_id,
-        "judge_score": item.judge.score,
-        "delta_reasons": delta_reasons,
-        "target_ids": target_ids,
-        "artifact_ids": [artifact.artifact_id for artifact in item.artifacts],
-        "hypothesis": _trace_hypothesis(variant),
-        "observation": _trace_observation(
-            step_name=item.step_name,
-            variant=variant,
-            judge_score=item.judge.score,
-            delta_reasons=delta_reasons,
-            target_ids=target_ids,
-        ),
-        "conclusion": _trace_conclusion(variant=variant, judge_score=item.judge.score),
-        "next_probe": _trace_next_probe(target_ids=target_ids, modalities=modalities),
-    }
-
-
-def _trace_hypothesis(variant: str) -> str:
-    if variant == "video_timestamp":
-        return "检查视频动作分段的 start_s/end_s 是否满足评分时间窗和连续性规则。"
-    if variant == "cross_modal_compare":
-        return "检查 cross_modal_compare 是否暴露跨模态对齐或融合问题。"
-    return f"检查 {variant} 是否暴露该实验变体覆盖的能力问题。"
-
-
-def _trace_observation(
-    *,
-    step_name: str,
-    variant: str,
-    judge_score: int,
-    delta_reasons: list[str],
-    target_ids: list[str],
-) -> str:
-    delta_summary = ", ".join(delta_reasons) if delta_reasons else "无"
-    target_summary = ", ".join(target_ids) if target_ids else "无"
-    return f"{step_name}/{variant} judge_score={judge_score}，delta={delta_summary}，target={target_summary}。"
-
-
-def _trace_conclusion(*, variant: str, judge_score: int) -> str:
-    outcome = "失败" if judge_score == 0 else "通过"
-    if variant == "video_timestamp":
-        return f"video_timestamp {outcome}，当前证据支持围绕视频时间边界定位继续归因。"
-    return f"{variant} {outcome}，当前证据支持继续定位该变体覆盖的能力链路。"
-
-
-def _trace_next_probe(*, target_ids: list[str], modalities: list[str]) -> str:
-    target_summary = ", ".join(target_ids) if target_ids else "当前目标"
-    if modalities:
-        modality_summary = "/".join(modalities)
-        return f"围绕 {target_summary} 执行 targeted evidence replay，并对比 {modality_summary} 单模态结果。"
-    return f"围绕 {target_summary} 执行 targeted evidence replay，并补充对照实验。"
-
-
-def _build_recommended_actions(
-    root_cause: RootCause,
-    *,
-    citation_context: dict[str, str],
-) -> list[dict[str, str]]:
-    if root_cause.label == "scoring_standard_issue":
-        return _with_citations(
-            {
-                "category": "evaluation_asset",
-                "priority": "high",
-                "status": "pending",
-                "summary": "补齐评分标准。",
-                "detail": "补充 exact match、可接受别字/格式、box_id 对齐等评分规则，避免 0/1 结论不可审计。",
-            },
-            citation_context,
-        )
-    if root_cause.label == "golden_answer_issue":
-        return _with_citations(
-            {
-                "category": "evaluation_asset",
-                "priority": "high",
-                "status": "pending",
-                "summary": "补齐标答。",
-                "detail": "补充至少一个可评分目标、区域或结构化字段，并确保 golden answer 与样本输入一致。",
-            },
-            citation_context,
-        )
-    if root_cause.label == "expected_output_issue":
-        return _with_citations(
-            {
-                "category": "evaluation_asset",
-                "priority": "high",
-                "status": "pending",
-                "summary": "补齐通用任务 expected_output。",
-                "detail": "补充 task-native expected_output_json，明确分类、检测、视频片段或多模态冲突的期望结构。",
-            },
-            citation_context,
-        )
-    if root_cause.label == "prompt_schema_issue":
-        return _with_citations(
-            {
-                "category": "prompt",
-                "priority": "high",
-                "status": "pending",
-                "summary": "明确结构化输出 schema。",
-                "detail": "要求模型只输出可解析 JSON，并声明关键字段、类型和禁止额外文本。",
-            },
-            citation_context,
-        )
-    if root_cause.label == "video_timestamp_boundary_error":
-        return _with_citations([
-            {
-                "category": "prompt",
-                "priority": "high",
-                "status": "pending",
-                "summary": "补强视频时序边界定位。",
-                "detail": "要求模型先逐段确认动作开始、结束事件和目标物释放/离开时刻，再输出 video_action_segments JSON。",
-            },
-            {
-                "category": "evaluation_asset",
-                "priority": "medium",
-                "status": "pending",
-                "summary": "复核 timestamp grids 与子任务标签一致性。",
-                "detail": "检查 check_timestamp 的 range/continue 规则是否与参考答案、prompt 子任务数量和动作定义严格对齐。",
-            },
-            {
-                "category": "model_capability",
-                "priority": "high",
-                "status": "pending",
-                "summary": "加入视频时序边界回归集。",
-                "detail": "将该样本纳入 temporal boundary regression，重点监控 end_s 是否持续落在期望窗口内。",
-            },
-        ], citation_context)
-    if root_cause.label == "single_modality_capability_gap":
-        modality = _modality_from_root_cause_summary(root_cause.evidence_summary)
-        return _with_citations([
-            {
-                "category": "prompt",
-                "priority": "high",
-                "status": "pending",
-                "summary": f"强化 {modality} 模态定位与证据引用要求。",
-                "detail": f"在 prompt 中要求模型先列出 {modality} 证据、目标区域或关键帧，再输出最终结构化结论。",
-            },
-            {
-                "category": "evaluation_asset",
-                "priority": "medium",
-                "status": "pending",
-                "summary": f"补充 {modality} 单模态 golden evidence。",
-                "detail": f"为失败样本补充 {modality}-only 期望证据、区域/关键帧标注或可接受视觉解释，避免跨模态结论缺少单模态审计依据。",
-            },
-            {
-                "category": "model_capability",
-                "priority": "high",
-                "status": "pending",
-                "summary": f"将 {modality} 感知能力短板纳入模型能力归因。",
-                "detail": f"单模态 ablation 已失败，优先归因 {modality} 感知/定位/grounding 能力，而不是跨模态融合。",
-            },
-        ], citation_context)
-    if root_cause.label == "cross_modal_alignment_failure":
-        return _with_citations([
-            {
-                "category": "prompt",
-                "priority": "high",
-                "status": "pending",
-                "summary": "强化跨模态对比步骤。",
-                "detail": "要求模型先分别列出 image/text 证据，再输出冲突结论。",
-            },
-            {
-                "category": "evaluation_asset",
-                "priority": "medium",
-                "status": "pending",
-                "summary": "补充跨模态冲突 golden evidence。",
-                "detail": "为样本补充各模态独立证据和最终冲突标注，便于判断融合错误还是标注问题。",
-            },
-            {
-                "category": "model_capability",
-                "priority": "high",
-                "status": "pending",
-                "summary": "将跨模态融合短板纳入模型能力归因。",
-                "detail": "单模态通过但跨模态失败，优先检查 fusion/alignment 能力。",
-            },
-        ], citation_context)
-    return []
-
-
-def _with_citations(
-    items: dict[str, str] | list[dict[str, str]],
-    citation_context: dict[str, str],
-) -> list[dict[str, str]]:
-    normalized_items = [items] if isinstance(items, dict) else items
-    return [{**item, **citation_context} for item in normalized_items]
-
-
-def _build_debug_strategy(
-    *,
-    root_cause: RootCause,
-    citation_context: dict[str, str],
-) -> list[dict[str, str]]:
-    if root_cause.label == "cross_modal_alignment_failure":
-        return [
-            {
-                "stage": "evidence_audit",
-                "objective": "确认当前 root cause 是否有足够 evidence/artifact 支撑。",
-                "trigger": "root_cause=cross_modal_alignment_failure",
-                "planned_probe": (
-                    f"复查 {citation_context['evidence_ids']} 和关联产物，确认失败目标与 delta 是否一致。"
-                ),
-                "stop_condition": "关键 target、delta reason、artifact citation 能共同解释当前失败。",
-                "escalation": "如果证据链不完整，先补充 targeted evidence replay，而不是直接归因模型能力。",
-            },
-            {
-                "stage": "ablation_expansion",
-                "objective": "验证跨模态失败是否稳定复现，且不是单模态感知失败。",
-                "trigger": f"trace_refs={citation_context['trace_refs']}",
-                "planned_probe": "对比 image/text 单模态结果与 cross_modal_compare 结果，必要时加入 conflict_grounding_check。",
-                "stop_condition": "单模态通过且 cross-modal probe 失败时，确认跨模态对齐/融合链路为主因。",
-                "escalation": "如果单模态也失败，切换到 single_modality_capability_gap 策略。",
-            },
-            {
-                "stage": "verification_gate",
-                "objective": "验证推荐操作是否真正改善 badcase，而非只改善报告描述。",
-                "trigger": "recommended_actions_present",
-                "planned_probe": "将 applied 推荐操作提交 verification job，并比较 source/verification success rate。",
-                "stop_condition": "verification result 为 resolved，且未出现 regressed。",
-                "escalation": "若 verification 为 not_resolved/regressed，自动生成 follow-up probing plan。",
-            },
-        ]
-    if root_cause.label in {"single_modality_capability_gap", "prompt_schema_issue", "scoring_standard_issue"}:
-        return [
-            {
-                "stage": "evidence_audit",
-                "objective": "确认当前诊断是否有足够 evidence 或评测资产信号支撑。",
-                "trigger": f"root_cause={root_cause.label}",
-                "planned_probe": f"复查 {citation_context['evidence_ids'] or '当前样本'}，确认诊断信号是否可复现。",
-                "stop_condition": "证据链、评测资产诊断和推荐操作能够互相印证。",
-                "escalation": "如果证据不足，优先补充 targeted replay 或人工标注核验。",
-            }
-        ]
-    return []
-
-
-def _build_follow_up_experiments(
-    case: DebugCase,
-    verification_results: list[dict[str, object]],
-) -> list[dict[str, str]]:
-    follow_ups: list[dict[str, str]] = []
-    for verification_result in verification_results:
-        result = verification_result.get("result")
-        verification_job_id = verification_result.get("verification_job_id")
-        if result not in {"not_resolved", "regressed"} or not isinstance(verification_job_id, str):
-            continue
-        follow_up_plan = plan_verification_follow_up_experiments(case, verification_result)
-        planned_steps = ", ".join(step.name for step in follow_up_plan.steps)
-        follow_ups.append(
-            {
-                "source": "verification_result",
-                "verification_job_id": verification_job_id,
-                "result": str(result),
-                "planned_steps": planned_steps,
-                "summary": (
-                    f"验证任务 {verification_job_id} 结果为 {result}，"
-                    f"建议执行 {len(follow_up_plan.steps)} 个后续 probing 步骤。"
-                ),
-            }
-        )
-    return follow_ups
-
-
-def _build_strategy_follow_up_experiments(
-    *,
-    case: DebugCase,
-    debug_strategy: list[dict[str, str]],
-) -> list[dict[str, str]]:
-    base_step_names = {step.name for step in plan_experiments(case).steps}
-    strategy_plan = plan_strategy_follow_up_experiments(case, debug_strategy)
-    follow_up_steps = [step for step in strategy_plan.steps if step.name not in base_step_names]
-    return [
-        {
-            "source": "debug_strategy",
-            "stage": stage,
-            "planned_steps": step.name,
-            "summary": f"策略阶段 {stage} 已转为 follow-up experiment：{step.name}。",
-        }
-        for step in follow_up_steps
-        if (stage := step.name.removeprefix("strategy_").removesuffix("_probe"))
-    ]
-
-
-def _build_targeted_probe_follow_up_experiments(
-    *,
-    case: DebugCase,
-    root_cause_trace: list[dict[str, object]],
-) -> list[dict[str, str]]:
-    base_step_names = {step.name for step in plan_experiments(case).steps}
-    targeted_plan = plan_targeted_probe_experiments(case, root_cause_trace)
-    targeted_steps = [step for step in targeted_plan.steps if step.name not in base_step_names]
-    targeted_step_names = {step.name for step in targeted_steps}
-    target_ids: list[str] = []
-    for trace in root_cause_trace:
-        trace_target_ids = trace.get("target_ids")
-        if not isinstance(trace_target_ids, list):
-            continue
-        target_ids.extend(
-            target_id
-            for target_id in trace_target_ids
-            if isinstance(target_id, str) and _targeted_step_name(target_id) in targeted_step_names
-        )
-    return [
-        {
-            "source": "targeted_probe",
-            "target_id": target_id,
-            "planned_steps": step.name,
-            "summary": f"围绕目标 {target_id} 生成 targeted probing：{step.name}。",
-        }
-        for target_id, step in zip(target_ids, targeted_steps, strict=False)
-    ]
-
-
-def _targeted_step_name(target_id: str) -> str:
-    if target_id.startswith("image:region:"):
-        return "targeted_image_region_probe"
-    if target_id.startswith("video:segment:"):
-        return "targeted_video_segment_probe"
-    if target_id.startswith("multimodal:conflict:"):
-        return "targeted_multimodal_conflict_probe"
-    return ""
 
 
 def _build_confidence_reasons(
@@ -582,10 +222,12 @@ def _build_confidence_reasons(
         )
     verification_reason = _verification_confidence_reason(verification_results)
     reasons.append(verification_reason)
-    return _with_citations(reasons, citation_context)
+    return with_citations(reasons, citation_context)
 
 
-def _verification_confidence_reason(verification_results: list[dict[str, object]]) -> dict[str, str]:
+def _verification_confidence_reason(
+    verification_results: list[dict[str, object]],
+) -> dict[str, str]:
     result_values = {
         str(result.get("result"))
         for result in verification_results
@@ -616,62 +258,6 @@ def _verification_confidence_reason(verification_results: list[dict[str, object]
     }
 
 
-def _modality_from_root_cause_summary(summary: str) -> str:
-    for modality in ["image", "text", "video", "audio"]:
-        if modality in summary:
-            return modality
-    return "target"
-
-
-def _delta_reasons_from_evidence(evidence: ExperimentEvidence) -> list[str]:
-    return sorted(
-        {
-            str(delta["reason"])
-            for delta in evidence.judge.deltas
-            if isinstance(delta.get("reason"), str) and str(delta.get("reason")).strip()
-        }
-    )
-
-
-def _target_ids_from_evidence(evidence: ExperimentEvidence) -> list[str]:
-    return sorted(
-        {
-            str(delta["target_id"])
-            for delta in evidence.judge.deltas
-            if isinstance(delta.get("target_id"), str) and str(delta.get("target_id")).strip()
-        }
-        | {
-            token
-            for reason in evidence.judge.reasons
-            for token in _target_id_tokens_from_reason(reason)
-        }
-    )
-
-
-def _target_id_tokens_from_reason(reason: str) -> set[str]:
-    return {
-        token.strip(".,;，；。()[]{}")
-        for token in reason.split()
-        if _looks_like_target_id(token.strip(".,;，；。()[]{}"))
-    }
-
-
-def _looks_like_target_id(value: str) -> bool:
-    return value.startswith(("image:region:", "video:segment:", "multimodal:conflict:", "box:"))
-
-
-def _string_from_request_summary(value: object) -> str:
-    return value if isinstance(value, str) and value.strip() else ""
-
-
-def _string_list_from_request_summary(value: object) -> list[str]:
-    if isinstance(value, str) and value.strip():
-        return [value]
-    if isinstance(value, list):
-        return [item for item in value if isinstance(item, str) and item.strip()]
-    return []
-
-
 def _step_delta_reasons(evidence: list[ExperimentEvidence]) -> list[str]:
     return sorted(
         {
@@ -683,7 +269,9 @@ def _step_delta_reasons(evidence: list[ExperimentEvidence]) -> list[str]:
     )
 
 
-def _ablation_alignment_issue(run_result: ExperimentRunResult) -> tuple[ObservedFailure, RootCause, dict[str, str]] | None:
+def _ablation_alignment_issue(
+    run_result: ExperimentRunResult,
+) -> tuple[ObservedFailure, RootCause, dict[str, str]] | None:
     passed_variants = _ablation_variants_by_score(run_result.evidence, score=1)
     failed_variants = _ablation_variants_by_score(run_result.evidence, score=0)
     failed_single_variants = [
@@ -694,7 +282,9 @@ def _ablation_alignment_issue(run_result: ExperimentRunResult) -> tuple[Observed
     if failed_single_variants:
         variant_summary = ", ".join(failed_single_variants)
         modality_summary = ", ".join(_modalities_from_ablation_variants(failed_single_variants))
-        conclusion = f"单模态变体 {variant_summary} 失败，优先检查 {modality_summary} 模态感知能力。"
+        conclusion = (
+            f"单模态变体 {variant_summary} 失败，优先检查 {modality_summary} 模态感知能力。"
+        )
         return (
             ObservedFailure(
                 type="single_modality_capability_gap",
@@ -762,11 +352,7 @@ def _modalities_from_ablation_variants(variants: list[str]) -> list[str]:
         "video_only": "video",
         "audio_only": "audio",
     }
-    return [
-        modality
-        for variant in variants
-        if (modality := modality_by_variant.get(variant))
-    ]
+    return [modality for variant in variants if (modality := modality_by_variant.get(variant))]
 
 
 def _ablation_variants_by_score(evidence: list[ExperimentEvidence], *, score: int) -> list[str]:
@@ -821,6 +407,13 @@ def _infer_report_findings(
     if run_result is not None:
         runtime_error = _first_runtime_error(run_result.evidence)
         if runtime_error is not None:
+            existing_badcase_report = _existing_lark_badcase_report_from_runtime_error(
+                case=case,
+                run_result=run_result,
+                runtime_error=runtime_error,
+            )
+            if existing_badcase_report is not None:
+                return existing_badcase_report
             error_summary = f"{runtime_error.model_call_error_type}: {runtime_error.model_call_error_message}".strip()
             return (
                 ObservedFailure(
@@ -873,7 +466,9 @@ def _infer_report_findings(
         if structured_deltas:
             affected_box_ids = _affected_box_ids_from_deltas(structured_deltas)
             target_summary = _target_summary_from_deltas(structured_deltas, affected_box_ids)
-            reason_labels = sorted({str(delta.get("reason", "")) for delta in structured_deltas if delta.get("reason")})
+            reason_labels = sorted(
+                {str(delta.get("reason", "")) for delta in structured_deltas if delta.get("reason")}
+            )
             reason_summary = ", ".join(reason_labels)
             sheet_fields = _native_structured_sheet_fields(
                 deltas=structured_deltas,
@@ -892,8 +487,8 @@ def _infer_report_findings(
                     label=taxonomy.structured_mismatch_label,
                     confidence="high",
                     evidence_summary=(
-                        f"Structured judge deltas cite {target_summary} with reasons {reason_summary}; "
-                        "compare predicted answers against the scoring standard and golden answer."
+                        f"结构化评分差异指向 {target_summary}，原因：{reason_summary}；"
+                        "需要对照评分规则和参考答案检查模型输出。"
                     ),
                 ),
                 sheet_fields,
@@ -909,8 +504,8 @@ def _infer_report_findings(
                     label="unstable_prediction",
                     confidence="medium",
                     evidence_summary=(
-                        f"Replay success ratio is {run_result.success_count}/{run_result.total_trials}; "
-                        "inspect prompt sensitivity and sampling variance."
+                        f"同一输入复测通过 {run_result.success_count}/{run_result.total_trials} 次；"
+                        "需要检查 prompt 敏感性和采样波动。"
                     ),
                 ),
                 {
@@ -959,21 +554,111 @@ def _evaluation_asset_issue(
             summary="标答为空，无法判断模型输出是否真正错误。",
             feedback="标答为空：请补充至少一个 box_id 与 student_answer。",
         )
-    if case.task_type != "handwriting_ocr" and not case.expected_output and not case.golden_answer.answers:
+    if (
+        case.task_type != "handwriting_ocr"
+        and not case.expected_output
+        and not case.golden_answer.answers
+    ):
         return _evaluation_asset_report(
             label="expected_output_issue",
             confidence="high",
             summary="期望输出为空，无法判断 task-native 模型输出是否真正错误。",
             feedback="期望输出为空：请补充 expected_output_json 作为通用任务的评分依据。",
         )
-    if run_result is not None and _has_response_parse_error(run_result.evidence) and not _prompt_requests_json(case.prompt):
+    if (
+        run_result is not None
+        and _has_response_parse_error(run_result.evidence)
+        and not _prompt_requests_json(case.prompt)
+    ):
         return _evaluation_asset_report(
             label="prompt_schema_issue",
             confidence="medium",
             summary="prompt 未明确 JSON 输出格式，且 evidence 中出现解析失败。",
-            feedback="prompt 未明确 JSON/schema：请要求模型只输出 {\"answers\":[...]} 结构。",
+            feedback='prompt 未明确 JSON/schema：请要求模型只输出 {"answers":[...]} 结构。',
         )
     return None
+
+
+def _existing_lark_badcase_report_from_runtime_error(
+    *,
+    case: DebugCase,
+    run_result: ExperimentRunResult,
+    runtime_error: ExperimentEvidence,
+) -> tuple[ObservedFailure, RootCause, dict[str, str]] | None:
+    if case.human_notes.debug_status != "from_lark_badcase_draft":
+        return None
+    issue_summary = case.human_notes.root_cause.strip()
+    if not issue_summary or not case.predictions or not case.expected_output:
+        return None
+    error_summary = (
+        f"{runtime_error.model_call_error_type}: {runtime_error.model_call_error_message}".strip()
+    )
+    if _looks_like_video_timestamp_issue(issue_summary):
+        return (
+            ObservedFailure(
+                type="video_timestamp_mismatch",
+                summary=f"表格 badcase 已给出视频时间边界偏差：{_clip_summary(issue_summary)}",
+                affected_box_ids=[],
+            ),
+            RootCause(
+                label="video_timestamp_boundary_error",
+                confidence="medium",
+                evidence_summary=(
+                    "source replay 模型调用失败，未产生新的复测输出；"
+                    f"已基于表格提供的原始模型输出、期望输出和错误现象归因：{issue_summary}"
+                ),
+            ),
+            {
+                "debug1状态": "待人工确认",
+                "模型可做对次数": f"{run_result.success_count}次",
+                "错误原因": f"视频时间边界定位失败：{_clip_summary(issue_summary)}",
+                "模型复测诊断": f"source replay 调用失败：{error_summary}",
+            },
+        )
+    return (
+        ObservedFailure(
+            type="existing_badcase_mismatch",
+            summary=f"表格 badcase 已给出模型输出与期望结果不一致：{_clip_summary(issue_summary)}",
+            affected_box_ids=[],
+        ),
+        RootCause(
+            label="output_mismatch",
+            confidence="medium",
+            evidence_summary=(
+                "source replay 模型调用失败，未产生新的复测输出；"
+                f"已基于表格提供的原始模型输出、期望输出和错误现象归因：{issue_summary}"
+            ),
+        ),
+        {
+            "debug1状态": "待人工确认",
+            "模型可做对次数": f"{run_result.success_count}次",
+            "错误原因": f"模型输出与期望结果不一致：{_clip_summary(issue_summary)}",
+            "模型复测诊断": f"source replay 调用失败：{error_summary}",
+        },
+    )
+
+
+def _looks_like_video_timestamp_issue(issue_summary: str) -> bool:
+    normalized = issue_summary.lower()
+    return any(
+        token in normalized
+        for token in (
+            "evalopchecktimestamp",
+            "timestamp",
+            "start_s",
+            "end_s",
+            "时间",
+            "视频",
+            "clip",
+        )
+    )
+
+
+def _clip_summary(value: str, limit: int = 240) -> str:
+    normalized = " ".join(value.strip().split())
+    if len(normalized) <= limit:
+        return normalized
+    return f"{normalized[: limit - 3]}..."
 
 
 def _build_evaluation_asset_diagnostics(
@@ -982,11 +667,14 @@ def _build_evaluation_asset_diagnostics(
     run_result: ExperimentRunResult | None,
     citation_context: dict[str, str],
 ) -> list[dict[str, str]]:
-    return _with_citations([
-        _prompt_diagnostic(case=case, run_result=run_result),
-        _golden_or_expected_output_diagnostic(case),
-        _scoring_standard_diagnostic(case),
-    ], citation_context)
+    return with_citations(
+        [
+            _prompt_diagnostic(case=case, run_result=run_result),
+            _golden_or_expected_output_diagnostic(case),
+            _scoring_standard_diagnostic(case),
+        ],
+        citation_context,
+    )
 
 
 def _prompt_diagnostic(
@@ -994,7 +682,11 @@ def _prompt_diagnostic(
     case: DebugCase,
     run_result: ExperimentRunResult | None,
 ) -> dict[str, str]:
-    if run_result is not None and _has_response_parse_error(run_result.evidence) and not _prompt_requests_json(case.prompt):
+    if (
+        run_result is not None
+        and _has_response_parse_error(run_result.evidence)
+        and not _prompt_requests_json(case.prompt)
+    ):
         return {
             "source": "prompt",
             "status": "warn",
@@ -1137,7 +829,9 @@ def _affected_box_ids_from_deltas(deltas: list[dict[str, object]]) -> list[int]:
     return sorted(box_ids)
 
 
-def _target_summary_from_deltas(deltas: list[dict[str, object]], affected_box_ids: list[int]) -> str:
+def _target_summary_from_deltas(
+    deltas: list[dict[str, object]], affected_box_ids: list[int]
+) -> str:
     if affected_box_ids:
         return ", ".join(f"box {box_id}" for box_id in affected_box_ids)
     target_ids = sorted(
@@ -1177,9 +871,7 @@ def _video_timestamp_issue(
     artifact_ids: list[str],
 ) -> tuple[ObservedFailure, RootCause, dict[str, str]] | None:
     timestamp_deltas = [
-        delta
-        for delta in deltas
-        if str(delta.get("reason", "")).startswith("timestamp_")
+        delta for delta in deltas if str(delta.get("reason", "")).startswith("timestamp_")
     ]
     if not timestamp_deltas:
         return None
@@ -1224,8 +916,12 @@ def _video_timestamp_delta_line(delta: dict[str, object]) -> str:
     actual = metadata.get("actual_end_s") if field == "end_s" else metadata.get("actual_start_s")
     delta_seconds = metadata.get("delta_seconds")
     actual_text = f"{float(actual):.1f}s" if isinstance(actual, int | float) else "未知"
-    delta_text = f"{float(delta_seconds):.1f}s" if isinstance(delta_seconds, int | float) else "未知"
-    return f"{target_id} {field} 超出期望窗口 {expected_range}s，实际 {actual_text}，偏差 {delta_text}"
+    delta_text = (
+        f"{float(delta_seconds):.1f}s" if isinstance(delta_seconds, int | float) else "未知"
+    )
+    return (
+        f"{target_id} {field} 超出期望窗口 {expected_range}s，实际 {actual_text}，偏差 {delta_text}"
+    )
 
 
 def _delta_summary(deltas: list[dict[str, object]]) -> str:
@@ -1243,101 +939,3 @@ def _sheet_value(value: object) -> str:
     if value is None:
         return "None"
     return str(value)
-
-
-def _artifact_ids_from_run_result(run_result: ExperimentRunResult) -> list[str]:
-    artifact_ids = [
-        artifact.artifact_id
-        for evidence in run_result.evidence
-        for artifact in evidence.artifacts
-    ]
-    if artifact_ids:
-        return artifact_ids
-    return [
-        artifact.artifact_id
-        for evidence in run_result.evidence
-        for artifact in evidence.image_artifacts
-    ]
-
-
-def _build_evidence_citations(run_result: ExperimentRunResult | None) -> list[dict[str, object]]:
-    if run_result is None:
-        return []
-    citations: list[dict[str, object]] = []
-    for item in run_result.evidence:
-        artifact_ids = _citation_artifact_ids(item)
-        for delta in item.judge.deltas:
-            box_id = _box_id_from_delta(delta)
-            reason = delta.get("reason", "")
-            citations.append(
-                {
-                    "evidence_id": item.evidence_id,
-                    "step_name": item.step_name,
-                    "box_id": box_id if isinstance(box_id, int) else None,
-                    "reason": str(reason),
-                    "artifact_ids": artifact_ids,
-                }
-            )
-        if item.model_call_error_type:
-            citations.append(
-                {
-                    "evidence_id": item.evidence_id,
-                    "step_name": item.step_name,
-                    "box_id": None,
-                    "reason": item.model_call_error_type,
-                    "artifact_ids": artifact_ids,
-                }
-            )
-        if item.response_parse_error:
-            citations.append(
-                {
-                    "evidence_id": item.evidence_id,
-                    "step_name": item.step_name,
-                    "box_id": None,
-                    "reason": "response_parse_error",
-                    "artifact_ids": artifact_ids,
-                }
-            )
-    return citations
-
-
-def _citation_artifact_ids(item: ExperimentEvidence) -> list[str]:
-    artifact_ids = [artifact.artifact_id for artifact in item.artifacts]
-    if artifact_ids:
-        return artifact_ids
-    return [artifact.artifact_id for artifact in item.image_artifacts]
-
-
-def _citation_context(
-    *,
-    run_result: ExperimentRunResult | None,
-    root_cause_trace: list[dict[str, object]],
-) -> dict[str, str]:
-    evidence_ids = [evidence.evidence_id for evidence in run_result.evidence] if run_result is not None else []
-    trace_refs = [
-        f"{trace.get('step_name')}:{trace.get('variant')}"
-        for trace in root_cause_trace
-        if isinstance(trace.get("step_name"), str) and isinstance(trace.get("variant"), str)
-    ]
-    return {
-        "evidence_ids": ", ".join(evidence_ids),
-        "artifact_ids": ", ".join(_artifact_ids_from_run_result(run_result)) if run_result is not None else "",
-        "trace_refs": ", ".join(trace_refs),
-    }
-
-
-def _box_id_from_delta(delta: dict[str, object]) -> int | None:
-    legacy_box_id = delta.get("box_id")
-    if isinstance(legacy_box_id, int):
-        return legacy_box_id
-    metadata = delta.get("metadata")
-    if isinstance(metadata, dict):
-        metadata_box_id = metadata.get("box_id")
-        if isinstance(metadata_box_id, int):
-            return metadata_box_id
-    target_id = delta.get("target_id")
-    if isinstance(target_id, str) and target_id.startswith("box:"):
-        box_id_text = target_id.removeprefix("box:")
-        if box_id_text.isdigit():
-            return int(box_id_text)
-    return None

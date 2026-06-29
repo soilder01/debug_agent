@@ -1,46 +1,44 @@
 import { useEffect, useState } from "react";
 
 import {
+  type AgentModelConfig,
   type AutoDebugClosureResult,
   type BatchDebugJobResponse,
-  createFinalAttributionRecoveryJob,
-  createFinalAttributionVerificationJob,
-  createRecommendedActionVerificationJob,
-  createStrategyFollowUpJob,
-  createTargetedProbeJob,
+  type DebugBatchProgress,
+  debugJobExportUrl,
   type CsvImportResponse,
   type DebugCaseDetail,
   type DebugCaseSummary,
   fetchCaseDetail,
   fetchCases,
+  fetchAgentModelCatalog,
   fetchDebugJobs,
-  fetchEvidenceDetail,
-  fetchJobEvidenceDetail,
-  fetchJobReport,
-  fetchJobStatus,
-  fetchHumanHandoffStatuses,
-  fetchLarkSpreadsheetStatus,
+  fetchDebugBatches,
   fetchObservabilitySummary,
-  fetchRecommendedActionStatuses,
-  fetchSpreadsheetWritebackAudit,
-  fetchSpreadsheetWritebackAudits,
-  fetchSpreadsheetWritebackAuditSummary,
-  fetchStrategyFollowUpJobs,
-  fetchTargetedProbeJobs,
-  fetchWorkerStatus,
   importCsvCases,
   importJsonlCases,
   importSpreadsheetRows,
   type JsonlImportResponse,
   type HumanHandoffStatus,
-  type HumanHandoffStatusValue,
+  type LarkOperationAuditListResponse,
+  type LarkAuthSession,
+  type LarkBotBadcaseDraftConfirmResponse,
+  type LarkBotBadcaseDraftListResponse,
+  type LarkNotificationOutboxListResponse,
+  type LarkBotPendingCommandListResponse,
+  type LarkBotGoLiveGate,
+  type LarkBotPreflight,
+  type LarkBotReplyPayload,
+  type LarkScopeCheckResponse,
   type LarkSpreadsheetStatus,
+  type LarkWriteConfirmation,
+  type ModelCatalogOption,
   type ObservabilitySummary,
-  type RecommendedActionStatusValue,
+  type PilotGate,
+  type ProductionReadiness,
   type RecommendedActionStatusEvent,
   type RecommendedActionVerification,
   type RecommendedActionVerificationResult,
-  runAutoDebugClosureReport,
   startWorker,
   submitBatchDebugJobs,
   submitDebugJob,
@@ -53,42 +51,59 @@ import {
   type TargetedProbeJob,
   type SpreadsheetWritebackResult,
   stopWorker,
-  syncSpreadsheetRows,
   type DebugJobStatus,
+  type DebugRunStage,
   type DebugReport,
+  type EvidenceLedgerRecord,
   type ExperimentEvidence,
   type SubmittedDebugJob,
-  updateHumanHandoffStatus,
-  updateRecommendedActionStatus,
   type WorkerStatus,
-  writeJobReportToSpreadsheet
+  updateDebugBatchStatus,
 } from "../api/client";
+import { FloatingAssistant } from "../assistant/FloatingAssistant";
 import { ImportedCasesPanel } from "../cases/ImportedCasesPanel";
 import { ImportWorkspace } from "../imports/ImportWorkspace";
 import { BatchJobsPanel } from "../jobs/BatchJobsPanel";
 import { CurrentJobPanel } from "../jobs/CurrentJobPanel";
 import { WorkerControlsPanel } from "../jobs/WorkerControlsPanel";
 import { ObservabilitySummaryPanel } from "../observability/ObservabilitySummaryPanel";
+import { LarkBotBadcaseDraftPanel } from "../observability/LarkBotBadcaseDraftPanel";
+import { LarkBotGoLiveGatePanel } from "../observability/LarkBotGoLiveGatePanel";
+import { LarkNotificationOutboxPanel } from "../observability/LarkNotificationOutboxPanel";
+import { LarkBotPendingCommandPanel } from "../observability/LarkBotPendingCommandPanel";
+import { LarkBotPreflightPanel } from "../observability/LarkBotPreflightPanel";
+import { PilotGatePanel } from "../observability/PilotGatePanel";
+import { ProductionReadinessPanel } from "../observability/ProductionReadinessPanel";
 import { AgentTopologyPanel } from "../orchestration/AgentTopologyPanel";
 import { DebugReportWorkspace } from "../reports/DebugReportWorkspace";
 import { SpreadsheetSyncPanel } from "../spreadsheets/SpreadsheetSyncPanel";
 import { parseLarkSpreadsheetUrl } from "../spreadsheets/larkUrl";
+import {
+  caseListLimit,
+  defaultSheetId,
+  defaultSpreadsheetId,
+  defaultSpreadsheetUrl,
+  jobListLimit,
+} from "./App.config";
+import { TerminalDataStream } from "./TerminalDataStream";
+import { useAppOperationsActions } from "./useAppOperationsActions";
+import { useAppPollingEffects } from "./useAppPollingEffects";
+import { useAppReportActions } from "./useAppReportActions";
 import { useProductMotion } from "./useProductMotion";
-
-const jobListLimit = 50;
-const caseListLimit = 50;
-const defaultSpreadsheetUrl = "https://bytedance.larkoffice.com/sheets/NLews6C2ShValptV7IdcJ62tnWc?sheet=qJAomX";
-const defaultSpreadsheetId = "NLews6C2ShValptV7IdcJ62tnWc";
-const defaultSheetId = "qJAomX";
-const localDevActor = "local-dev-operator";
 
 export function App() {
   const motionScopeRef = useProductMotion();
   const [report, setReport] = useState<DebugReport | null>(null);
   const [submittedJob, setSubmittedJob] = useState<SubmittedDebugJob | null>(null);
   const [jobStatus, setJobStatus] = useState<DebugJobStatus | null>(null);
+  const [debugRunStages, setDebugRunStages] = useState<DebugRunStage[]>([]);
+  const [evidenceLedger, setEvidenceLedger] = useState<EvidenceLedgerRecord[]>([]);
   const [batchCaseIds, setBatchCaseIds] = useState("");
+  const [agentModelConfig, setAgentModelConfig] = useState<AgentModelConfig | null>(null);
+  const [modelCatalog, setModelCatalog] = useState<ModelCatalogOption[]>([]);
   const [batchResult, setBatchResult] = useState<BatchDebugJobResponse | null>(null);
+  const [activeBatchProgress, setActiveBatchProgress] = useState<DebugBatchProgress | null>(null);
+  const [batchHistory, setBatchHistory] = useState<DebugBatchProgress[]>([]);
   const [jobListSummaryLabel, setJobListSummaryLabel] = useState("批量创建");
   const [jobListTotalCount, setJobListTotalCount] = useState<number | null>(null);
   const [batchJobStatuses, setBatchJobStatuses] = useState<Record<string, DebugJobStatus | SubmittedDebugJob>>({});
@@ -103,6 +118,9 @@ export function App() {
   const [spreadsheetUrl, setSpreadsheetUrl] = useState(defaultSpreadsheetUrl);
   const [spreadsheetId, setSpreadsheetId] = useState(defaultSpreadsheetId);
   const [sheetId, setSheetId] = useState(defaultSheetId);
+  const [rerunRowIds, setRerunRowIds] = useState("2-8");
+  const [rerunAutoClosure, setRerunAutoClosure] = useState(true);
+  const [rerunWriteback, setRerunWriteback] = useState(true);
   const [spreadsheetSyncResult, setSpreadsheetSyncResult] = useState<SpreadsheetSyncResponse | null>(null);
   const [spreadsheetWritebackResult, setSpreadsheetWritebackResult] = useState<SpreadsheetWritebackResult | null>(null);
   const [spreadsheetWritebackAudit, setSpreadsheetWritebackAudit] = useState<SpreadsheetWritebackAudit | null>(null);
@@ -122,9 +140,34 @@ export function App() {
   const [spreadsheetWritebackAuditList, setSpreadsheetWritebackAuditList] =
     useState<SpreadsheetWritebackAuditListResponse | null>(null);
   const [activeWritebackAuditStatus, setActiveWritebackAuditStatus] = useState<string | null | undefined>(undefined);
+  const [larkOperationAuditList, setLarkOperationAuditList] = useState<LarkOperationAuditListResponse | null>(null);
+  const [activeLarkOperationAuditStatus, setActiveLarkOperationAuditStatus] = useState<string | null | undefined>(undefined);
+  const [larkBotPendingCommandList, setLarkBotPendingCommandList] =
+    useState<LarkBotPendingCommandListResponse | null>(null);
+  const [activeLarkBotPendingStatus, setActiveLarkBotPendingStatus] = useState<string | null | undefined>(undefined);
+  const [larkBotReplyPreview, setLarkBotReplyPreview] = useState<LarkBotReplyPayload | null>(null);
+  const [larkNotificationOutboxList, setLarkNotificationOutboxList] =
+    useState<LarkNotificationOutboxListResponse | null>(null);
+  const [activeLarkNotificationOutboxStatus, setActiveLarkNotificationOutboxStatus] = useState<
+    string | null | undefined
+  >(undefined);
+  const [larkBotBadcaseDraftList, setLarkBotBadcaseDraftList] =
+    useState<LarkBotBadcaseDraftListResponse | null>(null);
+  const [activeLarkBotBadcaseDraftStatus, setActiveLarkBotBadcaseDraftStatus] = useState<string | null | undefined>(
+    undefined
+  );
+  const [larkBotBadcaseDraftConfirmation, setLarkBotBadcaseDraftConfirmation] =
+    useState<LarkBotBadcaseDraftConfirmResponse | null>(null);
+  const [larkScopeCheck, setLarkScopeCheck] = useState<LarkScopeCheckResponse | null>(null);
+  const [larkAuthSession, setLarkAuthSession] = useState<LarkAuthSession | null>(null);
+  const [larkWriteConfirmation, setLarkWriteConfirmation] = useState<LarkWriteConfirmation | null>(null);
   const [larkSpreadsheetStatus, setLarkSpreadsheetStatus] = useState<LarkSpreadsheetStatus | null>(null);
   const [workerStatus, setWorkerStatus] = useState<WorkerStatus | null>(null);
   const [observabilitySummary, setObservabilitySummary] = useState<ObservabilitySummary | null>(null);
+  const [productionReadiness, setProductionReadiness] = useState<ProductionReadiness | null>(null);
+  const [larkBotGoLiveGate, setLarkBotGoLiveGate] = useState<LarkBotGoLiveGate | null>(null);
+  const [larkBotPreflight, setLarkBotPreflight] = useState<LarkBotPreflight | null>(null);
+  const [pilotGate, setPilotGate] = useState<PilotGate | null>(null);
   const [selectedEvidence, setSelectedEvidence] = useState<ExperimentEvidence | null>(null);
   const [importedCaseTotalCount, setImportedCaseTotalCount] = useState(0);
   const [importedCaseFilteredCount, setImportedCaseFilteredCount] = useState<number | null>(null);
@@ -132,6 +175,8 @@ export function App() {
   const [activeJobStatusFilter, setActiveJobStatusFilter] = useState<string | undefined>(undefined);
   const [activeJobSort, setActiveJobSort] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<"workspace" | "intake" | "operations" | "writeback">("workspace");
+
   const batchJobs = Object.values(batchJobStatuses);
   const completedBatchJobs = batchJobs.filter((job) => job.status === "completed").length;
   const loadedJobCount = batchResult?.jobs.length ?? 0;
@@ -139,76 +184,204 @@ export function App() {
   const visibleImportedCases = importedCases;
   const effectiveImportedCaseCount = importedCaseFilteredCount ?? importedCaseTotalCount;
   const unloadedCaseCount = Math.max(0, effectiveImportedCaseCount - visibleImportedCases.length);
+  const currentBatchExportHref =
+    batchJobs.length > 0 ? debugJobExportUrl({ jobIds: batchJobs.map((job) => job.job_id) }) : undefined;
+  const failedJobsExportHref = debugJobExportUrl({ status: "failed", limit: 50 });
+  const newestJobsExportHref = debugJobExportUrl({ limit: 50, sort: "created_at_desc" });
+  const spreadsheetBatchExportHref =
+    spreadsheetSyncResult?.jobs.length ? debugJobExportUrl({ jobIds: spreadsheetSyncResult.jobs.map((job) => job.job_id) }) : undefined;
+
+  const {
+    loadCurrentDebugRunStages,
+    loadCurrentEvidenceLedger,
+    selectEvidence,
+    selectJobEvidence,
+    loadCurrentJobReport,
+    selectBatchJobEvidence,
+    writeCurrentReportToSpreadsheet,
+    prepareCurrentWritebackConfirmation,
+    confirmCurrentWritebackAndWrite,
+    loadCurrentWritebackAudit,
+    runCurrentAutoDebugClosure,
+    updateCurrentRecommendedActionStatus,
+    updateCurrentHumanHandoffStatus,
+    verifyCurrentRecommendedAction,
+    createCurrentStrategyFollowUp,
+    createCurrentTargetedProbe,
+    createCurrentFinalAttributionFollowUp,
+    createCurrentFinalAttributionRecovery,
+    openStrategyFollowUpJob,
+  } = useAppReportActions({
+    report,
+    submittedJob,
+    jobStatus,
+    spreadsheetUrl,
+    spreadsheetId,
+    sheetId,
+    larkWriteConfirmation,
+    setError,
+    setSubmittedJob,
+    setJobStatus,
+    setReport,
+    setDebugRunStages,
+    setEvidenceLedger,
+    setSelectedEvidence,
+    setSpreadsheetWritebackResult,
+    setSpreadsheetWritebackAudit,
+    setLarkWriteConfirmation,
+    setRecommendedActionStatusEvents,
+    setRecommendedActionVerifications,
+    setRecommendedActionVerificationResults,
+    setStrategyFollowUps,
+    setTargetedProbes,
+    setHumanHandoffStatuses,
+    setAutoDebugClosureResult,
+    setAutoDebugClosureMarkdown,
+    setAutoDebugClosureReportUrl,
+  });
+
+  function selectTab(tab: "workspace" | "intake" | "operations" | "writeback") {
+    setError("");
+    setActiveTab(tab);
+  }
+
+  const {
+    checkLarkStatus,
+    syncSpreadsheet,
+    rerunSelectedSpreadsheetRows,
+    loadWritebackAuditSummary,
+    loadWritebackAudits,
+    loadMoreWritebackAudits,
+    loadLarkOperationAudits,
+    loadMoreLarkOperationAudits,
+    loadLarkBotPendingCommands,
+    loadLarkNotificationOutbox,
+    loadMoreLarkNotificationOutbox,
+    loadMoreLarkBotPendingCommands,
+    confirmCurrentLarkBotPendingCommand,
+    previewCurrentLarkBotReply,
+    loadLarkBotBadcaseDrafts,
+    loadMoreLarkBotBadcaseDrafts,
+    confirmCurrentLarkBotBadcaseDraft,
+    checkLarkScopes,
+    createCurrentLarkAuthSession,
+    completeCurrentLarkAuthSession,
+    loadProductionReadiness,
+    loadLarkBotPreflight,
+    loadLarkBotGoLiveGate,
+    recordLarkBotSetupAcknowledgement,
+    loadPilotGate,
+    openWritebackAuditJob,
+    retryWritebackAudit,
+  } = useAppOperationsActions({
+    spreadsheetUrl,
+    spreadsheetId,
+    sheetId,
+    rerunRowIds,
+    rerunAutoClosure,
+    rerunWriteback,
+    activeWritebackAuditStatus,
+    spreadsheetWritebackAuditList,
+    activeLarkOperationAuditStatus,
+    larkOperationAuditList,
+    activeLarkBotPendingStatus,
+    larkBotPendingCommandList,
+    activeLarkNotificationOutboxStatus,
+    larkNotificationOutboxList,
+    activeLarkBotBadcaseDraftStatus,
+    larkBotBadcaseDraftList,
+    larkAuthSession,
+    larkScopeCheck,
+    larkSpreadsheetStatus,
+    selectTab,
+    setError,
+    setBatchResult,
+    setJobListSummaryLabel,
+    setJobListTotalCount,
+    setBatchJobStatuses,
+    setActiveBatchProgress,
+    setLarkSpreadsheetStatus,
+    setSpreadsheetSyncResult,
+    setSpreadsheetWritebackResult,
+    setSpreadsheetWritebackAudit,
+    setSpreadsheetWritebackAuditSummary,
+    setSpreadsheetWritebackAuditList,
+    setActiveWritebackAuditStatus,
+    setLarkOperationAuditList,
+    setActiveLarkOperationAuditStatus,
+    setLarkBotPendingCommandList,
+    setActiveLarkBotPendingStatus,
+    setLarkNotificationOutboxList,
+    setActiveLarkNotificationOutboxStatus,
+    setLarkBotReplyPreview,
+    setLarkBotBadcaseDraftList,
+    setActiveLarkBotBadcaseDraftStatus,
+    setLarkBotBadcaseDraftConfirmation,
+    setLarkScopeCheck,
+    setLarkAuthSession,
+    setProductionReadiness,
+    setLarkBotPreflight,
+    setLarkBotGoLiveGate,
+    setPilotGate,
+    setSubmittedJob,
+    setJobStatus,
+    setReport,
+    setAutoDebugClosureResult,
+    setAutoDebugClosureMarkdown,
+    setAutoDebugClosureReportUrl,
+    setSelectedEvidence,
+  });
+
+  useAppPollingEffects({
+    jobStatus,
+    submittedJob,
+    batchJobs,
+    batchJobStatuses,
+    workerStatus,
+    activeBatchProgress,
+    setError,
+    setJobStatus,
+    setBatchJobStatuses,
+    setWorkerStatus,
+    setActiveBatchProgress,
+  });
 
   useEffect(() => {
-    const currentJob = jobStatus ?? submittedJob;
-    if (!currentJob || currentJob.status === "completed" || currentJob.status === "failed") {
+    if (import.meta.env.MODE === "test") {
       return;
     }
-
-    const timeoutId = window.setTimeout(() => {
-      fetchJobStatus(currentJob.job_id)
-        .then(setJobStatus)
-        .catch((caught: unknown) => {
-          setError(caught instanceof Error ? caught.message : "Unknown error");
-        });
-    }, 100);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [jobStatus, submittedJob]);
-
-  useEffect(() => {
-    const pendingJobs = batchJobs.filter((job) => job.status !== "completed" && job.status !== "failed");
-    if (pendingJobs.length === 0) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      for (const job of pendingJobs) {
-        fetchJobStatus(job.job_id)
-          .then((status) => {
-            setBatchJobStatuses((current) => ({ ...current, [status.job_id]: status }));
-          })
-          .catch((caught: unknown) => {
-            setError(caught instanceof Error ? caught.message : "Unknown error");
-          });
-      }
-    }, 100);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [batchJobStatuses]);
-
-  useEffect(() => {
-    if (!workerStatus?.running) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      fetchWorkerStatus()
-        .then(setWorkerStatus)
-        .catch((caught: unknown) => {
-          setError(caught instanceof Error ? caught.message : "Unknown error");
-        });
-    }, 100);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [workerStatus]);
+    fetchAgentModelCatalog()
+      .then((result) => {
+        setAgentModelConfig(result.runtime.default_config);
+        setModelCatalog(result.runtime.catalog);
+      })
+      .catch((caught: unknown) => {
+        setError(caught instanceof Error ? caught.message : "未知错误");
+      });
+  }, []);
 
   async function submitJob() {
     setError("");
+    if (!selectedCaseDetail) {
+      selectTab("intake");
+      setError("请先在数据导入或飞书同步结果中选择一个案件，再提交调试任务。");
+      return;
+    }
     try {
-      setSubmittedJob(await submitDebugJob("handwrite233"));
+      setSubmittedJob(await submitDebugJob(selectedCaseDetail.case_id));
       setJobStatus(null);
       setReport(null);
       setSpreadsheetWritebackResult(null);
       setSpreadsheetWritebackAudit(null);
+      setLarkWriteConfirmation(null);
       setAutoDebugClosureResult(null);
       setAutoDebugClosureMarkdown("");
       setAutoDebugClosureReportUrl("");
       setSelectedEvidence(null);
       setSelectedEvidence(null);
+      selectTab("workspace");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
+      setError(caught instanceof Error ? caught.message : "未知错误");
     }
   }
 
@@ -221,7 +394,7 @@ export function App() {
       setImportedCaseFilteredCount(result.filtered_count ?? result.total_count);
       setActiveImportedCaseHasRegions(hasRegions);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
+      setError(caught instanceof Error ? caught.message : "未知错误");
     }
   }
 
@@ -233,12 +406,13 @@ export function App() {
       setImportedCaseTotalCount(result.total_count);
       setImportedCaseFilteredCount(result.filtered_count ?? result.total_count);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
+      setError(caught instanceof Error ? caught.message : "未知错误");
     }
   }
 
   function useImportedCasesForBatch() {
     setBatchCaseIds(visibleImportedCases.map((caseSummary) => caseSummary.case_id).join("\n"));
+    selectTab("workspace");
   }
 
   async function loadCaseDetail(caseId: string) {
@@ -246,7 +420,7 @@ export function App() {
     try {
       setSelectedCaseDetail(await fetchCaseDetail(caseId));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
+      setError(caught instanceof Error ? caught.message : "未知错误");
     }
   }
 
@@ -263,8 +437,9 @@ export function App() {
       setAutoDebugClosureReportUrl("");
       setSelectedEvidence(null);
       setSelectedEvidence(null);
+      selectTab("workspace");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
+      setError(caught instanceof Error ? caught.message : "未知错误");
     }
   }
 
@@ -275,13 +450,14 @@ export function App() {
       .map((caseId) => caseId.trim())
       .filter(Boolean);
     try {
-      const result = await submitBatchDebugJobs(caseIds);
+      const result = await submitBatchDebugJobs({ caseIds, agentModelConfig: agentModelConfig ?? undefined });
       setBatchResult(result);
+      setActiveBatchProgress(result.batch ?? null);
       setJobListSummaryLabel("批量创建");
       setJobListTotalCount(result.jobs.length);
       setBatchJobStatuses(Object.fromEntries(result.jobs.map((job) => [job.job_id, job])));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
+      setError(caught instanceof Error ? caught.message : "未知错误");
     }
   }
 
@@ -290,13 +466,14 @@ export function App() {
     try {
       const result = await fetchDebugJobs(status, jobListLimit, undefined, sort);
       setBatchResult({ jobs: result.jobs, rejected_case_ids: [] });
+      setActiveBatchProgress(null);
       setJobListSummaryLabel(sort === "created_at_desc" ? "最新任务" : status === "failed" ? "失败任务" : "队列任务");
       setJobListTotalCount(result.total_count);
       setActiveJobStatusFilter(status);
       setActiveJobSort(sort);
       setBatchJobStatuses(Object.fromEntries(result.jobs.map((job) => [job.job_id, job])));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
+      setError(caught instanceof Error ? caught.message : "未知错误");
     }
   }
 
@@ -305,11 +482,39 @@ export function App() {
     try {
       const result = await fetchDebugJobs(activeJobStatusFilter, jobListLimit, batchJobs.length, activeJobSort);
       const jobs = [...batchJobs, ...result.jobs];
-      setBatchResult({ jobs, rejected_case_ids: batchResult?.rejected_case_ids ?? [] });
+      setBatchResult({
+        batch_id: batchResult?.batch_id ?? "",
+        batch: batchResult?.batch,
+        jobs,
+        rejected_case_ids: batchResult?.rejected_case_ids ?? []
+      });
       setJobListTotalCount(result.total_count);
       setBatchJobStatuses(Object.fromEntries(jobs.map((job) => [job.job_id, job])));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
+      setError(caught instanceof Error ? caught.message : "未知错误");
+    }
+  }
+
+  async function loadBatchHistory() {
+    setError("");
+    try {
+      const result = await fetchDebugBatches();
+      setBatchHistory(result.batches);
+      setActiveBatchProgress(result.batches[0] ?? null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "未知错误");
+    }
+  }
+
+  async function changeActiveBatch(action: "pause" | "resume" | "cancel") {
+    if (!activeBatchProgress) {
+      return;
+    }
+    setError("");
+    try {
+      setActiveBatchProgress(await updateDebugBatchStatus(activeBatchProgress.batch.batch_id, action));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "未知错误");
     }
   }
 
@@ -323,6 +528,8 @@ export function App() {
     setAutoDebugClosureMarkdown("");
     setAutoDebugClosureReportUrl("");
     setSelectedEvidence(null);
+    setDebugRunStages([]);
+    setEvidenceLedger([]);
   }
 
   async function startWorkerLoop() {
@@ -330,7 +537,7 @@ export function App() {
     try {
       setWorkerStatus(await startWorker());
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
+      setError(caught instanceof Error ? caught.message : "未知错误");
     }
   }
 
@@ -339,7 +546,7 @@ export function App() {
     try {
       setObservabilitySummary(await fetchObservabilitySummary());
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
+      setError(caught instanceof Error ? caught.message : "未知错误");
     }
   }
 
@@ -353,7 +560,7 @@ export function App() {
       setJobListTotalCount(result.jobs.length);
       setBatchJobStatuses(Object.fromEntries(result.jobs.map((job) => [job.job_id, job])));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
+      setError(caught instanceof Error ? caught.message : "未知错误");
     }
   }
 
@@ -367,7 +574,7 @@ export function App() {
       setJobListTotalCount(result.jobs.length);
       setBatchJobStatuses(Object.fromEntries(result.jobs.map((job) => [job.job_id, job])));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
+      setError(caught instanceof Error ? caught.message : "未知错误");
     }
   }
 
@@ -376,7 +583,7 @@ export function App() {
     try {
       const parsedRows = JSON.parse(spreadsheetRowsJson) as unknown;
       if (!Array.isArray(parsedRows)) {
-        throw new Error("Spreadsheet rows JSON must be an array");
+        throw new Error("飞书行 JSON 必须是数组");
       }
       const result = await importSpreadsheetRows(parsedRows as Array<Record<string, unknown>>);
       setSpreadsheetImportResult(result);
@@ -385,7 +592,7 @@ export function App() {
       setJobListTotalCount(result.jobs.length);
       setBatchJobStatuses(Object.fromEntries(result.jobs.map((job) => [job.job_id, job])));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
+      setError(caught instanceof Error ? caught.message : "未知错误");
     }
   }
 
@@ -396,636 +603,323 @@ export function App() {
       setSpreadsheetId(reference.spreadsheetId);
       setSheetId(reference.sheetId);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
+      setError(caught instanceof Error ? caught.message : "未知错误");
     }
   }
 
-
-  async function checkLarkStatus() {
-    setError("");
-    try {
-      setLarkSpreadsheetStatus(await fetchLarkSpreadsheetStatus(true));
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
-    }
-  }
-
-  async function syncSpreadsheet() {
-    setError("");
-    try {
-      const result = await syncSpreadsheetRows(spreadsheetId, sheetId);
-      setSpreadsheetSyncResult(result);
-      setBatchResult({ jobs: result.jobs, rejected_case_ids: [] });
-      setJobListSummaryLabel("Spreadsheet 同步任务");
-      setJobListTotalCount(result.jobs.length);
-      setBatchJobStatuses(Object.fromEntries(result.jobs.map((job) => [job.job_id, job])));
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
-    }
-  }
-
-  async function loadWritebackAuditSummary() {
-    setError("");
-    try {
-      setSpreadsheetWritebackAuditSummary(await fetchSpreadsheetWritebackAuditSummary());
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
-    }
-  }
-
-  async function loadWritebackAudits(status: string | null) {
-    setError("");
-    try {
-      setActiveWritebackAuditStatus(status);
-      setSpreadsheetWritebackAuditList(await fetchSpreadsheetWritebackAudits(status ?? undefined, jobListLimit));
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
-    }
-  }
-
-  async function loadMoreWritebackAudits() {
-    if (activeWritebackAuditStatus === undefined || !spreadsheetWritebackAuditList) {
-      return;
-    }
-    setError("");
-    try {
-      const nextPage = await fetchSpreadsheetWritebackAudits(
-        activeWritebackAuditStatus ?? undefined,
-        jobListLimit,
-        spreadsheetWritebackAuditList.audits.length,
-      );
-      setSpreadsheetWritebackAuditList({
-        audits: [...spreadsheetWritebackAuditList.audits, ...nextPage.audits],
-        total_count: nextPage.total_count,
-      });
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
-    }
-  }
-
-  async function openWritebackAuditJob(jobId: string) {
-    setError("");
-    try {
-      const status = await fetchJobStatus(jobId);
-      setSubmittedJob(status);
-      setJobStatus(status);
-      setReport(null);
-      setSpreadsheetWritebackResult(null);
-      setSpreadsheetWritebackAudit(null);
-      setAutoDebugClosureResult(null);
-      setAutoDebugClosureMarkdown("");
-      setAutoDebugClosureReportUrl("");
-      setSelectedEvidence(null);
-      setSelectedEvidence(null);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
-    }
-  }
-
-  async function retryWritebackAudit(audit: SpreadsheetWritebackAudit) {
-    setError("");
-    try {
-      const reportUrl = audit.report_url || `${window.location.origin}/api/jobs/${audit.job_id}/report`;
-      const result = await writeJobReportToSpreadsheet(audit.job_id, reportUrl);
-      setSpreadsheetWritebackResult(result);
-      setSpreadsheetWritebackAudit(null);
-      if (activeWritebackAuditStatus !== undefined) {
-        setSpreadsheetWritebackAuditList(
-          await fetchSpreadsheetWritebackAudits(activeWritebackAuditStatus ?? undefined, jobListLimit)
-        );
-      }
-      setSpreadsheetWritebackAuditSummary(await fetchSpreadsheetWritebackAuditSummary());
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
-    }
-  }
 
   async function stopWorkerLoop() {
     setError("");
     try {
       setWorkerStatus(await stopWorker());
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
-    }
-  }
-
-  async function selectEvidence(evidenceId: string) {
-    if (!report) {
-      return;
-    }
-    setError("");
-    try {
-      setSelectedEvidence(await fetchEvidenceDetail(report.case_id, evidenceId));
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
-    }
-  }
-
-  async function selectJobEvidence(evidenceId: string) {
-    const currentJob = jobStatus ?? submittedJob;
-    if (!currentJob) {
-      return;
-    }
-    setError("");
-    try {
-      setSelectedEvidence(await fetchJobEvidenceDetail(currentJob.job_id, evidenceId));
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
-    }
-  }
-
-  async function loadCurrentJobReport() {
-    const currentJob = jobStatus ?? submittedJob;
-    if (!currentJob) {
-      return;
-    }
-    setError("");
-    try {
-      const loadedReport = await fetchJobReport(currentJob.job_id);
-      setReport(loadedReport);
-      if (loadedReport.job_id && (loadedReport.recommended_actions ?? []).length > 0) {
-        const actionStatuses = await fetchRecommendedActionStatuses(loadedReport.job_id);
-        setRecommendedActionStatusEvents(actionStatuses.events ?? []);
-        setRecommendedActionVerifications(actionStatuses.verifications ?? []);
-        setRecommendedActionVerificationResults(actionStatuses.verification_results ?? []);
-      } else {
-        setRecommendedActionStatusEvents([]);
-        setRecommendedActionVerifications([]);
-        setRecommendedActionVerificationResults([]);
-      }
-      if (loadedReport.job_id && (loadedReport.follow_up_experiments ?? []).length > 0) {
-        const followUps = await fetchStrategyFollowUpJobs(loadedReport.job_id);
-        setStrategyFollowUps(followUps.follow_ups ?? []);
-      } else {
-        setStrategyFollowUps([]);
-      }
-      if (
-        loadedReport.job_id &&
-        (loadedReport.follow_up_experiments ?? []).some((followUp) =>
-          followUp.source === "targeted_probe" || followUp.source === "targeted_probe_outcome"
-        )
-      ) {
-        const probes = await fetchTargetedProbeJobs(loadedReport.job_id);
-        setTargetedProbes(probes.probes ?? []);
-      } else {
-        setTargetedProbes([]);
-      }
-      if (loadedReport.job_id && (loadedReport.human_handoff_requests ?? []).length > 0) {
-        const handoffStatuses = await fetchHumanHandoffStatuses(loadedReport.job_id);
-        setHumanHandoffStatuses(handoffStatuses.statuses ?? []);
-      } else {
-        setHumanHandoffStatuses([]);
-      }
-      setSpreadsheetWritebackResult(null);
-      setSpreadsheetWritebackAudit(null);
-      setAutoDebugClosureResult(null);
-      setAutoDebugClosureMarkdown("");
-      setAutoDebugClosureReportUrl("");
-      setSelectedEvidence(null);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
-    }
-  }
-
-  async function selectBatchJobEvidence(jobId: string, evidenceId: string) {
-    setError("");
-    try {
-      setSelectedEvidence(await fetchJobEvidenceDetail(jobId, evidenceId));
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
-    }
-  }
-
-  async function writeCurrentReportToSpreadsheet() {
-    if (!report?.job_id) {
-      return;
-    }
-    setError("");
-    try {
-      const reportUrl = `${window.location.origin}/api/jobs/${report.job_id}/report`;
-      setSpreadsheetWritebackResult(await writeJobReportToSpreadsheet(report.job_id, reportUrl));
-      setSpreadsheetWritebackAudit(null);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
-    }
-  }
-
-  async function loadCurrentWritebackAudit() {
-    if (!report?.job_id) {
-      return;
-    }
-    setError("");
-    try {
-      setSpreadsheetWritebackAudit(await fetchSpreadsheetWritebackAudit(report.job_id));
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
-    }
-  }
-
-  async function runCurrentAutoDebugClosure() {
-    if (!report?.job_id) {
-      return;
-    }
-    setError("");
-    try {
-      const reportUrl = `${window.location.origin}/api/jobs/${report.job_id}/report`;
-      const result = await runAutoDebugClosureReport(report.job_id, {
-        actor: localDevActor,
-        note: "auto close video badcase",
-        writeback: true,
-        report_url: reportUrl
-      });
-      setAutoDebugClosureResult(result.closure);
-      setAutoDebugClosureMarkdown(result.markdown);
-      setAutoDebugClosureReportUrl(result.report_artifact_url);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
-    }
-  }
-
-  async function updateCurrentRecommendedActionStatus(
-    actionIndex: number,
-    status: RecommendedActionStatusValue
-  ) {
-    if (!report?.job_id) {
-      return;
-    }
-    setError("");
-    try {
-      const updatedStatus = await updateRecommendedActionStatus(report.job_id, actionIndex, {
-        status,
-        actor: localDevActor,
-        note: ""
-      });
-      setReport((current) => {
-        if (!current || current.job_id !== updatedStatus.job_id) {
-          return current;
-        }
-        const recommendedActions = [...(current.recommended_actions ?? [])];
-        const action = recommendedActions[actionIndex];
-        if (!action) {
-          return current;
-        }
-        recommendedActions[actionIndex] = {
-          ...action,
-          status: updatedStatus.status
-        };
-        return {
-          ...current,
-          recommended_actions: recommendedActions
-        };
-      });
-      const actionStatuses = await fetchRecommendedActionStatuses(report.job_id);
-      setRecommendedActionStatusEvents(actionStatuses.events ?? []);
-      setRecommendedActionVerifications(actionStatuses.verifications ?? []);
-      setRecommendedActionVerificationResults(actionStatuses.verification_results ?? []);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
-    }
-  }
-
-  async function updateCurrentHumanHandoffStatus(targetId: string, status: HumanHandoffStatusValue) {
-    if (!report?.job_id) {
-      return;
-    }
-    setError("");
-    try {
-      const updatedStatus = await updateHumanHandoffStatus(report.job_id, targetId, {
-        status,
-        actor: localDevActor,
-        note: ""
-      });
-      setHumanHandoffStatuses((current) => [
-        ...current.filter(
-          (handoffStatus) =>
-            handoffStatus.job_id !== updatedStatus.job_id || handoffStatus.target_id !== updatedStatus.target_id
-        ),
-        updatedStatus
-      ]);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
-    }
-  }
-
-  async function verifyCurrentRecommendedAction(actionIndex: number) {
-    if (!report?.job_id) {
-      return;
-    }
-    setError("");
-    try {
-      const verification = await createRecommendedActionVerificationJob(report.job_id, actionIndex, {
-        actor: localDevActor,
-        note: ""
-      });
-      setSubmittedJob(verification.verification_job);
-      setJobStatus(null);
-      setSelectedEvidence(null);
-      const actionStatuses = await fetchRecommendedActionStatuses(report.job_id);
-      setRecommendedActionStatusEvents(actionStatuses.events ?? []);
-      setRecommendedActionVerifications(actionStatuses.verifications ?? []);
-      setRecommendedActionVerificationResults(actionStatuses.verification_results ?? []);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
-    }
-  }
-
-  async function createCurrentStrategyFollowUp(stage: string) {
-    if (!report?.job_id) {
-      return;
-    }
-    setError("");
-    try {
-      const followUp = await createStrategyFollowUpJob(report.job_id, stage, {
-        actor: localDevActor,
-        note: ""
-      });
-      setSubmittedJob(
-        followUp.follow_up_job ?? {
-          job_id: followUp.follow_up_job_id,
-          case_id: report.case_id,
-          status: "created"
-        }
-      );
-      setJobStatus(null);
-      setReport(null);
-      setStrategyFollowUps([]);
-      setSelectedEvidence(null);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
-    }
-  }
-
-  async function createCurrentTargetedProbe(targetId: string) {
-    if (!report?.job_id) {
-      return;
-    }
-    setError("");
-    try {
-      const probe = await createTargetedProbeJob(report.job_id, targetId, {
-        actor: localDevActor,
-        note: ""
-      });
-      setSubmittedJob(probe.probe_job);
-      setJobStatus(null);
-      setReport(null);
-      setStrategyFollowUps([]);
-      setTargetedProbes([]);
-      setSelectedEvidence(null);
-      setSelectedEvidence(null);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
-    }
-  }
-
-  async function createCurrentFinalAttributionFollowUp(targetId: string) {
-    if (!report?.job_id) {
-      return;
-    }
-    setError("");
-    try {
-      const followUp = await createFinalAttributionVerificationJob(report.job_id, targetId, {
-        actor: localDevActor,
-        note: ""
-      });
-      setSubmittedJob(
-        followUp.follow_up_job ?? {
-          job_id: followUp.follow_up_job_id,
-          case_id: report.case_id,
-          status: "created"
-        }
-      );
-      setJobStatus(null);
-      setReport(null);
-      setStrategyFollowUps([]);
-      setTargetedProbes([]);
-      setSelectedEvidence(null);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
-    }
-  }
-
-  async function createCurrentFinalAttributionRecovery(targetId: string) {
-    if (!report?.job_id) {
-      return;
-    }
-    setError("");
-    try {
-      const followUp = await createFinalAttributionRecoveryJob(report.job_id, targetId, {
-        actor: localDevActor,
-        note: ""
-      });
-      setSubmittedJob(
-        followUp.follow_up_job ?? {
-          job_id: followUp.follow_up_job_id,
-          case_id: report.case_id,
-          status: "created"
-        }
-      );
-      setJobStatus(null);
-      setReport(null);
-      setStrategyFollowUps([]);
-      setTargetedProbes([]);
-      setSelectedEvidence(null);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
-    }
-  }
-
-  async function openStrategyFollowUpJob(jobId: string) {
-    setError("");
-    try {
-      const status = await fetchJobStatus(jobId);
-      setSubmittedJob(status);
-      setJobStatus(status);
-      setReport(null);
-      setStrategyFollowUps([]);
-      setTargetedProbes([]);
-      setSpreadsheetWritebackResult(null);
-      setSpreadsheetWritebackAudit(null);
-      setAutoDebugClosureResult(null);
-      setAutoDebugClosureMarkdown("");
-      setAutoDebugClosureReportUrl("");
-      setSelectedEvidence(null);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unknown error");
+      setError(caught instanceof Error ? caught.message : "未知错误");
     }
   }
 
   return (
-    <main ref={motionScopeRef} className="agent-shell" data-motion-scope="debug-console">
-      <header className="agent-shell__hero" data-gsap-reveal>
-        <p className="agent-shell__eyebrow">Harness Debug Console</p>
-        <h1>Debug Detection Agent</h1>
-        <p className="agent-shell__summary">Evidence-first operations for model badcase triage.</p>
-        <nav className="agent-shell__nav" aria-label="Console navigation">
-          <a href="#operations">Operations</a>
-          <a href="#case-intake">Intake</a>
-          <a href="#investigation-workspace">Workspace</a>
-          <a href="#observability">Observability</a>
-          <a href="#writeback">Writeback</a>
+    <div ref={motionScopeRef} className="app-container" data-motion-scope="debug-console">
+      <TerminalDataStream />
+      <FloatingAssistant />
+      <aside className="app-sidebar" data-gsap-reveal>
+        <div className="app-sidebar__header">
+          <div className="app-logo">Harness Debug</div>
+        </div>
+        <nav className="app-sidebar__nav" aria-label="主导航">
+          <button className={activeTab === "workspace" ? "active" : ""} onClick={() => selectTab("workspace")}>
+            调查工作区
+          </button>
+          <button className={activeTab === "intake" ? "active" : ""} onClick={() => selectTab("intake")}>
+            数据导入
+          </button>
+          <button className={activeTab === "operations" ? "active" : ""} onClick={() => selectTab("operations")}>
+            操作监控
+          </button>
+          <button className={activeTab === "writeback" ? "active" : ""} onClick={() => selectTab("writeback")}>
+            回写同步
+          </button>
         </nav>
-        <button className="agent-shell__primary-action" type="button" onClick={submitJob}>
-          Submit debug job
-        </button>
-      </header>
+        <div className="app-sidebar__footer">
+          <button className="app-sidebar__primary-action" type="button" aria-label="提交调试任务" onClick={submitJob}>
+            + 提交调试任务
+          </button>
+        </div>
+      </aside>
 
-      <div className="agent-shell__grid">
-        <aside
-          id="operations"
-          className="agent-shell__rail"
-          aria-label="Operations rail"
-          data-testid="motion-panel"
-          data-anime-flow
-        >
-          <WorkerControlsPanel status={workerStatus} onStart={startWorkerLoop} onStop={stopWorkerLoop} />
-          <section id="observability" aria-label="Operational monitoring region">
-            <h2>Operational Monitoring</h2>
-            <button type="button" onClick={() => void loadObservabilitySummary()}>
-              Load observability summary
-            </button>
-          </section>
-          <AgentTopologyPanel />
-        </aside>
-
-        <section
-          id="case-intake"
-          className="agent-shell__intake"
-          aria-label="Case intake"
-          data-testid="motion-panel"
-          data-anime-flow
-        >
-          <ImportWorkspace
-            jsonlCases={jsonlCases}
-            jsonlImportResult={jsonlImportResult}
-            csvCases={csvCases}
-            csvImportResult={csvImportResult}
-            spreadsheetRowsJson={spreadsheetRowsJson}
-            spreadsheetImportResult={spreadsheetImportResult}
-            onJsonlChange={setJsonlCases}
-            onCsvChange={setCsvCases}
-            onSpreadsheetRowsJsonChange={setSpreadsheetRowsJson}
-            onImportJsonl={importJsonl}
-            onImportCsv={importCsv}
-            onImportSpreadsheetRowsJson={importSpreadsheetRowsJson}
-          />
-          <section id="writeback" aria-label="Writeback operations" className="agent-shell__writeback">
-            <SpreadsheetSyncPanel
-              spreadsheetUrl={spreadsheetUrl}
-              spreadsheetId={spreadsheetId}
-              sheetId={sheetId}
-              larkSpreadsheetStatus={larkSpreadsheetStatus}
-              syncResult={spreadsheetSyncResult}
-              writebackAuditSummary={spreadsheetWritebackAuditSummary}
-              writebackAuditList={spreadsheetWritebackAuditList}
-              activeWritebackAuditStatus={activeWritebackAuditStatus ?? null}
-              writebackResult={spreadsheetWritebackResult}
-              onSpreadsheetUrlChange={setSpreadsheetUrl}
-              onSpreadsheetIdChange={setSpreadsheetId}
-              onSheetIdChange={setSheetId}
-              onUseSpreadsheetUrl={useSpreadsheetUrl}
-              onCheckLarkStatus={() => void checkLarkStatus()}
-              onSyncSpreadsheet={() => void syncSpreadsheet()}
-              onLoadWritebackAuditSummary={() => void loadWritebackAuditSummary()}
-              onLoadWritebackAudits={(status) => void loadWritebackAudits(status)}
-              onOpenAuditJob={(jobId) => void openWritebackAuditJob(jobId)}
-              onRetryAudit={(auditToRetry) => void retryWritebackAudit(auditToRetry)}
-              onLoadMoreWritebackAudits={() => void loadMoreWritebackAudits()}
-            />
-          </section>
-          <ImportedCasesPanel
-            cases={visibleImportedCases}
-            totalCount={importedCaseTotalCount}
-            effectiveCount={effectiveImportedCaseCount}
-            unloadedCount={unloadedCaseCount}
-            selectedCaseDetail={selectedCaseDetail}
-            onLoadImportedCases={() => void loadImportedCases(false)}
-            onLoadWithRegions={() => void loadImportedCases(true)}
-            onLoadAll={() => void loadImportedCases(false)}
-            onLoadMore={() => void loadMoreImportedCases()}
-            onUseForBatch={useImportedCasesForBatch}
-            onViewCaseDetail={(caseId) => void loadCaseDetail(caseId)}
-            onCreateDebugJob={(caseId) => void submitSelectedCaseJob(caseId)}
-          />
-        </section>
-
-        <section
-          id="investigation-workspace"
-          className="agent-shell__workspace"
-          aria-label="Investigation workspace"
-          data-testid="motion-panel"
-          data-anime-flow
-        >
-          {observabilitySummary ? (
-            <ObservabilitySummaryPanel
-              summary={observabilitySummary}
-              onLoadFailedJobs={() => void loadDebugJobs("failed")}
-              onLoadFailedWritebacks={() => void loadWritebackAudits("failed")}
-              onStartWorker={() => void startWorkerLoop()}
-            />
-          ) : null}
-          <BatchJobsPanel
-            caseIds={batchCaseIds}
-            batchResult={batchResult}
-            jobs={batchJobs}
-            summaryLabel={jobListSummaryLabel}
-            totalCount={jobListTotalCount ?? loadedJobCount}
-            unloadedCount={unloadedJobCount}
-            completedCount={completedBatchJobs}
-            onCaseIdsChange={setBatchCaseIds}
-            onSubmit={submitBatchJobs}
-            onLoadJobs={(status, sort) => void loadDebugJobs(status, sort)}
-            onStartWorker={startWorkerLoop}
-            onLoadMore={() => void loadMoreDebugJobs()}
-            onOpenJob={openBatchJob}
-            onSelectEvidence={(jobId, evidenceId) => void selectBatchJobEvidence(jobId, evidenceId)}
-          />
-          {error ? <p role="alert">{error}</p> : null}
-          <div className="agent-shell__investigation" data-testid="motion-panel" data-gsap-reveal>
-            {submittedJob ? (
-              <CurrentJobPanel
-                job={jobStatus ?? submittedJob}
-                selectedEvidence={selectedEvidence}
-                onSelectEvidence={selectJobEvidence}
-                onLoadReport={() => void loadCurrentJobReport()}
-              />
-            ) : null}
-            {report ? (
-              <DebugReportWorkspace
-                report={report}
-                selectedEvidence={selectedEvidence}
-                recommendedActionStatusEvents={recommendedActionStatusEvents}
-                recommendedActionVerifications={recommendedActionVerifications}
-                recommendedActionVerificationResults={recommendedActionVerificationResults}
-                strategyFollowUps={strategyFollowUps}
-                targetedProbes={targetedProbes}
-                humanHandoffStatuses={humanHandoffStatuses}
-                writebackResult={spreadsheetWritebackResult}
-                writebackAudit={spreadsheetWritebackAudit}
-                onSelectEvidence={selectEvidence}
-                onWriteReport={() => void writeCurrentReportToSpreadsheet()}
-                onLoadWritebackAudit={() => void loadCurrentWritebackAudit()}
-                onUpdateRecommendedActionStatus={(actionIndex, status) =>
-                  void updateCurrentRecommendedActionStatus(actionIndex, status)
-                }
-                onUpdateHumanHandoffStatus={(targetId, status) => void updateCurrentHumanHandoffStatus(targetId, status)}
-                onVerifyRecommendedAction={(actionIndex) => void verifyCurrentRecommendedAction(actionIndex)}
-                onCreateStrategyFollowUp={(stage) => void createCurrentStrategyFollowUp(stage)}
-                onCreateTargetedProbe={(targetId) => void createCurrentTargetedProbe(targetId)}
-                onCreateFinalAttributionFollowUp={(targetId) => void createCurrentFinalAttributionFollowUp(targetId)}
-                onCreateFinalAttributionRecovery={(targetId) => void createCurrentFinalAttributionRecovery(targetId)}
-                onOpenStrategyFollowUp={(jobId) => void openStrategyFollowUpJob(jobId)}
-                onOpenTargetedProbe={(jobId) => void openStrategyFollowUpJob(jobId)}
-                autoDebugClosureResult={autoDebugClosureResult}
-                autoDebugClosureMarkdown={autoDebugClosureMarkdown}
-                autoDebugClosureReportUrl={autoDebugClosureReportUrl}
-                onRunAutoDebugClosure={() => void runCurrentAutoDebugClosure()}
-              />
-            ) : submittedJob ? null : (
-              <p className="agent-shell__empty">点击按钮运行第一条可验证 debug 闭环。</p>
-            )}
+      <main className="app-main" data-anime-flow>
+        <header className="app-main__header">
+          <div>
+            <h1>
+              {activeTab === "workspace" && "调查工作区"}
+              {activeTab === "intake" && "数据导入"}
+              {activeTab === "operations" && "操作监控"}
+              {activeTab === "writeback" && "回写同步"}
+            </h1>
+            <p className="app-main__subtitle">基于证据驱动的模型坏案排查与修复操作台</p>
           </div>
-        </section>
-      </div>
-    </main>
+        </header>
+
+        <div className="app-main__content">
+          {error ? <p role="alert" className="error-message">{error}</p> : null}
+
+          {activeTab === "operations" && (
+            <div className="view-section" id="operations">
+              <WorkerControlsPanel status={workerStatus} onStart={startWorkerLoop} onStop={stopWorkerLoop} />
+              <section id="observability" aria-label="监控面板">
+                <h2>运行监控</h2>
+                <button type="button" onClick={() => void loadObservabilitySummary()}>
+                  加载监控概览
+                </button>
+                <button type="button" onClick={() => void loadProductionReadiness()}>
+                  加载生产运行就绪
+                </button>
+                <button type="button" onClick={() => void loadLarkBotPreflight()}>
+                  加载机器人上线预检
+                </button>
+                <button type="button" onClick={() => void loadLarkBotGoLiveGate()}>
+                  加载机器人真实上线门禁
+                </button>
+                <button type="button" onClick={() => void loadPilotGate()}>
+                  加载试点准入评估
+                </button>
+                <button type="button" onClick={() => void loadLarkBotPendingCommands("pending")}>
+                  加载机器人命令
+                </button>
+                <button type="button" onClick={() => void loadLarkNotificationOutbox("pending")}>
+                  加载飞书通知 Outbox
+                </button>
+                <button type="button" onClick={() => void loadLarkBotBadcaseDrafts("ready_for_confirmation")}>
+                  加载 badcase 草稿
+                </button>
+                {observabilitySummary ? (
+                  <ObservabilitySummaryPanel
+                    summary={observabilitySummary}
+                    onLoadFailedJobs={() => void loadDebugJobs("failed")}
+                    onLoadFailedWritebacks={() => void loadWritebackAudits("failed")}
+                    onStartWorker={() => void startWorkerLoop()}
+                    onClose={() => setObservabilitySummary(null)}
+                  />
+                ) : null}
+                {productionReadiness ? <ProductionReadinessPanel readiness={productionReadiness} /> : null}
+                {larkBotPreflight ? (
+                  <LarkBotPreflightPanel
+                    preflight={larkBotPreflight}
+                    onAcknowledgeSetupItem={recordLarkBotSetupAcknowledgement}
+                  />
+                ) : null}
+                {larkBotGoLiveGate ? <LarkBotGoLiveGatePanel gate={larkBotGoLiveGate} /> : null}
+                {pilotGate ? <PilotGatePanel gate={pilotGate} /> : null}
+                {larkBotPendingCommandList ? (
+                  <LarkBotPendingCommandPanel
+                    commands={larkBotPendingCommandList.commands}
+                    totalCount={larkBotPendingCommandList.total_count}
+                    activeStatus={activeLarkBotPendingStatus ?? null}
+                    replyPreview={larkBotReplyPreview}
+                    onLoadStatus={(status) => void loadLarkBotPendingCommands(status)}
+                    onLoadMore={() => void loadMoreLarkBotPendingCommands()}
+                    onConfirm={(commandId) => void confirmCurrentLarkBotPendingCommand(commandId)}
+                    onPreviewReply={(commandId) => void previewCurrentLarkBotReply(commandId)}
+                  />
+                ) : null}
+                {larkNotificationOutboxList ? (
+                  <LarkNotificationOutboxPanel
+                    notifications={larkNotificationOutboxList.notifications}
+                    totalCount={larkNotificationOutboxList.total_count}
+                    activeStatus={activeLarkNotificationOutboxStatus ?? null}
+                    onLoadStatus={(status) => void loadLarkNotificationOutbox(status)}
+                    onLoadMore={() => void loadMoreLarkNotificationOutbox()}
+                  />
+                ) : null}
+                {larkBotBadcaseDraftList ? (
+                  <LarkBotBadcaseDraftPanel
+                    drafts={larkBotBadcaseDraftList.drafts}
+                    totalCount={larkBotBadcaseDraftList.total_count}
+                    activeStatus={activeLarkBotBadcaseDraftStatus ?? null}
+                    lastConfirmation={larkBotBadcaseDraftConfirmation}
+                    onLoadStatus={(status) => void loadLarkBotBadcaseDrafts(status)}
+                    onLoadMore={() => void loadMoreLarkBotBadcaseDrafts()}
+                    onConfirm={(draftId) => void confirmCurrentLarkBotBadcaseDraft(draftId)}
+                  />
+                ) : null}
+              </section>
+              <AgentTopologyPanel
+                runStages={debugRunStages}
+                agentModelConfig={agentModelConfig}
+                modelCatalog={modelCatalog}
+                onAgentModelConfigChange={setAgentModelConfig}
+              />
+            </div>
+          )}
+
+          {activeTab === "intake" && (
+            <div className="view-section" id="case-intake">
+              <ImportWorkspace
+                jsonlCases={jsonlCases}
+                jsonlImportResult={jsonlImportResult}
+                csvCases={csvCases}
+                csvImportResult={csvImportResult}
+                spreadsheetRowsJson={spreadsheetRowsJson}
+                spreadsheetImportResult={spreadsheetImportResult}
+                onJsonlChange={setJsonlCases}
+                onCsvChange={setCsvCases}
+                onSpreadsheetRowsJsonChange={setSpreadsheetRowsJson}
+                onImportJsonl={importJsonl}
+                onImportCsv={importCsv}
+                onImportSpreadsheetRowsJson={importSpreadsheetRowsJson}
+              />
+              <ImportedCasesPanel
+                cases={visibleImportedCases}
+                totalCount={importedCaseTotalCount}
+                effectiveCount={effectiveImportedCaseCount}
+                unloadedCount={unloadedCaseCount}
+                selectedCaseDetail={selectedCaseDetail}
+                onLoadImportedCases={() => void loadImportedCases(false)}
+                onLoadWithRegions={() => void loadImportedCases(true)}
+                onLoadAll={() => void loadImportedCases(false)}
+                onLoadMore={() => void loadMoreImportedCases()}
+                onUseForBatch={useImportedCasesForBatch}
+                onViewCaseDetail={(caseId) => void loadCaseDetail(caseId)}
+                onCreateDebugJob={(caseId) => void submitSelectedCaseJob(caseId)}
+              />
+            </div>
+          )}
+
+          {activeTab === "writeback" && (
+            <div className="view-section" id="writeback">
+              <SpreadsheetSyncPanel
+                spreadsheetUrl={spreadsheetUrl}
+                spreadsheetId={spreadsheetId}
+                sheetId={sheetId}
+                rerunRowIds={rerunRowIds}
+                rerunAutoClosure={rerunAutoClosure}
+                rerunWriteback={rerunWriteback}
+                larkSpreadsheetStatus={larkSpreadsheetStatus}
+                syncResult={spreadsheetSyncResult}
+                writebackAuditSummary={spreadsheetWritebackAuditSummary}
+                writebackAuditList={spreadsheetWritebackAuditList}
+                activeWritebackAuditStatus={activeWritebackAuditStatus ?? null}
+                larkOperationAuditList={larkOperationAuditList}
+                activeLarkOperationAuditStatus={activeLarkOperationAuditStatus ?? null}
+                larkScopeCheck={larkScopeCheck}
+                larkAuthSession={larkAuthSession}
+                writebackResult={spreadsheetWritebackResult}
+                batchExportHref={spreadsheetBatchExportHref}
+                onSpreadsheetUrlChange={setSpreadsheetUrl}
+                onSpreadsheetIdChange={setSpreadsheetId}
+                onSheetIdChange={setSheetId}
+                onRerunRowIdsChange={setRerunRowIds}
+                onRerunAutoClosureChange={setRerunAutoClosure}
+                onRerunWritebackChange={setRerunWriteback}
+                onUseSpreadsheetUrl={useSpreadsheetUrl}
+                onCheckLarkStatus={() => void checkLarkStatus()}
+                onSyncSpreadsheet={() => void syncSpreadsheet()}
+                onRerunSpreadsheetRows={() => void rerunSelectedSpreadsheetRows()}
+                onLoadWritebackAuditSummary={() => void loadWritebackAuditSummary()}
+                onLoadWritebackAudits={(status) => void loadWritebackAudits(status)}
+                onLoadLarkOperationAudits={(status) => void loadLarkOperationAudits(status)}
+                onCheckLarkScopes={() => void checkLarkScopes()}
+                onCreateLarkAuthSession={() => void createCurrentLarkAuthSession()}
+                onCompleteLarkAuthSession={() => void completeCurrentLarkAuthSession()}
+                onOpenAuditJob={(jobId) => void openWritebackAuditJob(jobId)}
+                onRetryAudit={(auditToRetry) => void retryWritebackAudit(auditToRetry)}
+                onLoadMoreWritebackAudits={() => void loadMoreWritebackAudits()}
+                onLoadMoreLarkOperationAudits={() => void loadMoreLarkOperationAudits()}
+              />
+            </div>
+          )}
+
+          {activeTab === "workspace" && (
+            <div className="view-section" id="investigation-workspace">
+              <BatchJobsPanel
+                caseIds={batchCaseIds}
+                batchResult={batchResult}
+                jobs={batchJobs}
+                summaryLabel={jobListSummaryLabel}
+                totalCount={jobListTotalCount ?? loadedJobCount}
+                unloadedCount={unloadedJobCount}
+                completedCount={completedBatchJobs}
+                batchProgress={activeBatchProgress}
+                batchHistory={batchHistory}
+                exportHref={currentBatchExportHref}
+                failedExportHref={failedJobsExportHref}
+                newestExportHref={newestJobsExportHref}
+                onCaseIdsChange={setBatchCaseIds}
+                onSubmit={submitBatchJobs}
+                onLoadJobs={(status, sort) => void loadDebugJobs(status, sort)}
+                onStartWorker={startWorkerLoop}
+                onPauseBatch={() => void changeActiveBatch("pause")}
+                onResumeBatch={() => void changeActiveBatch("resume")}
+                onCancelBatch={() => void changeActiveBatch("cancel")}
+                onLoadBatches={() => void loadBatchHistory()}
+                onLoadMore={() => void loadMoreDebugJobs()}
+                onOpenJob={openBatchJob}
+                onSelectEvidence={(jobId, evidenceId) => void selectBatchJobEvidence(jobId, evidenceId)}
+              />
+              {workerStatus ? (
+                <section aria-label="工作区 worker 状态" className="worker-summary-inline">
+                  <p>后台进程运行中：{workerStatus.running ? "是" : "否"}</p>
+                  <p>后台进程已处理：{workerStatus.processed_count}</p>
+                  <p>后台进程错误：{workerStatus.error_count}</p>
+                </section>
+              ) : null}
+              <div className="agent-shell__investigation">
+                {submittedJob ? (
+                  <CurrentJobPanel
+                    job={jobStatus ?? submittedJob}
+                    runStages={debugRunStages}
+                    evidenceLedger={evidenceLedger}
+                    selectedEvidence={selectedEvidence}
+                    onSelectEvidence={selectJobEvidence}
+                    onLoadReport={() => void loadCurrentJobReport()}
+                    onLoadRunStages={() => void loadCurrentDebugRunStages()}
+                    onLoadEvidenceLedger={() => void loadCurrentEvidenceLedger()}
+                  />
+                ) : null}
+                {report ? (
+                  <DebugReportWorkspace
+                    report={report}
+                    selectedEvidence={selectedEvidence}
+                    recommendedActionStatusEvents={recommendedActionStatusEvents}
+                    recommendedActionVerifications={recommendedActionVerifications}
+                    recommendedActionVerificationResults={recommendedActionVerificationResults}
+                    strategyFollowUps={strategyFollowUps}
+                    targetedProbes={targetedProbes}
+                    humanHandoffStatuses={humanHandoffStatuses}
+                    writebackResult={spreadsheetWritebackResult}
+                    writebackAudit={spreadsheetWritebackAudit}
+                    writeConfirmation={larkWriteConfirmation}
+                    onSelectEvidence={selectEvidence}
+                    onWriteReport={() => void writeCurrentReportToSpreadsheet()}
+                    onPrepareWriteConfirmation={() => void prepareCurrentWritebackConfirmation()}
+                    onConfirmWriteReport={() => void confirmCurrentWritebackAndWrite()}
+                    onLoadWritebackAudit={() => void loadCurrentWritebackAudit()}
+                    onUpdateRecommendedActionStatus={(actionIndex, status) =>
+                      void updateCurrentRecommendedActionStatus(actionIndex, status)
+                    }
+                    onUpdateHumanHandoffStatus={(targetId, status) => void updateCurrentHumanHandoffStatus(targetId, status)}
+                    onVerifyRecommendedAction={(actionIndex) => void verifyCurrentRecommendedAction(actionIndex)}
+                    onCreateStrategyFollowUp={(stage) => void createCurrentStrategyFollowUp(stage)}
+                    onCreateTargetedProbe={(targetId) => void createCurrentTargetedProbe(targetId)}
+                    onCreateFinalAttributionFollowUp={(targetId) => void createCurrentFinalAttributionFollowUp(targetId)}
+                    onCreateFinalAttributionRecovery={(targetId) => void createCurrentFinalAttributionRecovery(targetId)}
+                    onOpenStrategyFollowUp={(jobId) => void openStrategyFollowUpJob(jobId)}
+                    onOpenTargetedProbe={(jobId) => void openStrategyFollowUpJob(jobId)}
+                    autoDebugClosureResult={autoDebugClosureResult}
+                    autoDebugClosureMarkdown={autoDebugClosureMarkdown}
+                    autoDebugClosureReportUrl={autoDebugClosureReportUrl}
+                    onRunAutoDebugClosure={() => void runCurrentAutoDebugClosure()}
+                  />
+                ) : submittedJob ? null : (
+                  <div className="empty-state" style={{ marginTop: '1rem' }}>
+                    <p className="empty-state__title">尚未选择任务</p>
+                    <p>请从上方列表选择或提交一个新任务，开启排查与修复流程。</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
   );
 }

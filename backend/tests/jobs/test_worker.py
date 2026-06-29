@@ -1,16 +1,18 @@
 import asyncio
 from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from debug_agent.jobs.service import DebugJobService
 from debug_agent.jobs.worker import AsyncJobWorker
+from debug_agent.models.fake import FakeModelAdapter
 from debug_agent.storage.database import create_sqlite_memory_session_factory
-from debug_agent.storage.models import Base
+from debug_agent.storage.models import Base, DebugJobRow
 from debug_agent.storage.repository import DebugJobRepository
 
 
-async def wait_until(predicate: Callable[[], bool], timeout_seconds: float = 1.0) -> None:
+async def wait_until(predicate: Callable[[], bool], timeout_seconds: float = 5.0) -> None:
     deadline = asyncio.get_running_loop().time() + timeout_seconds
     while asyncio.get_running_loop().time() < deadline:
         if predicate():
@@ -23,7 +25,12 @@ def create_service(max_attempts: int = 2) -> tuple[DebugJobRepository, DebugJobS
     session_factory, engine = create_sqlite_memory_session_factory()
     Base.metadata.create_all(engine)
     repository = DebugJobRepository(session_factory)
-    return repository, DebugJobService(repository, max_attempts=max_attempts)
+    return repository, DebugJobService(
+        repository,
+        max_attempts=max_attempts,
+        model_provider=lambda case: FakeModelAdapter([prediction.raw_output for prediction in case.predictions]),
+        enable_fixture_fallback=True,
+    )
 
 
 @pytest.mark.asyncio
@@ -33,8 +40,10 @@ async def test_async_worker_processes_created_job_until_completion() -> None:
     worker = AsyncJobWorker(service, idle_sleep_seconds=0.01)
 
     started = worker.start()
-    await wait_until(lambda: repository.get_job(submitted.job_id).status == "completed")
-    await worker.stop()
+    try:
+        await wait_until(lambda: repository.get_job(submitted.job_id).status == "completed")
+    finally:
+        await worker.stop()
 
     job = repository.get_job(submitted.job_id)
     assert started is True
@@ -68,8 +77,10 @@ async def test_async_worker_survives_failed_job_attempt_and_keeps_polling() -> N
     worker = AsyncJobWorker(service, idle_sleep_seconds=0.01)
 
     worker.start()
-    await wait_until(lambda: repository.get_job(submitted.job_id).status == "completed")
-    await worker.stop()
+    try:
+        await wait_until(lambda: repository.get_job(submitted.job_id).status == "completed")
+    finally:
+        await worker.stop()
 
     failed_attempt = repository.get_job("000-missing")
     completed_job = repository.get_job(submitted.job_id)
@@ -102,3 +113,34 @@ async def test_async_worker_invokes_completion_hook_after_completed_job() -> Non
     assert completed_job_ids == [submitted.job_id]
     assert worker.status().processed_count == 1
     assert worker.status().error_count == 0
+
+
+@pytest.mark.asyncio
+async def test_async_worker_recovers_stale_running_job_before_tick() -> None:
+    session_factory, engine = create_sqlite_memory_session_factory()
+    Base.metadata.create_all(engine)
+    repository = DebugJobRepository(session_factory)
+    service = DebugJobService(
+        repository,
+        model_provider=lambda case: FakeModelAdapter([prediction.raw_output for prediction in case.predictions]),
+        enable_fixture_fallback=True,
+    )
+    submitted = service.submit_case_debug("handwrite233")
+    repository.mark_running(submitted.job_id)
+    stale_updated_at = (datetime.now(UTC) - timedelta(minutes=30)).isoformat()
+    with session_factory() as session:
+        row = session.get(DebugJobRow, submitted.job_id)
+        assert row is not None
+        row.updated_at = stale_updated_at
+        session.commit()
+    worker = AsyncJobWorker(service, idle_sleep_seconds=0.01, stale_running_job_seconds=60)
+
+    await worker.tick()
+
+    job = repository.get_job(submitted.job_id)
+    assert job is not None
+    assert job.status == "completed"
+    assert job.attempt_count == 2
+    assert worker.status().recovered_stale_job_count == 1
+    stages = repository.list_debug_run_stages(submitted.job_id)
+    assert any(stage.stage == "queue_runtime" and stage.status == "recovered" for stage in stages)

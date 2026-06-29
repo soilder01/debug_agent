@@ -1,4 +1,5 @@
 import json
+import re
 
 from pydantic import BaseModel
 
@@ -57,22 +58,22 @@ class MultimodalDetectionDiff(BaseModel):
 
 
 def parse_prediction_answer(raw_output: str) -> AnswerSet:
-    payload = json.loads(raw_output)
+    payload = parse_json_payload(raw_output)
     return AnswerSet.model_validate(payload)
 
 
 def parse_classification_output(raw_output: str) -> ClassificationOutput:
-    payload = json.loads(raw_output)
+    payload = parse_json_payload(raw_output)
     return ClassificationOutput.model_validate(payload)
 
 
 def parse_image_detection_output(raw_output: str) -> ImageDetectionOutput:
-    payload = json.loads(raw_output)
+    payload = parse_json_payload(raw_output)
     return ImageDetectionOutput.model_validate(payload)
 
 
 def parse_video_detection_output(raw_output: str) -> VideoDetectionOutput:
-    payload = json.loads(raw_output)
+    payload = parse_json_payload(raw_output)
     if isinstance(payload, dict) and "video_action_segments" in payload and "temporal_segments" not in payload:
         return VideoDetectionOutput.model_validate(
             {"temporal_segments": _video_action_segments_to_temporal_segments(payload["video_action_segments"])}
@@ -81,8 +82,66 @@ def parse_video_detection_output(raw_output: str) -> VideoDetectionOutput:
 
 
 def parse_multimodal_detection_output(raw_output: str) -> MultimodalDetectionOutput:
-    payload = json.loads(raw_output)
+    payload = parse_json_payload(raw_output)
     return MultimodalDetectionOutput.model_validate(payload)
+
+
+def parse_json_payload(raw_output: str) -> object:
+    stripped = raw_output.strip()
+    try:
+        return json.loads(stripped)
+    except json.JSONDecodeError:
+        pass
+    fenced = _json_from_fenced_block(stripped)
+    if fenced:
+        return json.loads(fenced)
+    embedded = _first_embedded_json(stripped)
+    if embedded:
+        return json.loads(embedded)
+    return json.loads(stripped)
+
+
+def _json_from_fenced_block(value: str) -> str:
+    match = re.search(r"```(?:json)?\s*(.*?)```", value, flags=re.IGNORECASE | re.DOTALL)
+    return match.group(1).strip() if match else ""
+
+
+def _first_embedded_json(value: str) -> str:
+    for start_index, char in enumerate(value):
+        if char not in "[{":
+            continue
+        candidate = _balanced_json_candidate(value[start_index:])
+        if candidate:
+            return candidate
+    return ""
+
+
+def _balanced_json_candidate(value: str) -> str:
+    stack: list[str] = []
+    in_string = False
+    escaped = False
+    pairs = {"{": "}", "[": "]"}
+    for index, char in enumerate(value):
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+        if char == '"':
+            in_string = True
+            continue
+        if char in pairs:
+            stack.append(pairs[char])
+            continue
+        if char in "]}":
+            if not stack or stack.pop() != char:
+                return ""
+            if not stack:
+                return value[: index + 1].strip()
+    return ""
 
 
 def compare_classification_outputs(

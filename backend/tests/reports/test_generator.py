@@ -830,6 +830,8 @@ def test_generate_report_uses_generic_output_mismatch_for_non_ocr_structured_del
     assert report.observed_failure.type == "output_mismatch"
     assert report.root_cause.label == "output_mismatch"
     assert "label:sentiment" in report.root_cause.evidence_summary
+    assert "结构化评分差异指向 label:sentiment" in report.root_cause.evidence_summary
+    assert "Structured judge deltas" not in report.root_cause.evidence_summary
     assert "box" not in report.observed_failure.summary
     assert report.suggested_sheet_fields["影响目标"] == "label:sentiment"
     assert report.suggested_sheet_fields["结构化差异"] == "label:sentiment label_mismatch: expected=positive actual=negative"
@@ -1111,6 +1113,65 @@ def test_generate_report_prioritizes_runtime_failures_before_answer_mismatch() -
     assert report.root_cause.label == "model_call_error"
     assert report.root_cause.confidence == "high"
     assert "TimeoutError" in report.root_cause.evidence_summary
+
+
+def test_generate_report_uses_lark_badcase_context_when_source_replay_fails() -> None:
+    case = DebugCase.model_validate(
+        {
+            "case_id": "lark-draft-video-1",
+            "task_type": "generic_json",
+            "image_uri": "file:///tmp/JSZN-131.mp4",
+            "prompt": "Debug this enterprise badcase. Return JSON.",
+            "golden_answer": {"answers": []},
+            "expected_output": {
+                "reference_answer": {
+                    "video_action_segments": [
+                        {"subtask_label": "pick sponge", "start_s": 23.2, "end_s": 43.5}
+                    ]
+                }
+            },
+            "output_schema": {},
+            "scoring_standard": "timestamp must match expected window.",
+            "predictions": [
+                {
+                    "trial": 0,
+                    "raw_output": "{\"video_action_segments\":[{\"subtask_label\":\"pick sponge\",\"start_s\":34.1,\"end_s\":48.0}]}",
+                    "score": 0,
+                }
+            ],
+            "avg_score": 0.0,
+            "human_notes": {
+                "debug_status": "from_lark_badcase_draft",
+                "root_cause": "EvalOpCheckTimestamp 失败：clip 0 end_s 不在范围内",
+            },
+        }
+    )
+    plan = plan_experiments(case)
+    run_result = ExperimentRunResult(
+        case_id=case.case_id,
+        total_trials=1,
+        success_count=0,
+        evidence=[
+            ExperimentEvidence(
+                evidence_id="e-source-replay-error",
+                step_name="baseline_replay",
+                trial=0,
+                model_call_error_type="URLError",
+                model_call_error_message="EOF occurred in violation of protocol",
+                raw_output="",
+                judge=JudgeResult(score=0, reasons=["model_call_error"]),
+            )
+        ],
+    )
+
+    report = generate_initial_report(case, plan, run_result)
+
+    assert report.observed_failure.type == "video_timestamp_mismatch"
+    assert report.root_cause.label == "video_timestamp_boundary_error"
+    assert report.root_cause.confidence == "medium"
+    assert "表格提供的原始模型输出" in report.root_cause.evidence_summary
+    assert "source replay 调用失败" in report.suggested_sheet_fields["模型复测诊断"]
+    assert report.suggested_sheet_fields["错误原因"].startswith("视频时间边界定位失败")
 
 
 def test_generate_report_flags_missing_scoring_standard_as_evaluation_asset_issue() -> None:

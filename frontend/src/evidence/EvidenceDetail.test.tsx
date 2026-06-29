@@ -7,13 +7,12 @@ import { EvidenceDetail } from "./EvidenceDetail";
 afterEach(() => {
   cleanup();
 });
-
 describe("EvidenceDetail", () => {
   it("renders an empty selected-evidence state", () => {
     render(<EvidenceDetail evidence={null} />);
 
-    expect(screen.getByRole("region", { name: "Evidence Detail" })).toHaveClass("evidence-detail");
-    expect(screen.getByText("No evidence selected")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "证据详情" })).toHaveClass("evidence-detail");
+    expect(screen.getByText("尚未选择证据")).toBeInTheDocument();
   });
 
   it("renders generic evidence artifacts before legacy image artifacts", () => {
@@ -70,19 +69,19 @@ describe("EvidenceDetail", () => {
 
     render(<EvidenceDetail evidence={evidence} />);
 
-    expect(screen.getByRole("region", { name: "Evidence Detail" })).toHaveClass("evidence-detail");
-    expect(screen.getByLabelText("Evidence request metadata")).toHaveClass("evidence-section");
-    expect(screen.getByLabelText("Evidence summary metrics")).toHaveClass("metric-strip");
-    expect(screen.getByLabelText("Evidence artifacts")).toHaveClass("evidence-artifacts");
-    expect(screen.getByLabelText("Judge result")).toHaveClass("evidence-section");
-    expect(screen.getByLabelText("Model raw output")).toHaveClass("evidence-section");
-    expect(screen.getByText("Evidence Artifacts")).toBeInTheDocument();
-    expect(screen.getByText("Artifact case-1:baseline_replay:0:input-snapshot")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "证据详情" })).toHaveClass("evidence-detail");
+    expect(screen.getByLabelText("证据请求元数据")).toHaveClass("evidence-section");
+    expect(screen.getByLabelText("证据摘要指标")).toHaveClass("metric-strip");
+    expect(screen.getByLabelText("证据产物")).toHaveClass("evidence-artifacts");
+    expect(screen.getByLabelText("Judge 判分结果")).toHaveClass("evidence-section");
+    expect(screen.getByLabelText("模型原始输出")).toHaveClass("evidence-section");
+    expect(screen.getByText("证据产物")).toBeInTheDocument();
+    expect(screen.getByText("产物 case-1:baseline_replay:0:input-snapshot")).toBeInTheDocument();
     expect(screen.getByText("类型：input_snapshot")).toBeInTheDocument();
     expect(screen.getByText("媒介：request")).toBeInTheDocument();
     expect(screen.getByText("源 URI：file:///tmp/case-1.png")).toBeInTheDocument();
     expect(screen.getByText('元数据：{"task_type":"classification","prompt_length":42}')).toBeInTheDocument();
-    expect(screen.queryByText("Image Artifacts")).not.toBeInTheDocument();
+    expect(screen.queryByText("图片产物")).not.toBeInTheDocument();
   });
 
   it("renders direct drilldown links for full raw output and clipped targeted video artifacts", () => {
@@ -157,7 +156,7 @@ describe("EvidenceDetail", () => {
       screen.getByRole("link", { name: "打开完整原始输出 JSZN-131:baseline_replay:0:structured-output" })
     ).toHaveAttribute("href", "/api/artifacts/files/JSZN-131_baseline_replay_0_structured-output.txt");
     expect(
-      screen.getByRole("link", { name: "打开 clipped targeted video JSZN-131:auto_probe:video_segment_1:clip" })
+      screen.getByRole("link", { name: "打开定向裁剪视频 JSZN-131:auto_probe:video_segment_1:clip" })
     ).toHaveAttribute("href", "/api/artifacts/files/JSZN-131_video_segment_1_17.0_39.0.mp4");
     expect(
       screen.getByRole("link", { name: "打开输入视频 JSZN-131:auto_probe:video_segment_1:input-snapshot" })
@@ -241,13 +240,13 @@ describe("EvidenceDetail", () => {
 
     render(<EvidenceDetail evidence={evidence} />);
 
-    expect(screen.getByText("Evidence Artifacts")).toBeInTheDocument();
-    expect(screen.getByText("Artifact case-1:box-7:crop")).toBeInTheDocument();
+    expect(screen.getByText("证据产物")).toBeInTheDocument();
+    expect(screen.getByText("产物 case-1:box-7:crop")).toBeInTheDocument();
     expect(screen.getByText("类型：crop_candidate")).toBeInTheDocument();
     expect(screen.getByText("源图片：file:///tmp/case-1.png")).toBeInTheDocument();
     expect(screen.getByText("派生图片：file:///tmp/case-1-box-7.png")).toBeInTheDocument();
     expect(screen.getByText("区域：x=12, y=34, width=56, height=78, unit=pixel, label=box-7")).toBeInTheDocument();
-    expect(screen.getByAltText("Crop preview case-1:box-7:crop")).toHaveAttribute(
+    expect(screen.getByAltText("裁剪预览 case-1:box-7:crop")).toHaveAttribute(
       "src",
       "/api/artifacts/images/case-1-box-7.png"
     );
@@ -347,7 +346,7 @@ describe("EvidenceDetail", () => {
 
     render(<EvidenceDetail evidence={evidence} />);
 
-    expect(screen.getByText("Judge Deltas")).toBeInTheDocument();
+    expect(screen.getByText("Judge 差异")).toBeInTheDocument();
     expect(screen.getByText("目标：multimodal:conflict:1")).toBeInTheDocument();
     expect(screen.getByText("原因：conflict_actual_mismatch")).toBeInTheDocument();
     expect(screen.getByText("期望：image and caption both describe a cat")).toBeInTheDocument();
@@ -437,7 +436,7 @@ describe("EvidenceDetail", () => {
 
     render(<EvidenceDetail evidence={evidence} />);
 
-    const artifacts = screen.getAllByLabelText("Artifact native context");
+    const artifacts = screen.getAllByLabelText("产物原生上下文");
     expect(within(artifacts[0]).getByText("目标：image:region:1")).toBeInTheDocument();
     expect(within(artifacts[0]).getByText("期望区域：x=10, y=20, width=30, height=40, unit=pixel, label=cat")).toBeInTheDocument();
     expect(within(artifacts[0]).getByText("实际区域：x=10, y=20, width=30, height=40, unit=pixel, label=dog")).toBeInTheDocument();
@@ -569,14 +568,14 @@ describe("EvidenceDetail", () => {
 
     render(<EvidenceDetail evidence={evidence} />);
 
-    expect(screen.getByText("Video Segment Audit")).toBeInTheDocument();
+    expect(screen.getByText("视频片段审计")).toBeInTheDocument();
     expect(screen.getByText("Manifest 类型：video_segment_delta")).toBeInTheDocument();
     expect(screen.getByText("审计片段：1000ms → 2500ms")).toBeInTheDocument();
     expect(screen.getByText("审计标签：person_enters → person_leaves")).toBeInTheDocument();
-    expect(screen.getByText("Keyframe Thumbnails")).toBeInTheDocument();
+    expect(screen.getByText("关键帧缩略图")).toBeInTheDocument();
     expect(screen.getByText("关键帧：1000ms")).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "打开关键帧 thumbnail video-case:baseline:0:video_segment_1:delta 1000ms" })
+      screen.getByRole("link", { name: "打开关键帧缩略图 video-case:baseline:0:video_segment_1:delta 1000ms" })
     ).toHaveAttribute(
       "href",
       "/api/artifacts/manifests/video-case_baseline_0_video_segment_1_delta_keyframe_1000.json"
@@ -635,7 +634,7 @@ describe("EvidenceDetail", () => {
 
     render(<EvidenceDetail evidence={evidence} />);
 
-    expect(screen.getByText("Multimodal Conflict Audit")).toBeInTheDocument();
+    expect(screen.getByText("跨模态冲突审计")).toBeInTheDocument();
     expect(screen.getByText("Manifest 类型：multimodal_conflict_delta")).toBeInTheDocument();
     expect(screen.getByText("审计目标：multimodal:conflict:1")).toBeInTheDocument();
     expect(screen.getByText("审计模态：image, text → image, text")).toBeInTheDocument();
@@ -679,6 +678,6 @@ describe("EvidenceDetail", () => {
 
     render(<EvidenceDetail evidence={evidence} />);
 
-    expect(screen.queryByText("Judge Deltas")).not.toBeInTheDocument();
+    expect(screen.queryByText("Judge 差异")).not.toBeInTheDocument();
   });
 });

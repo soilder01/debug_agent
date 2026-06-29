@@ -30,16 +30,16 @@ describe("WritebackAuditRow", () => {
     render(<WritebackAuditRow audit={audit} onOpenJob={onOpenJob} onRetry={onRetry} />);
 
     expect(screen.getByRole("listitem")).toHaveClass("writeback-audit-row");
-    expect(screen.getByText("failed")).toHaveClass("status-badge--critical");
-    expect(screen.getByLabelText("Writeback audit row actions")).toHaveClass("action-row");
-    expect(screen.getByText("job-failed-writeback-1：failed｜row 7｜permission denied")).toBeInTheDocument();
-    expect(screen.getByText("Retry eligibility：available")).toBeInTheDocument();
-    expect(screen.getByText("Retry reason：last writeback failed: permission denied")).toBeInTheDocument();
-    expect(screen.getByText("Writeback audit fields：1")).toBeInTheDocument();
-    expect(screen.getByText("Writeback audit field：错误原因=model_weakness")).toBeInTheDocument();
+    expect(screen.getByText("失败")).toHaveClass("status-badge--critical");
+    expect(screen.getByLabelText("审计行操作")).toHaveClass("action-row");
+    expect(screen.getByText("job-failed-writeback-1：失败｜行 7｜permission denied")).toBeInTheDocument();
+    expect(screen.getByText("可重试：是")).toBeInTheDocument();
+    expect(screen.getByText("重试原因：上次写回失败：permission denied")).toBeInTheDocument();
+    expect(screen.getByText("写回字段数：1")).toBeInTheDocument();
+    expect(screen.getByText("写回字段：错误原因=model_weakness")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Open audit job job-failed-writeback-1" }));
-    await userEvent.click(screen.getByRole("button", { name: "Retry writeback job-failed-writeback-1" }));
+    await userEvent.click(screen.getByRole("button", { name: "打开任务 job-failed-writeback-1" }));
+    await userEvent.click(screen.getByRole("button", { name: "重试写回 job-failed-writeback-1" }));
 
     expect(onOpenJob).toHaveBeenCalledWith("job-failed-writeback-1");
     expect(onRetry).toHaveBeenCalledWith(audit);
@@ -56,11 +56,11 @@ describe("WritebackAuditRow", () => {
 
     render(<WritebackAuditRow audit={audit} onOpenJob={vi.fn()} onRetry={vi.fn()} />);
 
-    expect(screen.getByText("job-succeeded-writeback-1：succeeded｜row 9｜无错误")).toBeInTheDocument();
-    expect(screen.getByText("Retry eligibility：unavailable")).toBeInTheDocument();
-    expect(screen.getByText("Retry reason：already succeeded")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Retry writeback job-succeeded-writeback-1" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open report job-succeeded-writeback-1" })).toHaveAttribute(
+    expect(screen.getByText("job-succeeded-writeback-1：成功｜行 9｜无错误")).toBeInTheDocument();
+    expect(screen.getByText("可重试：否")).toBeInTheDocument();
+    expect(screen.getByText("重试原因：已经写回成功")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "重试写回 job-succeeded-writeback-1" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "打开报告 job-succeeded-writeback-1" })).toHaveAttribute(
       "href",
       "https://debug-agent.local/jobs/job-succeeded-writeback-1/report"
     );
@@ -80,15 +80,15 @@ describe("WritebackAuditRow", () => {
 
     render(<WritebackAuditRow audit={audit} onOpenJob={vi.fn()} onRetry={vi.fn()} />);
 
-    expect(screen.getByText("Native Debug Writeback")).toBeInTheDocument();
-    const nativeSummary = screen.getByLabelText("Native debug writeback");
+    expect(screen.getByText("原生调试写回")).toBeInTheDocument();
+    const nativeSummary = screen.getByLabelText("原生调试写回");
     expect(screen.getByText("影响目标：video:segment:1")).toBeInTheDocument();
     expect(screen.getByText("结构化差异：video:segment:1 segment_label_mismatch: expected=person_enters actual=person_leaves")).toBeInTheDocument();
     expect(screen.getByText("证据产物：video-case:baseline:0:input-snapshot")).toBeInTheDocument();
-    expect(within(nativeSummary).getByText("Recommended Action Items")).toBeInTheDocument();
+    expect(within(nativeSummary).getByText("推荐操作条目")).toBeInTheDocument();
     expect(within(nativeSummary).getByText("类别：model_capability")).toBeInTheDocument();
     expect(within(nativeSummary).getByText("优先级：high")).toBeInTheDocument();
     expect(within(nativeSummary).getByText("摘要：将 video 感知能力短板纳入模型能力归因。")).toBeInTheDocument();
-    expect(screen.getByText("Writeback audit field：影响目标=video:segment:1")).toBeInTheDocument();
+    expect(screen.getByText("写回字段：影响目标=video:segment:1")).toBeInTheDocument();
   });
 });

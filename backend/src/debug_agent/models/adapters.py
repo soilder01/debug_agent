@@ -9,6 +9,7 @@ class ModelResponse(BaseModel):
     model_id: str = ""
     trial: int
     raw_output: str
+    usage: dict[str, int | float] = {}
 
 
 class ModelAdapter(Protocol):

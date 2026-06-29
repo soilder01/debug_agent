@@ -67,12 +67,13 @@ describe("BatchJobsPanel", () => {
       />
     );
 
-    expect(screen.getByRole("heading", { name: "Batch Jobs" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Batch Jobs" })).toHaveClass("batch-jobs-panel");
-    expect(screen.queryByLabelText("Batch job statuses")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "调查工作台" })).toBeInTheDocument();
+    expect(screen.getByText("这里执行已导入样本的 debug；还没有样本时，先去数据导入或回写同步。")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "调查工作台" })).toHaveClass("batch-jobs-panel");
+    expect(screen.queryByLabelText("批量任务状态")).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Submit batch jobs" }));
-    await userEvent.click(screen.getByRole("button", { name: "Load failed jobs" }));
+    await userEvent.click(screen.getByRole("button", { name: "批量提交调试" }));
+    await userEvent.click(screen.getByRole("button", { name: "查看失败任务" }));
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(onLoadJobs).toHaveBeenCalledWith("failed", undefined);
@@ -101,8 +102,8 @@ describe("BatchJobsPanel", () => {
     );
 
     expect(screen.getByText("批量创建：1")).toBeInTheDocument();
-    expect(screen.getByLabelText("Batch job queue metrics")).toBeInTheDocument();
+    expect(screen.getByLabelText("批量任务队列指标")).toBeInTheDocument();
     expect(screen.getByText("批量进度：1/1")).toBeInTheDocument();
-    expect(screen.getByText("job-1：completed")).toBeInTheDocument();
+    expect(screen.getByText("job-1：已完成")).toBeInTheDocument();
   });
 });

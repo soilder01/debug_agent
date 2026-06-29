@@ -14,6 +14,10 @@ export function CSVImportResultPanel({ result }: CSVImportResultPanelProps) {
           ? "无"
           : result.rejected_rows.map((row) => `${row.row_number}:${row.error_message}`).join(", ")}
       </p>
+      <p>批量创建：{result.jobs.length}</p>
+      {result.jobs.map((job) => (
+        <p key={job.job_id}>{job.job_id}：{job.status}</p>
+      ))}
     </>
   );
 }

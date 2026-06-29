@@ -8,6 +8,7 @@ from debug_agent.cases.comparator import (
     compare_image_detection_outputs,
     compare_multimodal_detection_outputs,
     compare_video_detection_outputs,
+    parse_json_payload,
 )
 from debug_agent.cases.models import (
     AnswerSet,
@@ -38,6 +39,33 @@ def judge_answer(expected: AnswerSet, predicted: AnswerSet, scoring_standard: st
         affected_box_ids=diff.affected_box_ids,
         deltas=[delta.model_dump() for delta in diff.detection_deltas],
     )
+
+
+def judge_generic_json_output(
+    expected_payload: object,
+    raw_output: str,
+    scoring_standard: str = "",
+) -> JudgeResult:
+    predicted_payload = parse_json_payload(raw_output)
+    if _canonical_json(predicted_payload) == _canonical_json(expected_payload):
+        return JudgeResult(score=1, reasons=[], scoring_standard=scoring_standard)
+    return JudgeResult(
+        score=0,
+        reasons=["generic_json_mismatch"],
+        scoring_standard=scoring_standard,
+        deltas=[
+            {
+                "target_id": "generic_json:root",
+                "reason": "json_payload_mismatch",
+                "expected": expected_payload,
+                "actual": predicted_payload,
+            }
+        ],
+    )
+
+
+def _canonical_json(value: object) -> str:
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
 def judge_classification_output(

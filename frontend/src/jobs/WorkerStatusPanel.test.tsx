@@ -9,6 +9,7 @@ function makeStatus(overrides: Partial<WorkerStatus> = {}): WorkerStatus {
     running: true,
     processed_count: 3,
     error_count: 1,
+    recovered_stale_job_count: 2,
     last_error: "hook failed",
     completion_hook_enabled: true,
     report_base_url: "https://debug-agent.local",
@@ -21,15 +22,16 @@ describe("WorkerStatusPanel", () => {
   it("renders worker counters and writeback settings", () => {
     render(<WorkerStatusPanel status={makeStatus()} />);
 
-    expect(screen.getByText("Worker running：true")).toBeInTheDocument();
-    expect(screen.getByText("Running")).toHaveClass("status-badge--success");
-    expect(screen.getByLabelText("Worker runtime metrics")).toHaveClass("metric-strip");
-    expect(screen.getByText("Worker processed：3")).toBeInTheDocument();
-    expect(screen.getByText("Worker errors：1")).toBeInTheDocument();
-    expect(screen.getByText("Worker auto writeback setting：disabled")).toBeInTheDocument();
-    expect(screen.getByText("Worker auto writeback：enabled")).toBeInTheDocument();
-    expect(screen.getByText("Worker report base URL：https://debug-agent.local")).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent("Worker error：hook failed");
+    expect(screen.getByText("进程运行中：是")).toBeInTheDocument();
+    expect(screen.getByText("运行中")).toHaveClass("status-badge--success");
+    expect(screen.getByLabelText("后台进程运行指标")).toHaveClass("metric-strip");
+    expect(screen.getByText("已处理任务：3")).toBeInTheDocument();
+    expect(screen.getByText("进程错误：1")).toBeInTheDocument();
+    expect(screen.getByText("已恢复卡住任务：2")).toBeInTheDocument();
+    expect(screen.getByText("自动回写配置：关闭")).toBeInTheDocument();
+    expect(screen.getByText("完成回调：开启")).toBeInTheDocument();
+    expect(screen.getByText("报告基础 URL：https://debug-agent.local")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("进程错误：hook failed");
   });
 
   it("hides worker error when there is no last error", () => {

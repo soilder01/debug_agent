@@ -53,13 +53,13 @@ describe("ImportedCasesPanel", () => {
       />
     );
 
-    expect(screen.getByRole("heading", { name: "Imported Cases" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Imported Cases" })).toHaveClass("case-queue");
-    expect(screen.getByText("Load imported cases before starting targeted debug jobs.")).toBeInTheDocument();
-    expect(screen.getByText("No imported cases loaded")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Imported case summaries")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "导入样本" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "导入样本" })).toHaveClass("case-queue");
+    expect(screen.getByText("先加载导入样本，再启动定向 debug 任务。")).toBeInTheDocument();
+    expect(screen.getByText("尚未加载导入样本")).toBeInTheDocument();
+    expect(screen.queryByLabelText("导入样本摘要")).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Load imported cases" }));
+    await userEvent.click(screen.getByRole("button", { name: "加载导入样本" }));
 
     expect(onLoadImportedCases).toHaveBeenCalledTimes(1);
   });
@@ -83,8 +83,8 @@ describe("ImportedCasesPanel", () => {
     );
 
     expect(screen.getByText("已导入样本：1")).toBeInTheDocument();
-    expect(screen.getByLabelText("Imported case queue metrics")).toBeInTheDocument();
-    expect(screen.getByText("case-1｜avg_score 0.5｜regions 1｜未标记｜未归因")).toBeInTheDocument();
+    expect(screen.getByLabelText("导入样本队列指标")).toBeInTheDocument();
+    expect(screen.getByText("case-1｜平均分 0.5｜区域 1｜未标记｜未归因")).toBeInTheDocument();
     expect(screen.getByText("样本详情：case-1")).toBeInTheDocument();
   });
 });

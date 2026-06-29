@@ -49,7 +49,7 @@ def test_model_factory_builds_ark_video_adapter(monkeypatch: pytest.MonkeyPatch)
     adapter = build_model_adapter(case, settings=ModelRuntimeSettings(provider="ark-video"))
 
     assert isinstance(adapter, ArkModelAdapter)
-    request = adapter.build_request(prompt="hello", image_uri="file:///tmp/case.mp4")
+    request = adapter.build_request(prompt="hello", image_uri="https://media.example/case.mp4")
     assert request.json_body["model"] == "video-model"
     assert request.json_body["mode"] == "high"
     assert request.json_body["thinking"] == {"type": "disabled"}

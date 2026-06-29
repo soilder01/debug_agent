@@ -29,9 +29,9 @@ describe("SpreadsheetImportResultPanel", () => {
   it("renders spreadsheet import row summaries", () => {
     render(<SpreadsheetImportResultPanel result={makeResult()} />);
 
-    expect(screen.getByText("Spreadsheet 导入样本：1")).toBeInTheDocument();
-    expect(screen.getByText("Spreadsheet 导入行：sheet-row-1:case-1")).toBeInTheDocument();
-    expect(screen.getByText("Spreadsheet 导入拒绝：3:sheet-row-3:missing image")).toBeInTheDocument();
+    expect(screen.getByText("表格导入样本：1")).toBeInTheDocument();
+    expect(screen.getByText("表格导入行：sheet-row-1:case-1")).toBeInTheDocument();
+    expect(screen.getByText("表格导入拒绝：3:sheet-row-3:missing image")).toBeInTheDocument();
   });
 
   it("renders empty import row summaries as none", () => {
@@ -45,8 +45,8 @@ describe("SpreadsheetImportResultPanel", () => {
       />
     );
 
-    expect(screen.getByText("Spreadsheet 导入样本：0")).toBeInTheDocument();
-    expect(screen.getByText("Spreadsheet 导入行：无")).toBeInTheDocument();
-    expect(screen.getByText("Spreadsheet 导入拒绝：无")).toBeInTheDocument();
+    expect(screen.getByText("表格导入样本：0")).toBeInTheDocument();
+    expect(screen.getByText("表格导入行：无")).toBeInTheDocument();
+    expect(screen.getByText("表格导入拒绝：无")).toBeInTheDocument();
   });
 });

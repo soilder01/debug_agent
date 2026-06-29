@@ -19,9 +19,9 @@ def test_debug_case_returns_queryable_completed_job_status() -> None:
     assert body["job_id"] == job_id
     assert body["case_id"] == "handwrite233"
     assert body["status"] == "completed"
-    assert body["attempt_count"] == 0
+    assert body["attempt_count"] == 1
     assert body["max_attempts"] == 2
-    assert body["remaining_attempts"] == 2
+    assert body["remaining_attempts"] == 1
     assert body["will_retry"] is False
     assert body["retry_recommendation"] == "no_retry_needed"
     assert body["retry_recommendation_detail"] == {

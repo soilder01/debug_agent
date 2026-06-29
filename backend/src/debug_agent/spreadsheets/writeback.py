@@ -7,11 +7,18 @@ from debug_agent.jobs.service import SubmittedDebugJob
 from debug_agent.reports.generator import DebugReport
 from debug_agent.reports.job_report import build_report_for_job
 from debug_agent.storage.repository import DebugJobRepository
+from debug_agent.telemetry.performance import measure_performance
 
 
 class SpreadsheetWritebackClient(Protocol):
-    def update_row(self, spreadsheet_id: str, sheet_id: str, row_id: str, fields: dict[str, str]) -> None:
-        """Persist fields to one spreadsheet row."""
+    def update_row(
+        self,
+        spreadsheet_id: str,
+        sheet_id: str,
+        row_id: str,
+        fields: dict[str, str],
+    ) -> dict[str, str] | None:
+        """Persist fields to one spreadsheet row and return written fields when available."""
 
 
 class SpreadsheetWritebackResult(BaseModel):
@@ -39,9 +46,14 @@ def write_report_to_spreadsheet_row(
     report: DebugReport,
     report_url: str,
 ) -> SpreadsheetWritebackResult:
-    fields = build_report_writeback_fields(report, report_url=report_url)
-    client.update_row(spreadsheet_id=spreadsheet_id, sheet_id=sheet_id, row_id=row_id, fields=fields)
-    return SpreadsheetWritebackResult(row_id=row_id, fields=fields)
+    with measure_performance(
+        component="writeback",
+        operation="write_report_to_spreadsheet_row",
+        metadata={"spreadsheet_id": spreadsheet_id, "sheet_id": sheet_id, "row_id": row_id},
+    ):
+        fields = build_report_writeback_fields(report, report_url=report_url)
+        written_fields = client.update_row(spreadsheet_id=spreadsheet_id, sheet_id=sheet_id, row_id=row_id, fields=fields)
+    return SpreadsheetWritebackResult(row_id=row_id, fields=written_fields or fields)
 
 
 def write_report_for_job(
@@ -166,13 +178,13 @@ def _evaluation_feedback(report: DebugReport) -> str:
         lines.append(f"推荐操作验证：{verification_results}")
     strategy_results = _strategy_follow_up_results(report)
     if strategy_results:
-        lines.append(f"策略 Follow-up：{strategy_results}")
+        lines.append(f"策略跟进：{strategy_results}")
     targeted_results = _targeted_probe_results(report)
     if targeted_results:
-        lines.append(f"Targeted Probe：{targeted_results}")
+        lines.append(f"定向深挖：{targeted_results}")
     targeted_guardrails = _targeted_probe_guardrails(report)
     if targeted_guardrails:
-        lines.append(f"Targeted Guardrail：{targeted_guardrails}")
+        lines.append(f"定向深挖保护栏：{targeted_guardrails}")
     human_handoffs = _human_handoff_requests(report)
     if human_handoffs:
         lines.append(f"人工接管：{human_handoffs}")

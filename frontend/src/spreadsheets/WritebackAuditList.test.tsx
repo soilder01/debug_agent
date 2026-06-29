@@ -37,14 +37,14 @@ describe("WritebackAuditList", () => {
       />
     );
 
-    expect(screen.getByText("Writeback audits total：2")).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Writeback audit list" })).toHaveClass("writeback-audit-list");
-    expect(screen.getByText("Writeback audit filter：failed")).toBeInTheDocument();
-    expect(screen.getByText("job-failed-writeback-1：failed｜row 7｜permission denied")).toBeInTheDocument();
+    expect(screen.getByText("审计记录总数：2")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "回写审计列表" })).toHaveClass("writeback-audit-list");
+    expect(screen.getByText("当前筛选：失败")).toBeInTheDocument();
+    expect(screen.getByText("job-failed-writeback-1：失败｜行 7｜permission denied")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Open audit job job-failed-writeback-1" }));
-    await userEvent.click(screen.getByRole("button", { name: "Retry writeback job-failed-writeback-1" }));
-    await userEvent.click(screen.getByRole("button", { name: "Load more writeback audits" }));
+    await userEvent.click(screen.getByRole("button", { name: "打开任务 job-failed-writeback-1" }));
+    await userEvent.click(screen.getByRole("button", { name: "重试写回 job-failed-writeback-1" }));
+    await userEvent.click(screen.getByRole("button", { name: "加载更多审计记录" }));
 
     expect(onOpenJob).toHaveBeenCalledWith("job-failed-writeback-1");
     expect(onRetry).toHaveBeenCalledWith(makeAudit());
@@ -71,9 +71,9 @@ describe("WritebackAuditList", () => {
       />
     );
 
-    expect(screen.getByText("Writeback audit filter：all")).toBeInTheDocument();
-    expect(screen.getByText("Spreadsheet writeback row：7")).toBeInTheDocument();
+    expect(screen.getByText("当前筛选：全部")).toBeInTheDocument();
+    expect(screen.getByText("最近重试写回行：7")).toBeInTheDocument();
     expect(screen.getByText("错误原因：model_weakness")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Load more writeback audits" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "加载更多审计记录" })).not.toBeInTheDocument();
   });
 });

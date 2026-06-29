@@ -94,8 +94,14 @@ function makeSummary(): ObservabilitySummary {
       level: "critical",
       reasons: [
         "failed jobs present",
+        "worker errors present",
         "failed spreadsheet writebacks present",
         "model call errors present",
+        "usage budget exceeded",
+        "pending jobs present",
+        "jobs currently running",
+        "response parse errors present",
+        "skipped spreadsheet writebacks present",
         "strategy follow-ups need escalation",
         "targeted probes still failing",
         "targeted probe guardrails reached",
@@ -105,14 +111,68 @@ function makeSummary(): ObservabilitySummary {
       ],
       actions: [
         "Inspect failed jobs and open their evidence chain.",
+        "Check worker logs and restart the worker if the error persists.",
         "Retry failed spreadsheet writebacks after checking Lark permissions and sheet headers.",
         "Check model endpoint health, timeout settings, and retry affected jobs.",
+        "Pause new submissions or raise the usage budget before continuing.",
+        "Start or scale workers to drain the pending job backlog.",
+        "Monitor running jobs for timeout or stuck execution.",
+        "Inspect prompts and parser assumptions for malformed model outputs.",
+        "Check spreadsheet row mappings before retrying writeback.",
         "Open strategy follow-up history and run escalation probes.",
         "Open targeted probe history and escalate unresolved targets.",
         "Review targeted probe guardrails and assign human investigation.",
         "Review human handoff queue and drive open investigations to resolution.",
         "Open final attribution verification results and rerun unresolved attribution fixes.",
         "Open final attribution recovery results and reassign reopened attribution review."
+      ]
+    },
+    performance: {
+      total_count: 4,
+      aggregates: [
+        {
+          component: "api",
+          operation: "GET /jobs/{job_id}/report",
+          count: 2,
+          failed_count: 0,
+          avg_ms: 20,
+          p50_ms: 18,
+          p95_ms: 35,
+          max_ms: 35,
+          latest_ms: 35
+        },
+        {
+          component: "lark_cli",
+          operation: "+csv-get",
+          count: 1,
+          failed_count: 0,
+          avg_ms: 120,
+          p50_ms: 120,
+          p95_ms: 120,
+          max_ms: 120,
+          latest_ms: 120
+        },
+        {
+          component: "writeback",
+          operation: "write_report_to_spreadsheet_row",
+          count: 1,
+          failed_count: 0,
+          avg_ms: 80,
+          p50_ms: 80,
+          p95_ms: 80,
+          max_ms: 80,
+          latest_ms: 80
+        }
+      ],
+      recent_events: [
+        {
+          component: "api",
+          operation: "GET /jobs/{job_id}/report",
+          duration_ms: 35,
+          status: "succeeded",
+          metadata: { status_code: 200 },
+          occurred_at: "2026-06-22T00:00:00+00:00"
+        }
       ]
     }
   };
@@ -123,6 +183,7 @@ describe("ObservabilitySummaryPanel", () => {
     const onLoadFailedJobs = vi.fn();
     const onLoadFailedWritebacks = vi.fn();
     const onStartWorker = vi.fn();
+    const onClose = vi.fn();
 
     render(
       <ObservabilitySummaryPanel
@@ -130,118 +191,58 @@ describe("ObservabilitySummaryPanel", () => {
         onLoadFailedJobs={onLoadFailedJobs}
         onLoadFailedWritebacks={onLoadFailedWritebacks}
         onStartWorker={onStartWorker}
+        onClose={onClose}
       />
     );
 
-    expect(screen.getByRole("heading", { name: "Observability" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Observability" })).toHaveClass("observability-dashboard");
-    expect(screen.getByLabelText("Job queue metrics")).toHaveClass("metric-strip");
-    expect(screen.getByLabelText("Worker runtime metrics")).toHaveClass("metric-strip");
-    expect(screen.getByLabelText("Evidence quality metrics")).toHaveClass("metric-strip");
-    expect(screen.getByLabelText("Usage budget metrics")).toHaveClass("metric-strip");
-    expect(screen.getByLabelText("Strategy and targeted feedback metrics")).toHaveClass("metric-strip");
-    expect(screen.getByLabelText("Attribution verification and recovery metrics")).toHaveClass("metric-strip");
-    expect(screen.getByLabelText("Health actions")).toHaveClass("action-row");
-    expect(screen.getByText("critical")).toHaveClass("status-badge--critical");
-    expect(screen.getByText("over_budget")).toHaveClass("status-badge--critical");
-    expect(screen.getByText("Observed jobs total：19")).toBeInTheDocument();
-    expect(screen.getByText("Observed jobs pending：4")).toBeInTheDocument();
-    expect(screen.getByText("Observed jobs running：1")).toBeInTheDocument();
-    expect(screen.getByText("Observed jobs completed：12")).toBeInTheDocument();
-    expect(screen.getByText("Observed jobs failed：2")).toBeInTheDocument();
-    expect(screen.getByText("Observed worker running：true")).toBeInTheDocument();
-    expect(screen.getByText("Observed worker processed：18")).toBeInTheDocument();
-    expect(screen.getByText("Observed worker errors：1")).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent("Observed worker last error：hook failed");
-    expect(screen.getByText("Observed writeback audits total：13")).toBeInTheDocument();
-    expect(screen.getByText("Observed writeback succeeded：10")).toBeInTheDocument();
-    expect(screen.getByText("Observed writeback failed：2")).toBeInTheDocument();
-    expect(screen.getByText("Observed writeback skipped：1")).toBeInTheDocument();
-    expect(screen.getByText("Observed evidence total：42")).toBeInTheDocument();
-    expect(screen.getByText("Observed evidence failed judgements：11")).toBeInTheDocument();
-    expect(screen.getByText("Observed evidence parse errors：3")).toBeInTheDocument();
-    expect(screen.getByText("Observed evidence model call errors：2")).toBeInTheDocument();
-    expect(screen.getByText("Observed evidence avg latency：88.5ms")).toBeInTheDocument();
-    expect(screen.getByText("Observed model calls：42")).toBeInTheDocument();
-    expect(screen.getByText("Observed prompt chars：12345")).toBeInTheDocument();
-    expect(screen.getByText("Observed estimated cost units：54.345")).toBeInTheDocument();
-    expect(screen.getByText("Observed usage budget：50")).toBeInTheDocument();
-    expect(screen.getByText("Observed budget status：over_budget")).toBeInTheDocument();
-    expect(screen.getByText("Observed budget utilization：1.0869")).toBeInTheDocument();
-    expect(screen.getByText("Observed budget enforcement：enabled")).toBeInTheDocument();
-    expect(screen.getByText("Observed strategy follow-ups：6")).toBeInTheDocument();
-    expect(screen.getByText("Observed strategy pending：2")).toBeInTheDocument();
-    expect(screen.getByText("Observed strategy passed stop condition：3")).toBeInTheDocument();
-    expect(screen.getByText("Observed strategy needs escalation：1")).toBeInTheDocument();
-    expect(screen.getByText("Observed targeted probes：5")).toBeInTheDocument();
-    expect(screen.getByText("Observed targeted pending：1")).toBeInTheDocument();
-    expect(screen.getByText("Observed targeted cleared：2")).toBeInTheDocument();
-    expect(screen.getByText("Observed targeted still failing：1")).toBeInTheDocument();
-    expect(screen.getByText("Observed targeted inconclusive：1")).toBeInTheDocument();
-    expect(screen.getByText("Observed targeted max depth reached：1")).toBeInTheDocument();
-    expect(screen.getByText("Observed human handoffs：3")).toBeInTheDocument();
-    expect(screen.getByText("Observed handoff pending：1")).toBeInTheDocument();
-    expect(screen.getByText("Observed handoff in progress：1")).toBeInTheDocument();
-    expect(screen.getByText("Observed handoff resolved：1")).toBeInTheDocument();
-    expect(screen.getByText("Observed handoff open：2")).toBeInTheDocument();
-    expect(screen.getByText("Observed final attribution verifications：4")).toBeInTheDocument();
-    expect(screen.getByText("Observed final attribution pending：1")).toBeInTheDocument();
-    expect(screen.getByText("Observed final attribution resolved：1")).toBeInTheDocument();
-    expect(screen.getByText("Observed final attribution not resolved：2")).toBeInTheDocument();
-    expect(screen.getByText("Observed final attribution inconclusive：0")).toBeInTheDocument();
-    expect(screen.getByText("Observed final attribution recoveries：5")).toBeInTheDocument();
-    expect(screen.getByText("Observed final attribution recovery pending：1")).toBeInTheDocument();
-    expect(screen.getByText("Observed final attribution recovery closed：2")).toBeInTheDocument();
-    expect(screen.getByText("Observed final attribution recovery reopen：1")).toBeInTheDocument();
-    expect(screen.getByText("Observed final attribution recovery inconclusive：1")).toBeInTheDocument();
-    expect(screen.getByText("Observed health：critical")).toBeInTheDocument();
-    expect(screen.getByText("Observed health reason：failed jobs present")).toBeInTheDocument();
-    expect(screen.getByText("Observed health reason：failed spreadsheet writebacks present")).toBeInTheDocument();
-    expect(screen.getByText("Observed health reason：model call errors present")).toBeInTheDocument();
-    expect(screen.getByText("Observed health reason：strategy follow-ups need escalation")).toBeInTheDocument();
-    expect(screen.getByText("Observed health reason：targeted probes still failing")).toBeInTheDocument();
-    expect(screen.getByText("Observed health reason：targeted probe guardrails reached")).toBeInTheDocument();
-    expect(screen.getByText("Observed health reason：human handoffs still open")).toBeInTheDocument();
-    expect(screen.getByText("Observed health reason：final attribution verifications not resolved")).toBeInTheDocument();
-    expect(screen.getByText("Observed health reason：final attribution recoveries reopened")).toBeInTheDocument();
-    expect(screen.getByText("Recommended action：Inspect failed jobs and open their evidence chain.")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Recommended action：Retry failed spreadsheet writebacks after checking Lark permissions and sheet headers."
-      )
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Recommended action：Check model endpoint health, timeout settings, and retry affected jobs.")
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Recommended action：Open strategy follow-up history and run escalation probes.")
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Recommended action：Open targeted probe history and escalate unresolved targets.")
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Recommended action：Review targeted probe guardrails and assign human investigation.")
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Recommended action：Review human handoff queue and drive open investigations to resolution.")
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Recommended action：Open final attribution verification results and rerun unresolved attribution fixes."
-      )
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Recommended action：Open final attribution recovery results and reassign reopened attribution review."
-      )
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "监控概览" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "监控概览" })).toHaveClass("observability-dashboard");
+    expect(screen.getByRole("region", { name: "监控概览" })).toHaveClass("observability-dashboard--compact");
+    expect(screen.getByRole("region", { name: "监控详情卡片" })).toHaveClass("observability-dashboard__grid");
+    expect(screen.getByLabelText("任务队列指标")).toHaveClass("metric-strip");
+    expect(screen.getByLabelText("后台进程指标")).toHaveClass("metric-strip");
+    expect(screen.getByLabelText("证据质量指标")).toHaveClass("metric-strip");
+    expect(screen.getByLabelText("资源消耗指标")).toHaveClass("metric-strip");
+    expect(screen.getByLabelText("策略与针对性反馈指标")).toHaveClass("metric-strip");
+    expect(screen.getByLabelText("归因验证与恢复指标")).toHaveClass("metric-strip");
+    expect(screen.getByLabelText("性能基线指标")).toHaveClass("metric-strip");
+    expect(screen.getByLabelText("健康操作")).toHaveClass("action-row");
+    expect(screen.getByText("严重")).toHaveClass("status-badge--critical");
+    expect(screen.getByText("超预算")).toHaveClass("status-badge--critical");
+    expect(screen.getByText("任务总数：19")).toBeInTheDocument();
+    expect(screen.getByText("后台进程运行中：是")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("后台进程最近错误：hook failed");
+    expect(screen.getByText("回写审计总数：13")).toBeInTheDocument();
+    expect(screen.getByText("证据模型调用错误：2")).toBeInTheDocument();
+    expect(screen.getByText("预算状态：超预算")).toBeInTheDocument();
+    expect(screen.getByText("策略需升级：1")).toBeInTheDocument();
+    expect(screen.getByText("定向达到最大深度：1")).toBeInTheDocument();
+    expect(screen.getByText("最终归因未解决：2")).toBeInTheDocument();
+    expect(screen.getByText("性能记录数：4")).toBeInTheDocument();
+    expect(screen.getByText("API P95：35ms")).toBeInTheDocument();
+    expect(screen.getByText("Lark P95：120ms")).toBeInTheDocument();
+    expect(screen.getByText("写回 P95：80ms")).toBeInTheDocument();
+    expect(screen.getByText("最近性能事件：api/GET /jobs/{job_id}/report/35ms/已成功")).toBeInTheDocument();
+    expect(screen.getByText("健康状态：严重")).toBeInTheDocument();
+    expect(screen.getAllByText("健康原因：存在失败任务").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("健康原因：存在等待处理任务").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("健康原因：存在跳过的表格回写").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("健康原因：存在失败的表格回写").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("健康原因：最终归因恢复被重新开启").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("建议操作：检查失败任务并打开对应证据链。").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("建议操作：启动或扩容后台进程，处理等待任务积压。").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("建议操作：重试写回前检查表格行映射。").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("建议操作：确认飞书权限和表头后重试失败回写。").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("建议操作：打开策略跟进历史并执行升级探测。").length).toBeGreaterThan(0);
 
-    await userEvent.click(screen.getByRole("button", { name: "Open failed jobs from observability" }));
-    await userEvent.click(screen.getByRole("button", { name: "Open failed writebacks from observability" }));
-    await userEvent.click(screen.getByRole("button", { name: "Start worker from observability" }));
+    await userEvent.click(screen.getByRole("button", { name: "打开监控中的失败任务" }));
+    await userEvent.click(screen.getByRole("button", { name: "打开监控中的失败回写" }));
+    await userEvent.click(screen.getByRole("button", { name: "从监控概览启动后台进程" }));
+    await userEvent.click(screen.getByRole("button", { name: "收起监控概览" }));
 
     expect(onLoadFailedJobs).toHaveBeenCalledTimes(1);
     expect(onLoadFailedWritebacks).toHaveBeenCalledTimes(1);
     expect(onStartWorker).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

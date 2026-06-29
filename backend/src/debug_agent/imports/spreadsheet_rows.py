@@ -27,9 +27,10 @@ def parse_spreadsheet_rows(rows: list[dict[str, object]]) -> SpreadsheetRowImpor
     imported_rows: list[SpreadsheetImportedRow] = []
     rejected_rows: list[SpreadsheetRejectedRow] = []
     for row_index, row in enumerate(rows):
-        normalized_row = _normalize_row_columns(row)
-        sheet_row_id = _optional_string(normalized_row.get("sheet_row_id"))
+        sheet_row_id = _optional_string(row.get("sheet_row_id"))
         try:
+            normalized_row = _normalize_row_columns(row)
+            sheet_row_id = _optional_string(normalized_row.get("sheet_row_id"))
             imported_rows.append(
                 SpreadsheetImportedRow(
                     sheet_row_id=sheet_row_id,
@@ -71,27 +72,49 @@ def _row_to_case(row: dict[str, object]) -> DebugCase:
 
 
 def _infer_task_type(row: dict[str, object]) -> str:
+    expected_output = _loads_optional_json_value(row.get("expected_output_json"), "expected_output_json")
+    if isinstance(expected_output, list):
+        return "generic_video_json" if _optional_string(row.get("image_uri")).lower().endswith(".mp4") else "generic_json"
+    if isinstance(expected_output, dict) and expected_output:
+        if "video_action_segments" in expected_output:
+            return "video_detection"
+        return "generic_video_json" if _optional_string(row.get("image_uri")).lower().endswith(".mp4") else "generic_json"
     if row.get("scoring_ops_json") or _optional_string(row.get("image_uri")).lower().endswith(".mp4"):
         return "video_detection"
     return "handwriting_ocr"
 
 
 def _load_expected_output(row: dict[str, object], *, task_type: str) -> dict[str, object]:
-    expected_output = _loads_optional_json_object(row.get("expected_output_json"), "expected_output_json")
+    expected_output_value = _loads_optional_json_value(row.get("expected_output_json"), "expected_output_json")
+    if isinstance(expected_output_value, list):
+        return {"reference_answer": expected_output_value}
+    if not isinstance(expected_output_value, dict):
+        raise ValueError(f"Expected JSON object or list in expected_output_json: {row.get('expected_output_json')}")
+    expected_output = expected_output_value
     if task_type == "video_detection" and "video_action_segments" in expected_output:
         return parse_video_detection_output(json.dumps(expected_output)).model_dump()
     return expected_output
 
 
 def _load_predictions(row: dict[str, object]) -> list[Prediction]:
-    raw_predictions = _loads_json_list(_required(row, "predictions_json"), "predictions_json")
+    raw_predictions = _loads_prediction_items(_required(row, "predictions_json"), "predictions_json")
     scores = _score_values(row.get("score"))
     predictions: list[Prediction] = []
     for index, item in enumerate(raw_predictions):
         if isinstance(item, str):
             predictions.append(Prediction(trial=index + 1, raw_output=item, score=_score_for_index(scores, index)))
-        else:
+        elif isinstance(item, dict) and (
+            "raw_output" in item or "trial" in item or "score" in item
+        ):
             predictions.append(Prediction.model_validate(item))
+        else:
+            predictions.append(
+                Prediction(
+                    trial=index + 1,
+                    raw_output=json.dumps(item, ensure_ascii=False),
+                    score=_score_for_index(scores, index),
+                )
+            )
     return predictions
 
 
@@ -181,10 +204,35 @@ def _loads_json_list(value: object, key: str) -> list[object]:
     return loaded
 
 
+def _loads_prediction_items(value: object, key: str) -> list[object]:
+    if isinstance(value, str):
+        stripped = value.strip()
+        try:
+            loaded = json.loads(stripped)
+        except json.JSONDecodeError:
+            return [value] if stripped else []
+        if isinstance(loaded, list):
+            return loaded
+        return [stripped]
+    try:
+        loaded = _loads_json_value(value, key)
+    except ValueError:
+        raise
+    if isinstance(loaded, list):
+        return loaded
+    return [loaded]
+
+
 def _loads_optional_json_list(value: object, key: str) -> list[object]:
     if value is None or value == "":
         return []
     return _loads_json_list(value, key)
+
+
+def _loads_optional_json_value(value: object, key: str) -> object:
+    if value is None or value == "":
+        return {}
+    return _loads_json_value(value, key)
 
 
 def _loads_optional_json_object(value: object, key: str) -> dict[str, object]:
@@ -212,6 +260,10 @@ def _normalize_row_columns(row: dict[str, object]) -> dict[str, object]:
 
 
 def _canonical_column_name(column_name: str) -> str:
+    return canonical_spreadsheet_column_name(column_name)
+
+
+def canonical_spreadsheet_column_name(column_name: str) -> str:
     stripped = column_name.strip()
     if stripped in {"sheet_row_id", "row_id", "row id", "飞书行ID", "表格行ID"}:
         return "sheet_row_id"

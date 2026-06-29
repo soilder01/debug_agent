@@ -1,119 +1,82 @@
 import json
 import threading
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import datetime
 
-from pydantic import BaseModel
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
 from debug_agent.cases.models import DebugCase
 from debug_agent.experiments.runner import ExperimentEvidence
-from debug_agent.judging.runner import JudgeResult
+from debug_agent.storage.action_state_repository import ActionStateRepositoryMixin
+from debug_agent.storage.lark_badcase_repository import LarkBadcaseRepositoryMixin
+from debug_agent.storage.lark_pending_repository import LarkPendingRepositoryMixin
+from debug_agent.storage.lark_writeback_repository import LarkWritebackRepositoryMixin
+from debug_agent.storage.row_mappers import (
+    _debug_batch_from_row,
+    _debug_job_attempt_from_row,
+    _debug_run_stage_from_row,
+    _debug_run_stage_sort_key,
+    _duration_ms,
+    _duration_percentile,
+    _judge_result_from_payload,
+    _utc_now_iso,
+)
+from debug_agent.storage.schemas import (
+    SpreadsheetRowMapping,
+    SpreadsheetWritebackAudit as SpreadsheetWritebackAudit,
+    LarkReportDocument as LarkReportDocument,
+    LarkOperationAudit as LarkOperationAudit,
+    LarkWriteConfirmation as LarkWriteConfirmation,
+    LarkAuthSession as LarkAuthSession,
+    LarkBotPendingCommand as LarkBotPendingCommand,
+    XiaoDExecutionRun as XiaoDExecutionRun,
+    XiaoDPendingDecision as XiaoDPendingDecision,
+    XiaoDCommandAudit as XiaoDCommandAudit,
+    LarkBotSetupAcknowledgement as LarkBotSetupAcknowledgement,
+    LarkBotBadcaseDraft as LarkBotBadcaseDraft,
+    LarkNotificationOutbox as LarkNotificationOutbox,
+    RecommendedActionStatus as RecommendedActionStatus,
+    RecommendedActionStatusEvent as RecommendedActionStatusEvent,
+    RecommendedActionVerification as RecommendedActionVerification,
+    StrategyFollowUpJob as StrategyFollowUpJob,
+    TargetedProbeJob as TargetedProbeJob,
+    HumanHandoffStatus as HumanHandoffStatus,
+    DebugRunStage,
+    DebugBatch,
+    DebugJobAttempt,
+)
 from debug_agent.storage.models import (
+    DebugBatchRow,
     DebugCaseRow,
     DebugJobRow,
+    DebugJobAttemptRow,
+    DebugRunStageRow,
     EvidenceRow,
-    HumanHandoffStatusRow,
-    RecommendedActionStatusEventRow,
-    RecommendedActionStatusRow,
-    RecommendedActionVerificationRow,
     SpreadsheetRowMappingRow,
-    SpreadsheetWritebackAuditRow,
-    StrategyFollowUpJobRow,
-    TargetedProbeJobRow,
 )
 
 
-class SpreadsheetRowMapping(BaseModel):
-    spreadsheet_id: str
-    sheet_id: str
-    row_id: str
-    case_id: str
-    job_id: str
-    created_at: str
-    updated_at: str
+BATCH_TERMINAL_STATUSES = {"completed", "failed", "cancelled"}
 
 
-class SpreadsheetWritebackAudit(BaseModel):
-    job_id: str
-    status: str
-    row_id: str
-    report_url: str
-    fields: dict[str, str]
-    error_message: str
-    created_at: str
-    updated_at: str
-
-
-class RecommendedActionStatus(BaseModel):
-    job_id: str
-    action_index: int
-    status: str
-    actor: str
-    note: str
-    created_at: str
-    updated_at: str
-
-
-class RecommendedActionStatusEvent(BaseModel):
-    event_id: int
-    job_id: str
-    action_index: int
-    status: str
-    actor: str
-    note: str
-    created_at: str
-
-
-class RecommendedActionVerification(BaseModel):
-    job_id: str
-    action_index: int
-    verification_job_id: str
-    actor: str
-    note: str
-    created_at: str
-
-
-class StrategyFollowUpJob(BaseModel):
-    source_job_id: str
-    stage: str
-    planned_steps: str
-    follow_up_job_id: str
-    actor: str
-    note: str
-    created_at: str
-
-
-class TargetedProbeJob(BaseModel):
-    source_job_id: str
-    source: str
-    target_id: str
-    planned_steps: str
-    probe_job_id: str
-    parent_probe_job_id: str
-    trigger_outcome: str
-    actor: str
-    note: str
-    created_at: str
-
-
-class HumanHandoffStatus(BaseModel):
-    job_id: str
-    target_id: str
-    status: str
-    actor: str
-    note: str
-    created_at: str
-    updated_at: str
-
-
-class DebugJobRepository:
+class DebugJobRepository(
+    ActionStateRepositoryMixin,
+    LarkBadcaseRepositoryMixin,
+    LarkPendingRepositoryMixin,
+    LarkWritebackRepositoryMixin,
+):
     def __init__(self, session_factory: Callable[[], Session]) -> None:
         self._session_factory = session_factory
         self._lock = threading.RLock()
 
-    def create_job(self, job_id: str, case_id: str, baseline_trials: int = 0) -> None:
+    def create_job(
+        self,
+        job_id: str,
+        case_id: str,
+        baseline_trials: int = 0,
+        artifact_group_id: str = "single",
+    ) -> None:
         with self._lock:
             with self._session_factory() as session:
                 now = _utc_now_iso()
@@ -122,12 +85,171 @@ class DebugJobRepository:
                         job_id=job_id,
                         case_id=case_id,
                         status="created",
+                        artifact_group_id=artifact_group_id,
                         baseline_trials=baseline_trials,
                         created_at=now,
                         updated_at=now,
                     )
                 )
+                session.merge(
+                    DebugRunStageRow(
+                        job_id=job_id,
+                        stage="baseline",
+                        status="pending",
+                        input_json=json.dumps(
+                            {"case_id": case_id, "baseline_trials": baseline_trials}
+                        ),
+                        output_json="{}",
+                        failure_reason="",
+                        retryable=True,
+                        attempt_count=0,
+                        created_at=now,
+                        updated_at=now,
+                    )
+                )
                 session.commit()
+
+    def create_batch(
+        self,
+        *,
+        batch_id: str,
+        total_jobs: int,
+        max_concurrency: int = 1,
+        retry_policy: dict[str, object] | None = None,
+    ) -> DebugBatch:
+        with self._lock:
+            with self._session_factory() as session:
+                now = _utc_now_iso()
+                row = DebugBatchRow(
+                    batch_id=batch_id,
+                    status="created",
+                    total_jobs=total_jobs,
+                    max_concurrency=max(1, max_concurrency),
+                    retry_policy_json=json.dumps(retry_policy or {}),
+                    created_at=now,
+                    updated_at=now,
+                    started_at="",
+                    completed_at="",
+                )
+                session.add(row)
+                session.commit()
+                return _debug_batch_from_row(row)
+
+    def get_batch(self, batch_id: str) -> DebugBatch | None:
+        with self._lock:
+            with self._session_factory() as session:
+                row = session.get(DebugBatchRow, batch_id)
+                return _debug_batch_from_row(row) if row is not None else None
+
+    def list_batches(self, limit: int = 50, offset: int = 0) -> list[DebugBatch]:
+        with self._lock:
+            with self._session_factory() as session:
+                rows = session.scalars(
+                    select(DebugBatchRow)
+                    .order_by(desc(DebugBatchRow.created_at), desc(DebugBatchRow.batch_id))
+                    .offset(offset)
+                    .limit(limit)
+                )
+                return [_debug_batch_from_row(row) for row in rows]
+
+    def update_batch_status(self, batch_id: str, status: str) -> DebugBatch:
+        with self._lock:
+            with self._session_factory() as session:
+                row = session.get(DebugBatchRow, batch_id)
+                if row is None:
+                    raise KeyError(f"Debug batch not found: {batch_id}")
+                now = _utc_now_iso()
+                row.status = status
+                row.updated_at = now
+                if status == "running" and not row.started_at:
+                    row.started_at = now
+                if status in BATCH_TERMINAL_STATUSES and not row.completed_at:
+                    row.completed_at = now
+                session.commit()
+                return _debug_batch_from_row(row)
+
+    def start_job_attempt(self, job_id: str) -> DebugJobAttempt:
+        with self._lock:
+            with self._session_factory() as session:
+                job = session.get(DebugJobRow, job_id)
+                if job is None:
+                    raise KeyError(f"Debug job not found: {job_id}")
+                now = _utc_now_iso()
+                row = DebugJobAttemptRow(
+                    job_id=job_id,
+                    attempt_index=job.attempt_count,
+                    batch_id=job.artifact_group_id,
+                    status="running",
+                    failure_type="",
+                    failure_stage="",
+                    error_message="",
+                    retry_decision="",
+                    started_at=now,
+                    finished_at="",
+                    duration_ms=0,
+                )
+                session.merge(row)
+                batch = session.get(DebugBatchRow, job.artifact_group_id)
+                if batch is not None and batch.status == "created":
+                    batch.status = "running"
+                    batch.started_at = batch.started_at or now
+                    batch.updated_at = now
+                session.commit()
+                return _debug_job_attempt_from_row(row)
+
+    def finish_job_attempt(
+        self,
+        *,
+        job_id: str,
+        attempt_index: int,
+        status: str,
+        failure_type: str = "",
+        failure_stage: str = "",
+        error_message: str = "",
+        retry_decision: str = "",
+    ) -> DebugJobAttempt:
+        with self._lock:
+            with self._session_factory() as session:
+                row = session.get(
+                    DebugJobAttemptRow, {"job_id": job_id, "attempt_index": attempt_index}
+                )
+                if row is None:
+                    job = session.get(DebugJobRow, job_id)
+                    if job is None:
+                        raise KeyError(f"Debug job not found: {job_id}")
+                    row = DebugJobAttemptRow(
+                        job_id=job_id,
+                        attempt_index=attempt_index,
+                        batch_id=job.artifact_group_id,
+                        started_at=_utc_now_iso(),
+                    )
+                finished_at = _utc_now_iso()
+                row.status = status
+                row.failure_type = failure_type
+                row.failure_stage = failure_stage
+                row.error_message = error_message
+                row.retry_decision = retry_decision
+                row.finished_at = finished_at
+                row.duration_ms = _duration_ms(row.started_at, finished_at)
+                session.merge(row)
+                session.commit()
+                return _debug_job_attempt_from_row(row)
+
+    def list_job_attempts(
+        self, job_id: str | None = None, batch_id: str | None = None
+    ) -> list[DebugJobAttempt]:
+        with self._lock:
+            with self._session_factory() as session:
+                query = select(DebugJobAttemptRow).order_by(
+                    DebugJobAttemptRow.started_at,
+                    DebugJobAttemptRow.job_id,
+                    DebugJobAttemptRow.attempt_index,
+                )
+                if job_id is not None:
+                    query = query.where(DebugJobAttemptRow.job_id == job_id)
+                if batch_id is not None:
+                    query = query.where(DebugJobAttemptRow.batch_id == batch_id)
+                return [_debug_job_attempt_from_row(row) for row in session.scalars(query)]
 
     def save_case(self, case: DebugCase) -> None:
         with self._lock:
@@ -233,374 +355,9 @@ class DebugJobRepository:
                     updated_at=row.updated_at,
                 )
 
-    def save_spreadsheet_writeback_audit(
-        self,
-        *,
-        job_id: str,
-        status: str,
-        row_id: str,
-        report_url: str,
-        fields: dict[str, str],
-        error_message: str,
-    ) -> None:
-        with self._lock:
-            with self._session_factory() as session:
-                now = _utc_now_iso()
-                existing = session.get(SpreadsheetWritebackAuditRow, job_id)
-                created_at = existing.created_at if existing is not None else now
-                session.merge(
-                    SpreadsheetWritebackAuditRow(
-                        job_id=job_id,
-                        status=status,
-                        row_id=row_id,
-                        report_url=report_url,
-                        fields_json=json.dumps(fields, ensure_ascii=False),
-                        error_message=error_message,
-                        created_at=created_at,
-                        updated_at=now,
-                    )
-                )
-                session.commit()
-
-    def get_spreadsheet_writeback_audit(self, job_id: str) -> SpreadsheetWritebackAudit | None:
-        with self._lock:
-            with self._session_factory() as session:
-                row = session.get(SpreadsheetWritebackAuditRow, job_id)
-                if row is None:
-                    return None
-                return _spreadsheet_writeback_audit_from_row(row)
-
-    def count_spreadsheet_writeback_audits_by_status(self) -> dict[str, int]:
-        with self._lock:
-            with self._session_factory() as session:
-                rows = session.execute(
-                    select(SpreadsheetWritebackAuditRow.status, func.count())
-                    .group_by(SpreadsheetWritebackAuditRow.status)
-                    .order_by(SpreadsheetWritebackAuditRow.status)
-                )
-                return {str(status): int(count) for status, count in rows}
-
-    def list_spreadsheet_writeback_audits(
-        self,
-        status: str | None = None,
-        limit: int | None = None,
-        offset: int = 0,
-    ) -> list[SpreadsheetWritebackAudit]:
-        with self._lock:
-            with self._session_factory() as session:
-                query = select(SpreadsheetWritebackAuditRow).order_by(
-                    desc(SpreadsheetWritebackAuditRow.updated_at),
-                    desc(SpreadsheetWritebackAuditRow.job_id),
-                )
-                if status is not None:
-                    query = query.where(SpreadsheetWritebackAuditRow.status == status)
-                if offset > 0:
-                    query = query.offset(offset)
-                if limit is not None:
-                    query = query.limit(limit)
-                return [_spreadsheet_writeback_audit_from_row(row) for row in session.scalars(query)]
-
-    def count_spreadsheet_writeback_audits(self, status: str | None = None) -> int:
-        with self._lock:
-            with self._session_factory() as session:
-                query = select(func.count()).select_from(SpreadsheetWritebackAuditRow)
-                if status is not None:
-                    query = query.where(SpreadsheetWritebackAuditRow.status == status)
-                return session.scalar(query) or 0
-
-    def save_recommended_action_status(
-        self,
-        *,
-        job_id: str,
-        action_index: int,
-        status: str,
-        actor: str = "",
-        note: str = "",
-    ) -> RecommendedActionStatus:
-        with self._lock:
-            with self._session_factory() as session:
-                now = _utc_now_iso()
-                existing = session.get(RecommendedActionStatusRow, (job_id, action_index))
-                created_at = existing.created_at if existing is not None else now
-                row = RecommendedActionStatusRow(
-                    job_id=job_id,
-                    action_index=action_index,
-                    status=status,
-                    actor=actor,
-                    note=note,
-                    created_at=created_at,
-                    updated_at=now,
-                )
-                session.merge(row)
-                session.add(
-                    RecommendedActionStatusEventRow(
-                        job_id=job_id,
-                        action_index=action_index,
-                        status=status,
-                        actor=actor,
-                        note=note,
-                        created_at=now,
-                    )
-                )
-                session.commit()
-                return RecommendedActionStatus(
-                    job_id=job_id,
-                    action_index=action_index,
-                    status=status,
-                    actor=actor,
-                    note=note,
-                    created_at=created_at,
-                    updated_at=now,
-                )
-
-    def list_recommended_action_statuses(self, job_id: str) -> list[RecommendedActionStatus]:
-        with self._lock:
-            with self._session_factory() as session:
-                rows = session.scalars(
-                    select(RecommendedActionStatusRow)
-                    .where(RecommendedActionStatusRow.job_id == job_id)
-                    .order_by(RecommendedActionStatusRow.action_index)
-                )
-                return [_recommended_action_status_from_row(row) for row in rows]
-
-    def list_recommended_action_status_events(
-        self,
-        job_id: str,
-        action_index: int | None = None,
-    ) -> list[RecommendedActionStatusEvent]:
-        with self._lock:
-            with self._session_factory() as session:
-                query = (
-                    select(RecommendedActionStatusEventRow)
-                    .where(RecommendedActionStatusEventRow.job_id == job_id)
-                    .order_by(
-                        RecommendedActionStatusEventRow.created_at,
-                        RecommendedActionStatusEventRow.event_id,
-                    )
-                )
-                if action_index is not None:
-                    query = query.where(RecommendedActionStatusEventRow.action_index == action_index)
-                return [_recommended_action_status_event_from_row(row) for row in session.scalars(query)]
-
-    def save_recommended_action_verification(
-        self,
-        *,
-        job_id: str,
-        action_index: int,
-        verification_job_id: str,
-        actor: str = "",
-        note: str = "",
-    ) -> RecommendedActionVerification:
-        with self._lock:
-            with self._session_factory() as session:
-                now = _utc_now_iso()
-                row = RecommendedActionVerificationRow(
-                    job_id=job_id,
-                    action_index=action_index,
-                    verification_job_id=verification_job_id,
-                    actor=actor,
-                    note=note,
-                    created_at=now,
-                )
-                session.add(row)
-                session.commit()
-                return _recommended_action_verification_from_row(row)
-
-    def list_recommended_action_verifications(
-        self,
-        job_id: str,
-        action_index: int | None = None,
-    ) -> list[RecommendedActionVerification]:
-        with self._lock:
-            with self._session_factory() as session:
-                query = (
-                    select(RecommendedActionVerificationRow)
-                    .where(RecommendedActionVerificationRow.job_id == job_id)
-                    .order_by(
-                        RecommendedActionVerificationRow.created_at,
-                        RecommendedActionVerificationRow.verification_job_id,
-                    )
-                )
-                if action_index is not None:
-                    query = query.where(RecommendedActionVerificationRow.action_index == action_index)
-                return [_recommended_action_verification_from_row(row) for row in session.scalars(query)]
-
-    def save_strategy_follow_up_job(
-        self,
-        *,
-        source_job_id: str,
-        stage: str,
-        planned_steps: str,
-        follow_up_job_id: str,
-        actor: str = "",
-        note: str = "",
-    ) -> StrategyFollowUpJob:
-        with self._lock:
-            with self._session_factory() as session:
-                now = _utc_now_iso()
-                row = StrategyFollowUpJobRow(
-                    source_job_id=source_job_id,
-                    stage=stage,
-                    planned_steps=planned_steps,
-                    follow_up_job_id=follow_up_job_id,
-                    actor=actor,
-                    note=note,
-                    created_at=now,
-                )
-                session.add(row)
-                session.commit()
-                return _strategy_follow_up_job_from_row(row)
-
-    def list_strategy_follow_up_jobs(self, source_job_id: str, stage: str | None = None) -> list[StrategyFollowUpJob]:
-        with self._lock:
-            with self._session_factory() as session:
-                query = (
-                    select(StrategyFollowUpJobRow)
-                    .where(StrategyFollowUpJobRow.source_job_id == source_job_id)
-                    .order_by(
-                        StrategyFollowUpJobRow.created_at,
-                        StrategyFollowUpJobRow.follow_up_job_id,
-                    )
-                )
-                if stage is not None:
-                    query = query.where(StrategyFollowUpJobRow.stage == stage)
-                return [_strategy_follow_up_job_from_row(row) for row in session.scalars(query)]
-
-    def list_all_strategy_follow_up_jobs(self) -> list[StrategyFollowUpJob]:
-        with self._lock:
-            with self._session_factory() as session:
-                rows = session.scalars(
-                    select(StrategyFollowUpJobRow).order_by(
-                        StrategyFollowUpJobRow.created_at,
-                        StrategyFollowUpJobRow.source_job_id,
-                        StrategyFollowUpJobRow.follow_up_job_id,
-                    )
-                )
-                return [_strategy_follow_up_job_from_row(row) for row in rows]
-
-    def list_strategy_follow_up_sources(self, follow_up_job_id: str) -> list[StrategyFollowUpJob]:
-        with self._lock:
-            with self._session_factory() as session:
-                rows = session.scalars(
-                    select(StrategyFollowUpJobRow)
-                    .where(StrategyFollowUpJobRow.follow_up_job_id == follow_up_job_id)
-                    .order_by(
-                        StrategyFollowUpJobRow.created_at,
-                        StrategyFollowUpJobRow.source_job_id,
-                    )
-                )
-                return [_strategy_follow_up_job_from_row(row) for row in rows]
-
-    def save_targeted_probe_job(
-        self,
-        *,
-        source_job_id: str,
-        target_id: str,
-        planned_steps: str,
-        probe_job_id: str,
-        source: str = "targeted_probe",
-        parent_probe_job_id: str = "",
-        trigger_outcome: str = "",
-        actor: str = "",
-        note: str = "",
-    ) -> TargetedProbeJob:
-        with self._lock:
-            with self._session_factory() as session:
-                now = _utc_now_iso()
-                row = TargetedProbeJobRow(
-                    source_job_id=source_job_id,
-                    source=source,
-                    target_id=target_id,
-                    planned_steps=planned_steps,
-                    probe_job_id=probe_job_id,
-                    parent_probe_job_id=parent_probe_job_id,
-                    trigger_outcome=trigger_outcome,
-                    actor=actor,
-                    note=note,
-                    created_at=now,
-                )
-                session.add(row)
-                session.commit()
-                return _targeted_probe_job_from_row(row)
-
-    def list_targeted_probe_jobs(self, source_job_id: str) -> list[TargetedProbeJob]:
-        with self._lock:
-            with self._session_factory() as session:
-                rows = session.scalars(
-                    select(TargetedProbeJobRow)
-                    .where(TargetedProbeJobRow.source_job_id == source_job_id)
-                    .order_by(
-                        TargetedProbeJobRow.created_at,
-                        TargetedProbeJobRow.probe_job_id,
-                    )
-                )
-                return [_targeted_probe_job_from_row(row) for row in rows]
-
-    def list_all_targeted_probe_jobs(self) -> list[TargetedProbeJob]:
-        with self._lock:
-            with self._session_factory() as session:
-                rows = session.scalars(
-                    select(TargetedProbeJobRow).order_by(
-                        TargetedProbeJobRow.created_at,
-                        TargetedProbeJobRow.source_job_id,
-                        TargetedProbeJobRow.probe_job_id,
-                    )
-                )
-                return [_targeted_probe_job_from_row(row) for row in rows]
-
-    def list_targeted_probe_sources(self, probe_job_id: str) -> list[TargetedProbeJob]:
-        with self._lock:
-            with self._session_factory() as session:
-                rows = session.scalars(
-                    select(TargetedProbeJobRow)
-                    .where(TargetedProbeJobRow.probe_job_id == probe_job_id)
-                    .order_by(
-                        TargetedProbeJobRow.created_at,
-                        TargetedProbeJobRow.source_job_id,
-                    )
-                )
-                return [_targeted_probe_job_from_row(row) for row in rows]
-
-    def save_human_handoff_status(
-        self,
-        *,
-        job_id: str,
-        target_id: str,
-        status: str,
-        actor: str = "",
-        note: str = "",
-    ) -> HumanHandoffStatus:
-        with self._lock:
-            with self._session_factory() as session:
-                now = _utc_now_iso()
-                existing = session.get(HumanHandoffStatusRow, (job_id, target_id))
-                created_at = existing.created_at if existing is not None else now
-                row = HumanHandoffStatusRow(
-                    job_id=job_id,
-                    target_id=target_id,
-                    status=status,
-                    actor=actor,
-                    note=note,
-                    created_at=created_at,
-                    updated_at=now,
-                )
-                session.merge(row)
-                session.commit()
-                return _human_handoff_status_from_row(row)
-
-    def list_human_handoff_statuses(self, job_id: str | None = None) -> list[HumanHandoffStatus]:
-        with self._lock:
-            with self._session_factory() as session:
-                query = select(HumanHandoffStatusRow).order_by(
-                    HumanHandoffStatusRow.created_at,
-                    HumanHandoffStatusRow.job_id,
-                    HumanHandoffStatusRow.target_id,
-                )
-                if job_id is not None:
-                    query = query.where(HumanHandoffStatusRow.job_id == job_id)
-                return [_human_handoff_status_from_row(row) for row in session.scalars(query)]
-
-    def list_cases(self, has_regions: bool = False, limit: int | None = None, offset: int = 0) -> list[DebugCase]:
+    def list_cases(
+        self, has_regions: bool = False, limit: int | None = None, offset: int = 0
+    ) -> list[DebugCase]:
         with self._lock:
             with self._session_factory() as session:
                 query = select(DebugCaseRow).order_by(DebugCaseRow.case_id)
@@ -625,7 +382,7 @@ class DebugJobRepository:
         self._set_status(job_id, "running")
 
     def mark_completed(self, job_id: str) -> None:
-        self._set_status(job_id, "completed")
+        self._set_status(job_id, "completed", update_baseline_stage=False)
 
     def mark_failed(self, job_id: str, error_message: str) -> None:
         with self._lock:
@@ -636,7 +393,43 @@ class DebugJobRepository:
                 job.status = "failed"
                 job.error_message = error_message
                 job.updated_at = _utc_now_iso()
+                self._merge_debug_run_stage_row(
+                    session=session,
+                    job_id=job_id,
+                    stage="baseline",
+                    status="failed",
+                    input={"case_id": job.case_id, "baseline_trials": job.baseline_trials},
+                    output={"job_status": "failed"},
+                    failure_reason=error_message,
+                    retryable=False,
+                    attempt_count=job.attempt_count,
+                )
                 session.commit()
+
+    def update_job_status(
+        self, job_id: str, status: str, *, error_message: str = ""
+    ) -> DebugJobRow:
+        with self._lock:
+            with self._session_factory() as session:
+                job = session.get(DebugJobRow, job_id)
+                if job is None:
+                    raise KeyError(f"Debug job not found: {job_id}")
+                job.status = status
+                job.error_message = error_message
+                job.updated_at = _utc_now_iso()
+                self._merge_debug_run_stage_row(
+                    session=session,
+                    job_id=job_id,
+                    stage="baseline",
+                    status=status,
+                    input={"case_id": job.case_id, "baseline_trials": job.baseline_trials},
+                    output={"job_status": status},
+                    failure_reason=error_message,
+                    retryable=status not in {"completed", "cancelled", "failed"},
+                    attempt_count=job.attempt_count,
+                )
+                session.commit()
+                return job
 
     def release_for_retry(self, job_id: str, error_message: str) -> None:
         with self._lock:
@@ -647,7 +440,59 @@ class DebugJobRepository:
                 job.status = "created"
                 job.error_message = error_message
                 job.updated_at = _utc_now_iso()
+                self._merge_debug_run_stage_row(
+                    session=session,
+                    job_id=job_id,
+                    stage="baseline",
+                    status="failed",
+                    input={"case_id": job.case_id, "baseline_trials": job.baseline_trials},
+                    output={"job_status": "created"},
+                    failure_reason=error_message,
+                    retryable=True,
+                    attempt_count=job.attempt_count,
+                )
                 session.commit()
+
+    def save_debug_run_stage(
+        self,
+        *,
+        job_id: str,
+        stage: str,
+        status: str,
+        input: dict[str, object],
+        output: dict[str, object],
+        failure_reason: str,
+        retryable: bool,
+    ) -> DebugRunStage:
+        with self._lock:
+            with self._session_factory() as session:
+                job = session.get(DebugJobRow, job_id)
+                if job is None:
+                    raise KeyError(f"Debug job not found: {job_id}")
+                row = self._merge_debug_run_stage_row(
+                    session=session,
+                    job_id=job_id,
+                    stage=stage,
+                    status=status,
+                    input=input,
+                    output=output,
+                    failure_reason=failure_reason,
+                    retryable=retryable,
+                    attempt_count=job.attempt_count,
+                )
+                session.commit()
+                return _debug_run_stage_from_row(row)
+
+    def list_debug_run_stages(self, job_id: str) -> list[DebugRunStage]:
+        with self._lock:
+            with self._session_factory() as session:
+                rows = session.scalars(
+                    select(DebugRunStageRow).where(DebugRunStageRow.job_id == job_id)
+                )
+                return sorted(
+                    [_debug_run_stage_from_row(row) for row in rows],
+                    key=lambda stage: _debug_run_stage_sort_key(stage.stage),
+                )
 
     def get_job(self, job_id: str) -> DebugJobRow | None:
         with self._lock:
@@ -657,6 +502,7 @@ class DebugJobRepository:
     def list_jobs(
         self,
         status: str | None = None,
+        artifact_group_id: str | None = None,
         limit: int | None = None,
         offset: int = 0,
         sort: str = "created_at_asc",
@@ -664,11 +510,15 @@ class DebugJobRepository:
         with self._lock:
             with self._session_factory() as session:
                 if sort == "created_at_desc":
-                    query = select(DebugJobRow).order_by(desc(DebugJobRow.created_at), desc(DebugJobRow.job_id))
+                    query = select(DebugJobRow).order_by(
+                        desc(DebugJobRow.created_at), desc(DebugJobRow.job_id)
+                    )
                 else:
                     query = select(DebugJobRow).order_by(DebugJobRow.created_at, DebugJobRow.job_id)
                 if status is not None:
                     query = query.where(DebugJobRow.status == status)
+                if artifact_group_id is not None:
+                    query = query.where(DebugJobRow.artifact_group_id == artifact_group_id)
                 if offset > 0:
                     query = query.offset(offset)
                 if limit is not None:
@@ -676,21 +526,116 @@ class DebugJobRepository:
                 rows = session.scalars(query)
                 return list(rows)
 
-    def count_jobs(self, status: str | None = None) -> int:
+    def count_jobs(self, status: str | None = None, artifact_group_id: str | None = None) -> int:
         with self._lock:
             with self._session_factory() as session:
                 query = select(func.count()).select_from(DebugJobRow)
                 if status is not None:
                     query = query.where(DebugJobRow.status == status)
+                if artifact_group_id is not None:
+                    query = query.where(DebugJobRow.artifact_group_id == artifact_group_id)
                 return session.scalar(query) or 0
 
-    def count_jobs_by_status(self) -> dict[str, int]:
+    def count_jobs_by_status(self, artifact_group_id: str | None = None) -> dict[str, int]:
         with self._lock:
             with self._session_factory() as session:
-                rows = session.execute(
-                    select(DebugJobRow.status, func.count()).group_by(DebugJobRow.status).order_by(DebugJobRow.status)
+                query = (
+                    select(DebugJobRow.status, func.count())
+                    .group_by(DebugJobRow.status)
+                    .order_by(DebugJobRow.status)
                 )
+                if artifact_group_id is not None:
+                    query = query.where(DebugJobRow.artifact_group_id == artifact_group_id)
+                rows = session.execute(query)
                 return {str(status): int(count) for status, count in rows}
+
+    def failure_type_distribution(self, batch_id: str | None = None) -> dict[str, int]:
+        with self._lock:
+            with self._session_factory() as session:
+                query = (
+                    select(DebugJobAttemptRow.failure_type, func.count())
+                    .where(DebugJobAttemptRow.failure_type != "")
+                    .group_by(DebugJobAttemptRow.failure_type)
+                    .order_by(DebugJobAttemptRow.failure_type)
+                )
+                if batch_id is not None:
+                    query = query.where(DebugJobAttemptRow.batch_id == batch_id)
+                return {
+                    str(failure_type): int(count) for failure_type, count in session.execute(query)
+                }
+
+    def failure_stage_distribution(self, batch_id: str | None = None) -> dict[str, int]:
+        with self._lock:
+            with self._session_factory() as session:
+                query = (
+                    select(DebugJobAttemptRow.failure_stage, func.count())
+                    .where(DebugJobAttemptRow.failure_stage != "")
+                    .group_by(DebugJobAttemptRow.failure_stage)
+                    .order_by(DebugJobAttemptRow.failure_stage)
+                )
+                if batch_id is not None:
+                    query = query.where(DebugJobAttemptRow.batch_id == batch_id)
+                return {str(stage): int(count) for stage, count in session.execute(query)}
+
+    def attempt_metrics(self, batch_id: str | None = None) -> dict[str, int | float]:
+        with self._lock:
+            with self._session_factory() as session:
+                query = select(DebugJobAttemptRow)
+                if batch_id is not None:
+                    query = query.where(DebugJobAttemptRow.batch_id == batch_id)
+                rows = list(session.scalars(query))
+                completed = sorted(row.duration_ms for row in rows if row.duration_ms > 0)
+                completed_count = len([row for row in rows if row.status == "completed"])
+                failed_count = len([row for row in rows if row.status == "failed"])
+                terminal_count = completed_count + failed_count
+                return {
+                    "attempt_count": len(rows),
+                    "completed_attempt_count": completed_count,
+                    "failed_attempt_count": failed_count,
+                    "terminal_attempt_count": terminal_count,
+                    "total_duration_ms": sum(completed),
+                    "average_duration_ms": round(sum(completed) / len(completed), 2)
+                    if completed
+                    else 0,
+                    "p50_duration_ms": _duration_percentile(completed, 0.50),
+                    "p95_duration_ms": _duration_percentile(completed, 0.95),
+                    "max_duration_ms": max(completed) if completed else 0,
+                    "retry_scheduled_count": len(
+                        [row for row in rows if row.retry_decision == "retry_scheduled"]
+                    ),
+                    "success_rate": round(completed_count / terminal_count, 4)
+                    if terminal_count
+                    else 0,
+                }
+
+    def recover_stale_running_jobs(self, *, stale_before: str) -> list[str]:
+        recovered_job_ids: list[str] = []
+        with self._lock:
+            with self._session_factory() as session:
+                rows = session.scalars(
+                    select(DebugJobRow)
+                    .where(DebugJobRow.status == "running")
+                    .where(DebugJobRow.updated_at < stale_before)
+                    .order_by(DebugJobRow.updated_at, DebugJobRow.job_id)
+                )
+                for job in rows:
+                    job.status = "created"
+                    job.error_message = "Recovered stale running job after worker interruption."
+                    job.updated_at = _utc_now_iso()
+                    self._merge_debug_run_stage_row(
+                        session=session,
+                        job_id=job.job_id,
+                        stage="queue_runtime",
+                        status="recovered",
+                        input={"stale_before": stale_before},
+                        output={"job_status": "created"},
+                        failure_reason="worker_interrupted",
+                        retryable=True,
+                        attempt_count=job.attempt_count,
+                    )
+                    recovered_job_ids.append(job.job_id)
+                session.commit()
+        return recovered_job_ids
 
     def get_next_created_job(self) -> DebugJobRow | None:
         with self._lock:
@@ -705,19 +650,75 @@ class DebugJobRepository:
     def claim_next_created_job(self) -> DebugJobRow | None:
         with self._lock:
             with self._session_factory() as session:
-                job = session.scalars(
-                    select(DebugJobRow)
-                    .where(DebugJobRow.status == "created")
-                    .order_by(DebugJobRow.job_id)
-                    .limit(1)
-                ).first()
+                created_jobs = list(
+                    session.scalars(
+                        select(DebugJobRow)
+                        .where(DebugJobRow.status == "created")
+                        .order_by(DebugJobRow.created_at, DebugJobRow.job_id)
+                    )
+                )
+                job = None
+                for candidate in sorted(
+                    created_jobs,
+                    key=lambda item: self._queue_claim_sort_key(session=session, job=item),
+                ):
+                    batch = session.get(DebugBatchRow, candidate.artifact_group_id)
+                    if batch is not None and batch.status in {
+                        "paused",
+                        "cancelled",
+                        "completed",
+                        "failed",
+                    }:
+                        continue
+                    job = candidate
+                    break
                 if job is None:
                     return None
                 job.status = "running"
                 job.attempt_count += 1
                 job.updated_at = _utc_now_iso()
+                self._merge_debug_run_stage_row(
+                    session=session,
+                    job_id=job.job_id,
+                    stage="baseline",
+                    status="running",
+                    input={"case_id": job.case_id, "baseline_trials": job.baseline_trials},
+                    output={"job_status": "running"},
+                    failure_reason="",
+                    retryable=True,
+                    attempt_count=job.attempt_count,
+                )
                 session.commit()
                 return job
+
+    def _queue_priority_rank(self, *, session: Session, job: DebugJobRow) -> int:
+        batch = session.get(DebugBatchRow, job.artifact_group_id)
+        if batch is None:
+            return 10
+        try:
+            retry_policy = json.loads(batch.retry_policy_json or "{}")
+        except json.JSONDecodeError:
+            return 10
+        if not isinstance(retry_policy, dict):
+            return 10
+        priority = str(retry_policy.get("queue_priority", "")).strip().lower()
+        if priority in {"interactive", "xiaod", "user"}:
+            return 0
+        return 10
+
+    def _queue_claim_sort_key(self, *, session: Session, job: DebugJobRow) -> tuple[int, float, str]:
+        priority_rank = self._queue_priority_rank(session=session, job=job)
+        created_at = self._queue_created_at_timestamp(job.created_at)
+        if priority_rank == 0:
+            created_at = -created_at
+        return (priority_rank, created_at, job.job_id)
+
+    @staticmethod
+    def _queue_created_at_timestamp(value: str) -> float:
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
+        except ValueError:
+            return 0.0
 
     def save_evidence(
         self,
@@ -739,6 +740,7 @@ class DebugJobRepository:
                             model_provider=item.model_provider,
                             model_id=item.model_id,
                             request_summary_json=json.dumps(item.request_summary),
+                            input_excerpt=item.input_excerpt,
                             latency_ms=item.latency_ms,
                             response_parse_error=item.response_parse_error,
                             model_call_error_type=item.model_call_error_type,
@@ -746,7 +748,9 @@ class DebugJobRepository:
                             image_artifacts_json=json.dumps(
                                 [artifact.model_dump() for artifact in item.image_artifacts]
                             ),
-                            artifacts_json=json.dumps([artifact.model_dump() for artifact in item.artifacts]),
+                            artifacts_json=json.dumps(
+                                [artifact.model_dump() for artifact in item.artifacts]
+                            ),
                             score=item.judge.score,
                             reasons_json=json.dumps(item.judge.model_dump()),
                             raw_output=item.raw_output,
@@ -792,10 +796,16 @@ class DebugJobRepository:
     def summarize_evidence_quality(self) -> dict[str, int | float]:
         with self._lock:
             with self._session_factory() as session:
-                rows = list(session.scalars(select(EvidenceRow).order_by(EvidenceRow.job_id, EvidenceRow.evidence_id)))
+                rows = list(
+                    session.scalars(
+                        select(EvidenceRow).order_by(EvidenceRow.job_id, EvidenceRow.evidence_id)
+                    )
+                )
                 total_evidence = len(rows)
                 average_latency_ms = (
-                    round(sum(row.latency_ms for row in rows) / total_evidence, 2) if total_evidence > 0 else 0
+                    round(sum(row.latency_ms for row in rows) / total_evidence, 2)
+                    if total_evidence > 0
+                    else 0
                 )
                 return {
                     "total_evidence": total_evidence,
@@ -808,7 +818,11 @@ class DebugJobRepository:
     def summarize_usage(self) -> dict[str, int | float]:
         with self._lock:
             with self._session_factory() as session:
-                rows = list(session.scalars(select(EvidenceRow).order_by(EvidenceRow.job_id, EvidenceRow.evidence_id)))
+                rows = list(
+                    session.scalars(
+                        select(EvidenceRow).order_by(EvidenceRow.job_id, EvidenceRow.evidence_id)
+                    )
+                )
                 prompt_character_count = 0
                 for row in rows:
                     request_summary = json.loads(row.request_summary_json)
@@ -846,6 +860,7 @@ class DebugJobRepository:
                     model_provider=row.model_provider,
                     model_id=row.model_id,
                     request_summary=request_summary,
+                    input_excerpt=row.input_excerpt,
                     latency_ms=row.latency_ms,
                     response_parse_error=row.response_parse_error,
                     model_call_error_type=row.model_call_error_type,
@@ -853,119 +868,61 @@ class DebugJobRepository:
                     image_artifacts=image_artifacts,
                     artifacts=artifacts,
                     raw_output=row.raw_output,
-                    judge=_judge_result_from_payload(score=row.score, evidence_id=evidence_id, payload=judge_payload),
+                    judge=_judge_result_from_payload(
+                        score=row.score, evidence_id=evidence_id, payload=judge_payload
+                    ),
                 )
 
-    def _set_status(self, job_id: str, status: str) -> None:
+    def _set_status(self, job_id: str, status: str, update_baseline_stage: bool = True) -> None:
         with self._lock:
             with self._session_factory() as session:
                 job = session.get(DebugJobRow, job_id)
                 if job is None:
                     raise KeyError(f"Debug job not found: {job_id}")
                 job.status = status
+                if status == "running":
+                    job.attempt_count += 1
                 job.updated_at = _utc_now_iso()
+                if update_baseline_stage:
+                    self._merge_debug_run_stage_row(
+                        session=session,
+                        job_id=job_id,
+                        stage="baseline",
+                        status=status,
+                        input={"case_id": job.case_id, "baseline_trials": job.baseline_trials},
+                        output={"job_status": status},
+                        failure_reason="",
+                        retryable=status != "completed",
+                        attempt_count=job.attempt_count,
+                    )
                 session.commit()
 
-
-def _utc_now_iso() -> str:
-    return datetime.now(UTC).isoformat(timespec="microseconds")
-
-
-def _judge_result_from_payload(*, score: int, evidence_id: str, payload: object) -> JudgeResult:
-    if isinstance(payload, list):
-        return JudgeResult(score=score, reasons=[str(reason) for reason in payload])
-    if not isinstance(payload, dict):
-        raise ValueError(f"Evidence judge payload must be an object or reasons list: {evidence_id}")
-    payload_with_score = dict(payload)
-    payload_with_score["score"] = score
-    return JudgeResult.model_validate(payload_with_score)
-
-
-def _spreadsheet_writeback_audit_from_row(row: SpreadsheetWritebackAuditRow) -> SpreadsheetWritebackAudit:
-    fields = json.loads(row.fields_json)
-    if not isinstance(fields, dict):
-        raise ValueError(f"Spreadsheet writeback fields must be an object: {row.job_id}")
-    return SpreadsheetWritebackAudit(
-        job_id=row.job_id,
-        status=row.status,
-        row_id=row.row_id,
-        report_url=row.report_url,
-        fields={str(key): str(value) for key, value in fields.items()},
-        error_message=row.error_message,
-        created_at=row.created_at,
-        updated_at=row.updated_at,
-    )
-
-
-def _recommended_action_status_from_row(row: RecommendedActionStatusRow) -> RecommendedActionStatus:
-    return RecommendedActionStatus(
-        job_id=row.job_id,
-        action_index=row.action_index,
-        status=row.status,
-        actor=row.actor,
-        note=row.note,
-        created_at=row.created_at,
-        updated_at=row.updated_at,
-    )
-
-
-def _recommended_action_status_event_from_row(row: RecommendedActionStatusEventRow) -> RecommendedActionStatusEvent:
-    return RecommendedActionStatusEvent(
-        event_id=row.event_id,
-        job_id=row.job_id,
-        action_index=row.action_index,
-        status=row.status,
-        actor=row.actor,
-        note=row.note,
-        created_at=row.created_at,
-    )
-
-
-def _recommended_action_verification_from_row(row: RecommendedActionVerificationRow) -> RecommendedActionVerification:
-    return RecommendedActionVerification(
-        job_id=row.job_id,
-        action_index=row.action_index,
-        verification_job_id=row.verification_job_id,
-        actor=row.actor,
-        note=row.note,
-        created_at=row.created_at,
-    )
-
-
-def _strategy_follow_up_job_from_row(row: StrategyFollowUpJobRow) -> StrategyFollowUpJob:
-    return StrategyFollowUpJob(
-        source_job_id=row.source_job_id,
-        stage=row.stage,
-        planned_steps=row.planned_steps,
-        follow_up_job_id=row.follow_up_job_id,
-        actor=row.actor,
-        note=row.note,
-        created_at=row.created_at,
-    )
-
-
-def _targeted_probe_job_from_row(row: TargetedProbeJobRow) -> TargetedProbeJob:
-    return TargetedProbeJob(
-        source_job_id=row.source_job_id,
-        source=row.source,
-        target_id=row.target_id,
-        planned_steps=row.planned_steps,
-        probe_job_id=row.probe_job_id,
-        parent_probe_job_id=row.parent_probe_job_id,
-        trigger_outcome=row.trigger_outcome,
-        actor=row.actor,
-        note=row.note,
-        created_at=row.created_at,
-    )
-
-
-def _human_handoff_status_from_row(row: HumanHandoffStatusRow) -> HumanHandoffStatus:
-    return HumanHandoffStatus(
-        job_id=row.job_id,
-        target_id=row.target_id,
-        status=row.status,
-        actor=row.actor,
-        note=row.note,
-        created_at=row.created_at,
-        updated_at=row.updated_at,
-    )
+    def _merge_debug_run_stage_row(
+        self,
+        *,
+        session: Session,
+        job_id: str,
+        stage: str,
+        status: str,
+        input: dict[str, object],
+        output: dict[str, object],
+        failure_reason: str,
+        retryable: bool,
+        attempt_count: int,
+    ) -> DebugRunStageRow:
+        existing = session.get(DebugRunStageRow, {"job_id": job_id, "stage": stage})
+        now = _utc_now_iso()
+        created_at = existing.created_at if existing is not None else now
+        row = DebugRunStageRow(
+            job_id=job_id,
+            stage=stage,
+            status=status,
+            input_json=json.dumps(input),
+            output_json=json.dumps(output),
+            failure_reason=failure_reason,
+            retryable=retryable,
+            attempt_count=attempt_count,
+            created_at=created_at,
+            updated_at=now,
+        )
+        return session.merge(row)

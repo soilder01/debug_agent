@@ -14,20 +14,23 @@ export function runProductMotion(scope: HTMLElement) {
     return undefined;
   }
 
+  // Enhanced GSAP reveal with subtle vertical slide and blur-like effect
   gsap.from(scope.querySelectorAll("[data-gsap-reveal]"), {
-    duration: 0.55,
+    duration: 1.2,
     ease: "power3.out",
     opacity: 0,
-    stagger: 0.08,
-    y: 18
+    stagger: 0.15,
+    y: 40,
+    clearProps: "all"
   });
 
+  // Flow animation for sections and content cards
   const animeFlow = animate(scope.querySelectorAll("[data-anime-flow]"), {
     opacity: [0, 1],
-    translateY: [12, 0],
-    delay: stagger(45),
-    duration: 520,
-    easing: "out(3)"
+    translateY: [30, 0],
+    delay: stagger(100, { start: 200 }),
+    duration: 800,
+    easing: "out(5)"
   });
 
   return () => {
@@ -36,7 +39,7 @@ export function runProductMotion(scope: HTMLElement) {
 }
 
 export function useProductMotion() {
-  const scopeRef = useRef<HTMLElement | null>(null);
+  const scopeRef = useRef<HTMLDivElement | null>(null);
 
   useGSAP(
     () => {

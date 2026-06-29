@@ -14,16 +14,16 @@ export function NativeWritebackFields({ fields }: NativeWritebackFieldsProps) {
   }
 
   return (
-    <section aria-label="Native debug writeback">
-      <h3>Native Debug Writeback</h3>
+    <section aria-label="原生调试写回">
+      <h3>原生调试写回</h3>
       {target ? <p>影响目标：{target}</p> : null}
       {delta ? <p>结构化差异：{delta}</p> : null}
       {artifacts ? <p>证据产物：{artifacts}</p> : null}
       {recommendedActions ? <p>推荐操作：{recommendedActions}</p> : null}
       {actionItems.length > 0 ? (
         <>
-          <h4>Recommended Action Items</h4>
-          <ul aria-label="Recommended action items">
+          <h4>推荐操作条目</h4>
+          <ul aria-label="推荐操作条目">
             {actionItems.map((action) => (
               <li key={`${action.category}:${action.summary}`}>
                 <p>类别：{action.category}</p>

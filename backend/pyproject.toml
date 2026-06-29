@@ -5,10 +5,12 @@ description = "Backend for handwriting OCR debug agent"
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.111.0",
+  "lark-oapi>=1.4.0",
   "uvicorn[standard]>=0.30.0",
   "pydantic>=2.7.0",
   "sqlalchemy>=2.0.0",
-  "pillow>=10.0.0"
+  "pillow>=10.0.0",
+  "pycryptodome>=3.20.0"
 ]
 
 [project.optional-dependencies]
@@ -31,3 +33,10 @@ target-version = "py311"
 [tool.mypy]
 python_version = "3.11"
 strict = true
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

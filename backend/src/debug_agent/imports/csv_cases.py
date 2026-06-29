@@ -33,6 +33,7 @@ COLUMN_ALIASES: dict[str, str] = {
     "标答JSON": "golden_answer_json",
     "标准答案JSON": "golden_answer_json",
     "expected_output_json": "expected_output_json",
+    "reference_answer_json": "expected_output_json",
     "参考答案": "expected_output_json",
     "expected output json": "expected_output_json",
     "期望输出JSON": "expected_output_json",

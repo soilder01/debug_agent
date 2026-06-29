@@ -7,7 +7,10 @@ from debug_agent.experiments.planner import (
     plan_targeted_escalation_follow_up_experiments,
 )
 from debug_agent.experiments.runner import ExperimentRunResult
-from debug_agent.reports.generator import DebugReport, generate_initial_report
+from debug_agent.reports.action_queue import build_action_queue
+from debug_agent.reports.generator import AgentTrace, DebugReport, generate_initial_report
+from debug_agent.reports.composer import build_product_summary
+from debug_agent.reports.run_view import build_debug_run_view
 from debug_agent.storage.repository import (
     DebugJobRepository,
     RecommendedActionVerification,
@@ -22,16 +25,23 @@ def build_report_for_job(repository: DebugJobRepository, job_id: str) -> DebugRe
     base_report = _build_base_report_for_job(repository, job_id)
     if base_report is None:
         return None
+    _apply_meta_agent_enrichment(repository, job_id, base_report)
     verification_results = build_recommended_action_verification_results(
         repository,
         job_id,
         source_report=base_report,
     )
-    report = _build_base_report_for_job(repository, job_id, verification_results=verification_results)
+    report = _build_base_report_for_job(
+        repository, job_id, verification_results=verification_results
+    )
     if report is None:
         return None
+    _apply_meta_agent_enrichment(repository, job_id, report)
     report.strategy_follow_up_results = build_strategy_follow_up_results(repository, job_id)
     report.targeted_probe_results = build_targeted_probe_results(repository, job_id)
+    report.supplemental_contexts = _build_supplemental_contexts(repository, job_id)
+    report.product_summary = build_product_summary(report=report)
+    report.report_document_url = _published_report_document_url(repository, job_id)
     job = repository.get_job(job_id)
     case = repository.get_case(job.case_id) if job is not None else None
     if case is not None:
@@ -48,13 +58,14 @@ def build_report_for_job(repository: DebugJobRepository, job_id: str) -> DebugRe
         ]
         report.human_handoff_requests = _build_human_handoff_requests(report.follow_up_experiments)
         report.human_handoff_statuses = [
-            status.model_dump()
-            for status in repository.list_human_handoff_statuses(job_id)
+            status.model_dump() for status in repository.list_human_handoff_statuses(job_id)
         ]
         report.final_attributions = _build_final_attributions(report.human_handoff_statuses)
-        report.final_attribution_verification_results = _build_final_attribution_verification_results(
-            final_attributions=report.final_attributions,
-            strategy_follow_up_results=report.strategy_follow_up_results,
+        report.final_attribution_verification_results = (
+            _build_final_attribution_verification_results(
+                final_attributions=report.final_attributions,
+                strategy_follow_up_results=report.strategy_follow_up_results,
+            )
         )
         report.final_attribution_recovery_results = _build_final_attribution_recovery_results(
             final_attributions=report.final_attributions,
@@ -83,7 +94,170 @@ def build_report_for_job(repository: DebugJobRepository, job_id: str) -> DebugRe
                 report.final_attribution_recovery_results
             ),
         ]
-    return _merge_recommended_action_statuses(repository, job_id, report)
+    report = _merge_recommended_action_statuses(repository, job_id, report)
+    report.action_queue = build_action_queue(repository=repository, job_id=job_id, report=report)
+    run_view = build_debug_run_view(repository=repository, job_id=job_id, report=report)
+    if run_view is not None:
+        report.run_view = run_view.model_dump(mode="json")
+    return report
+
+
+def _published_report_document_url(repository: DebugJobRepository, job_id: str) -> str:
+    document = repository.get_lark_report_document(job_id)
+    if document is None or document.status != "published":
+        return ""
+    return document.document_url
+
+
+def _build_supplemental_contexts(
+    repository: DebugJobRepository,
+    job_id: str,
+) -> list[dict[str, object]]:
+    contexts: list[dict[str, object]] = []
+    for stage in repository.list_debug_run_stages(job_id):
+        if stage.stage != "supplemental_context":
+            continue
+        attachments = stage.input.get("attachments")
+        output = stage.output
+        contexts.append(
+            {
+                "text": str(stage.input.get("supplement_text", "")),
+                "attachments": attachments if isinstance(attachments, list) else [],
+                "actor": str(stage.input.get("actor", "")),
+                "message_id": str(output.get("message_id", "")),
+                "draft_id": str(output.get("draft_id", "")),
+                "attachment_count": int(output.get("attachment_count", 0))
+                if isinstance(output.get("attachment_count", 0), int | float)
+                else 0,
+                "created_at": stage.created_at,
+            }
+        )
+    return contexts
+
+
+def _apply_meta_agent_enrichment(
+    repository: DebugJobRepository, job_id: str, report: DebugReport
+) -> None:
+    enrichment = _meta_agent_enrichment(repository, job_id)
+    if not enrichment:
+        return
+    report.meta_agent_enrichment = enrichment
+    root_cause_summary = enrichment.get("root_cause_summary")
+    if isinstance(root_cause_summary, str) and root_cause_summary.strip():
+        report.confidence_reasons.append(
+            {
+                "source": "report_root_cause_agent",
+                "level": "medium",
+                "summary": root_cause_summary,
+            }
+        )
+    recommended_actions = enrichment.get("recommended_actions")
+    if isinstance(recommended_actions, list):
+        report.recommended_actions.extend(
+            _action_item(item) for item in recommended_actions if isinstance(item, dict)
+        )
+    confidence_reasons = enrichment.get("confidence_reasons")
+    if isinstance(confidence_reasons, list):
+        report.confidence_reasons.extend(
+            _string_dict(item) for item in confidence_reasons if isinstance(item, dict)
+        )
+    judge_notes = enrichment.get("judge_comparison_notes")
+    if isinstance(judge_notes, list):
+        report.judge_comparison_notes.extend(
+            _judge_note_item(item) for item in judge_notes if isinstance(item, dict)
+        )
+    strategy_updates = enrichment.get("strategy_updates")
+    if isinstance(strategy_updates, list):
+        strategy_items = [
+            _strategy_item(item) for item in strategy_updates if isinstance(item, dict)
+        ]
+        report.debug_strategy.extend(strategy_items)
+        report.follow_up_experiments.extend(
+            {
+                "source": "debug_strategy",
+                "stage": item.get("stage", "llm_strategy"),
+                "planned_steps": item.get("planned_probe", ""),
+                "summary": item.get("objective", ""),
+            }
+            for item in strategy_items
+        )
+    agent_traces = enrichment.get("agent_traces")
+    if isinstance(agent_traces, list):
+        report.agent_traces = _merge_agent_traces(
+            report.agent_traces,
+            [AgentTrace.model_validate(item) for item in agent_traces if isinstance(item, dict)],
+        )
+
+
+def _merge_agent_traces(
+    existing: list[AgentTrace],
+    incoming: list[AgentTrace],
+) -> list[AgentTrace]:
+    merged = list(existing)
+    existing_keys = {
+        (
+            trace.agent_role,
+            str(trace.input_summary.get("evidence_id", "")),
+            trace.input_sha256,
+        )
+        for trace in merged
+    }
+    for trace in incoming:
+        key = (
+            trace.agent_role,
+            str(trace.input_summary.get("evidence_id", "")),
+            trace.input_sha256,
+        )
+        if key in existing_keys:
+            continue
+        merged.append(trace)
+        existing_keys.add(key)
+    return merged
+
+
+def _meta_agent_enrichment(repository: DebugJobRepository, job_id: str) -> dict[str, object]:
+    for stage in repository.list_debug_run_stages(job_id):
+        if stage.stage != "attribution":
+            continue
+        enrichment = stage.output.get("meta_agent_enrichment")
+        if isinstance(enrichment, dict):
+            return enrichment
+    return {}
+
+
+def _strategy_item(item: dict[object, object]) -> dict[str, str]:
+    normalized = _string_dict(item)
+    normalized.setdefault("stage", "llm_strategy")
+    normalized.setdefault("objective", normalized.get("summary", "LLM 生成的深挖策略"))
+    normalized.setdefault("trigger", "meta_agent_enrichment")
+    normalized.setdefault("planned_probe", normalized.get("planned_steps", ""))
+    normalized.setdefault("stop_condition", "新增证据能支持或推翻当前 root cause。")
+    normalized.setdefault("escalation", "证据不足时转人工复核或补充 targeted replay。")
+    return normalized
+
+
+def _action_item(item: dict[object, object]) -> dict[str, str]:
+    normalized = _string_dict(item)
+    normalized.setdefault("category", "meta_agent")
+    normalized.setdefault("priority", "medium")
+    normalized.setdefault("status", "pending")
+    normalized.setdefault("summary", "LLM 生成的建议操作")
+    normalized.setdefault("detail", normalized["summary"])
+    return normalized
+
+
+def _judge_note_item(item: dict[object, object]) -> dict[str, str]:
+    normalized = _string_dict(item)
+    normalized.setdefault("evidence_id", "")
+    normalized.setdefault("target_id", "")
+    normalized.setdefault("deterministic_reason", "")
+    normalized.setdefault("llm_note", normalized.get("summary", "LLM 生成的辅助判分备注"))
+    normalized.setdefault("risk", "medium")
+    return normalized
+
+
+def _string_dict(item: dict[object, object]) -> dict[str, str]:
+    return {str(key): str(value) for key, value in item.items() if value is not None}
 
 
 def _build_base_report_for_job(
@@ -131,14 +305,18 @@ def build_recommended_action_verification_results(
     ]
 
 
-def build_strategy_follow_up_results(repository: DebugJobRepository, job_id: str) -> list[dict[str, object]]:
+def build_strategy_follow_up_results(
+    repository: DebugJobRepository, job_id: str
+) -> list[dict[str, object]]:
     return [
         _strategy_follow_up_result(repository=repository, follow_up=follow_up)
         for follow_up in repository.list_strategy_follow_up_jobs(job_id)
     ]
 
 
-def build_targeted_probe_results(repository: DebugJobRepository, job_id: str) -> list[dict[str, object]]:
+def build_targeted_probe_results(
+    repository: DebugJobRepository, job_id: str
+) -> list[dict[str, object]]:
     return [
         _targeted_probe_result(repository=repository, probe=probe)
         for probe in repository.list_targeted_probe_jobs(job_id)
@@ -235,7 +413,9 @@ def _build_strategy_escalation_follow_up_experiments(
     strategy_follow_up_results: list[dict[str, object]],
 ) -> list[dict[str, str]]:
     base_step_names = {step.name for step in plan_experiments(case).steps}
-    escalation_plan = plan_strategy_escalation_follow_up_experiments(case, strategy_follow_up_results)
+    escalation_plan = plan_strategy_escalation_follow_up_experiments(
+        case, strategy_follow_up_results
+    )
     escalation_steps = [step for step in escalation_plan.steps if step.name not in base_step_names]
     return [
         {
@@ -249,7 +429,11 @@ def _build_strategy_escalation_follow_up_experiments(
             ),
         }
         for result, step in zip(
-            [item for item in strategy_follow_up_results if item.get("outcome") == "needs_escalation"],
+            [
+                item
+                for item in strategy_follow_up_results
+                if item.get("outcome") == "needs_escalation"
+            ],
             escalation_steps,
             strict=False,
         )
@@ -315,7 +499,9 @@ def _targeted_escalation_candidates(
     return candidates, guardrails
 
 
-def _targeted_probe_chains(targeted_probe_results: list[dict[str, object]]) -> list[list[dict[str, object]]]:
+def _targeted_probe_chains(
+    targeted_probe_results: list[dict[str, object]],
+) -> list[list[dict[str, object]]]:
     by_target: dict[str, list[dict[str, object]]] = {}
     for result in targeted_probe_results:
         target_id = str(result.get("target_id", "unknown"))
@@ -344,7 +530,9 @@ def _order_targeted_probe_chain(items: list[dict[str, object]]) -> list[dict[str
     return ordered
 
 
-def _build_human_handoff_requests(follow_up_experiments: list[dict[str, str]]) -> list[dict[str, str]]:
+def _build_human_handoff_requests(
+    follow_up_experiments: list[dict[str, str]],
+) -> list[dict[str, str]]:
     return [
         {
             "source": "targeted_probe_guardrail",
@@ -405,10 +593,14 @@ def _final_attribution_recommended_action(note: str) -> str:
     return "Record the confirmed root cause and rerun verification if the case remains business-critical."
 
 
-def _build_final_attribution_recommended_actions(final_attributions: list[dict[str, str]]) -> list[dict[str, str]]:
+def _build_final_attribution_recommended_actions(
+    final_attributions: list[dict[str, str]],
+) -> list[dict[str, str]]:
     return [
         {
-            "category": _recommended_action_category_for_attribution(attribution.get("category", "")),
+            "category": _recommended_action_category_for_attribution(
+                attribution.get("category", "")
+            ),
             "priority": "high",
             "status": "pending",
             "summary": f"Apply final attribution fix for {attribution.get('target_id', 'unknown')}.",
@@ -489,7 +681,9 @@ def _build_final_attribution_reinvestigation_actions(
     ]
 
 
-def _build_final_attribution_follow_up_experiments(final_attributions: list[dict[str, str]]) -> list[dict[str, str]]:
+def _build_final_attribution_follow_up_experiments(
+    final_attributions: list[dict[str, str]],
+) -> list[dict[str, str]]:
     return [
         {
             "source": "final_attribution",
@@ -517,7 +711,9 @@ def _build_final_attribution_verification_recovery_follow_up_experiments(
             "category": str(result.get("category", "unknown")),
             "result": str(result.get("result", "unknown")),
             "verification_job_id": str(result.get("verification_job_id", "")),
-            "planned_steps": _final_attribution_verification_recovery_step(str(result.get("result", ""))),
+            "planned_steps": _final_attribution_verification_recovery_step(
+                str(result.get("result", ""))
+            ),
             "summary": (
                 f"Final attribution verification for {result.get('target_id', 'unknown')} is "
                 f"{result.get('result', 'unknown')}; run "
@@ -674,7 +870,9 @@ def _final_attribution_recovery_summary(*, target_id: str, result: str) -> str:
     if result == "closed":
         return f"Final attribution recovery for {target_id} closed the attribution loop."
     if result == "reopen":
-        return f"Final attribution recovery for {target_id} still failed; reopen attribution review."
+        return (
+            f"Final attribution recovery for {target_id} still failed; reopen attribution review."
+        )
     if result == "inconclusive":
         return f"Final attribution recovery for {target_id} is inconclusive."
     return f"Final attribution recovery for {target_id} is still pending."
@@ -704,7 +902,9 @@ def _recommended_action_verification_result(
         }
     verification_report = _build_base_report_for_job(repository, verification.verification_job_id)
     verification_success_rate = _report_success_rate(verification_report)
-    verification_root_cause = verification_report.root_cause.label if verification_report is not None else ""
+    verification_root_cause = (
+        verification_report.root_cause.label if verification_report is not None else ""
+    )
     result = _classify_verification_result(
         source_success_rate=source_success_rate,
         verification_success_rate=verification_success_rate,

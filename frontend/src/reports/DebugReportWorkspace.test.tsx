@@ -170,23 +170,23 @@ describe("DebugReportWorkspace", () => {
       />
     );
 
-    expect(screen.getByRole("region", { name: "Debug report workspace" })).toHaveClass("report-workspace");
-    expect(screen.getByText("Job ID：job-1")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "调试报告工作区" })).toHaveClass("report-workspace");
+    expect(screen.getByText("任务 ID：job-1")).toBeInTheDocument();
     expect(screen.getByText("样本 ID：case-1")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Experiment Plan" })).toBeInTheDocument();
-    const timeline = screen.getByRole("region", { name: "Experiment Plan" });
+    expect(screen.getByRole("heading", { name: "实验计划" })).toBeInTheDocument();
+    const timeline = screen.getByRole("region", { name: "实验计划" });
     expect(timeline).toHaveClass("experiment-timeline");
-    expect(screen.getByLabelText("Experiment evidence")).toHaveClass("experiment-timeline__evidence");
+    expect(screen.getByLabelText("实验证据")).toHaveClass("experiment-timeline__evidence");
     expect(within(timeline).getByText("baseline_replay")).toHaveClass("experiment-timeline__row");
     expect(within(timeline).getByText("baseline_replay")).toHaveAttribute("data-anime-flow");
     expect(screen.getByText("复测稳定性：unstable")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Spreadsheet Writeback" })).toBeInTheDocument();
-    expect(screen.getByText("Spreadsheet writeback row：row-7")).toBeInTheDocument();
-    expect(screen.getByText("Writeback audit status：succeeded")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "飞书写回" })).toBeInTheDocument();
+    expect(screen.getByText("表格写回行：row-7")).toBeInTheDocument();
+    expect(screen.getByText("写回审计状态：成功")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "evidence-1" }));
-    await userEvent.click(screen.getByRole("button", { name: "Write report to spreadsheet" }));
-    await userEvent.click(screen.getByRole("button", { name: "Load writeback audit" }));
+    await userEvent.click(screen.getByRole("button", { name: "写回报告到表格" }));
+    await userEvent.click(screen.getByRole("button", { name: "加载审计预览" }));
 
     expect(onSelectEvidence).toHaveBeenCalledWith("evidence-1");
     expect(onWriteReport).toHaveBeenCalledTimes(1);
@@ -207,7 +207,7 @@ describe("DebugReportWorkspace", () => {
     );
 
     expect(screen.getByText("样本 ID：case-1")).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Spreadsheet Writeback" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "飞书写回" })).not.toBeInTheDocument();
   });
 
   it("delegates evidence selection from report experiment trajectory", async () => {
@@ -295,7 +295,7 @@ describe("DebugReportWorkspace", () => {
       />
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "Open artifact artifact:video_segment_1:delta" }));
+    await userEvent.click(screen.getByRole("button", { name: "打开证据产物 artifact:video_segment_1:delta" }));
 
     expect(onSelectEvidence).toHaveBeenCalledWith("artifact-evidence-1");
   });
@@ -327,7 +327,7 @@ describe("DebugReportWorkspace", () => {
       />
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "Accept recommended action 1" }));
+    await userEvent.click(screen.getByRole("button", { name: "接受建议操作 1" }));
 
     expect(onUpdateRecommendedActionStatus).toHaveBeenCalledWith(0, "accepted");
   });
@@ -359,7 +359,7 @@ describe("DebugReportWorkspace", () => {
       />
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "Verify recommended action 1" }));
+    await userEvent.click(screen.getByRole("button", { name: "验证建议操作 1" }));
 
     expect(onVerifyRecommendedAction).toHaveBeenCalledWith(0);
   });
@@ -415,9 +415,9 @@ describe("DebugReportWorkspace", () => {
       />
     );
 
-    expect(screen.getByText("Handoff status：acknowledged")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Run final attribution follow-up multimodal:conflict:1" }));
-    await userEvent.click(screen.getByRole("button", { name: "Start handoff multimodal:conflict:1" }));
+    expect(screen.getByText("接管状态：已确认")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "运行最终归因跟进 multimodal:conflict:1" }));
+    await userEvent.click(screen.getByRole("button", { name: "开始接管 multimodal:conflict:1" }));
 
     expect(onCreateFinalAttributionFollowUp).toHaveBeenCalledWith("multimodal:conflict:1");
     expect(onUpdateHumanHandoffStatus).toHaveBeenCalledWith("multimodal:conflict:1", "in_progress");
@@ -440,18 +440,18 @@ describe("DebugReportWorkspace", () => {
       />
     );
 
-    expect(screen.getByRole("heading", { name: "Strategy Follow-Up Job History" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Strategy follow-up job history")).toHaveClass("evidence-spine");
+    expect(screen.getByRole("heading", { name: "策略执行历史记录" })).toBeInTheDocument();
+    expect(screen.getByLabelText("策略执行历史记录")).toHaveClass("evidence-spine");
     expect(screen.getByText("ablation_expansion：strategy_ablation_expansion_probe")).toBeInTheDocument();
     expect(screen.getByText("任务：job-follow-up-1")).toBeInTheDocument();
-    expect(screen.getByText("Outcome：needs_escalation")).toBeInTheDocument();
-    expect(screen.getByText("Success Rate：0%")).toBeInTheDocument();
+    expect(screen.getByText("执行结果：needs_escalation")).toBeInTheDocument();
+    expect(screen.getByText("成功率：0%")).toBeInTheDocument();
     expect(screen.getByText("Strategy follow-up job still failed; escalation is recommended.")).toBeInTheDocument();
-    expect(screen.getByText("Escalation：Run single-modality capability probes before keeping cross-modal attribution.")).toBeInTheDocument();
+    expect(screen.getByText("升级异常：Run single-modality capability probes before keeping cross-modal attribution.")).toBeInTheDocument();
     expect(screen.getByText("操作者：strategy-operator")).toBeInTheDocument();
     expect(screen.getByText("备注：run ablation expansion")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Open strategy follow-up job-follow-up-1" }));
+    await userEvent.click(screen.getByRole("button", { name: "打开策略跟进历史任务 job-follow-up-1" }));
 
     expect(onOpenStrategyFollowUp).toHaveBeenCalledWith("job-follow-up-1");
   });
@@ -473,18 +473,18 @@ describe("DebugReportWorkspace", () => {
       />
     );
 
-    expect(screen.getByRole("heading", { name: "Targeted Probe Job History" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Targeted probe job history")).toHaveClass("evidence-spine");
+    expect(screen.getByRole("heading", { name: "定向探测任务历史记录" })).toBeInTheDocument();
+    expect(screen.getByLabelText("定向探测任务历史记录")).toHaveClass("evidence-spine");
     expect(screen.getByText("multimodal:conflict:1：targeted_multimodal_conflict_probe")).toBeInTheDocument();
     expect(screen.getByText("任务：job-targeted-probe-1")).toBeInTheDocument();
-    expect(screen.getByText("Outcome：target_still_failing")).toBeInTheDocument();
-    expect(screen.getByText("Success Rate：0%")).toBeInTheDocument();
+    expect(screen.getByText("执行结果：target_still_failing")).toBeInTheDocument();
+    expect(screen.getByText("成功率：0%")).toBeInTheDocument();
     expect(screen.getByText("Targeted probe still failed on multimodal:conflict:1; escalation is recommended.")).toBeInTheDocument();
-    expect(screen.getByText("Escalation：Run deeper localized replay or modality-specific probes for multimodal:conflict:1.")).toBeInTheDocument();
+    expect(screen.getByText("升级异常：Run deeper localized replay or modality-specific probes for multimodal:conflict:1.")).toBeInTheDocument();
     expect(screen.getByText("操作者：targeted-operator")).toBeInTheDocument();
     expect(screen.getByText("备注：probe conflict target")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Open targeted probe job-targeted-probe-1" }));
+    await userEvent.click(screen.getByRole("button", { name: "打开定向探测 job-targeted-probe-1" }));
 
     expect(onOpenTargetedProbe).toHaveBeenCalledWith("job-targeted-probe-1");
   });
@@ -519,12 +519,12 @@ describe("DebugReportWorkspace", () => {
       />
     );
 
-    expect(screen.getByRole("heading", { name: "Targeted Probe Escalation Chain" })).toBeInTheDocument();
-    expect(screen.getByText("Chain target multimodal:conflict:1 depth：2")).toBeInTheDocument();
-    expect(screen.getByText("Chain step 1：targeted_probe/job-targeted-probe-1")).toBeInTheDocument();
-    expect(screen.getByText("Chain step 2：targeted_probe_outcome/job-targeted-probe-2")).toBeInTheDocument();
-    expect(screen.getByText("Parent probe：job-targeted-probe-1")).toBeInTheDocument();
-    expect(screen.getByText("Trigger outcome：target_still_failing")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "定向探测升级链" })).toBeInTheDocument();
+    expect(screen.getByText("链目标 multimodal:conflict:1 深度：2")).toBeInTheDocument();
+    expect(screen.getByText("执行步骤 1：targeted_probe/job-targeted-probe-1")).toBeInTheDocument();
+    expect(screen.getByText("执行步骤 2：targeted_probe_outcome/job-targeted-probe-2")).toBeInTheDocument();
+    expect(screen.getByText("父节点探测：job-targeted-probe-1")).toBeInTheDocument();
+    expect(screen.getByText("触发结果：target_still_failing")).toBeInTheDocument();
   });
 
   it("delegates auto debug closure and visualizes closure lineage", async () => {
@@ -544,19 +544,19 @@ describe("DebugReportWorkspace", () => {
       />
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "Run auto debug closure" }));
+    await userEvent.click(screen.getByRole("button", { name: "运行自动闭环调试" }));
 
     expect(onRunAutoDebugClosure).toHaveBeenCalledTimes(1);
-    expect(screen.getByText("自动 Targeted Probe：job-targeted-probe-1")).toBeInTheDocument();
-    expect(screen.getByText("自动稳定性 Follow-up：job-stability-follow-up-1")).toBeInTheDocument();
-    expect(screen.getByText("自动验证任务：job-action-verify-1")).toBeInTheDocument();
+    expect(screen.getByText("自动定向深挖任务：job-targeted-probe-1")).toBeInTheDocument();
+    expect(screen.getByText("自动稳定性跟进任务：job-stability-follow-up-1")).toBeInTheDocument();
+    expect(screen.getByText("自动闭环验证任务：job-action-verify-1")).toBeInTheDocument();
     expect(
       screen.getByText(
         "model_instability/high：Live rerun passed 4/5 trials, so stability verification is required."
       )
     ).toBeInTheDocument();
     expect(screen.getByText("闭环判断：model_instability")).toBeInTheDocument();
-    expect(screen.getByText("自动写回状态：succeeded")).toBeInTheDocument();
+    expect(screen.getByText("自动写回状态：成功")).toBeInTheDocument();
   });
 
   it("renders an explainability workspace narrative across evidence, diagnostics, confidence, actions, and verification", () => {
@@ -648,12 +648,12 @@ describe("DebugReportWorkspace", () => {
       />
     );
 
-    expect(screen.getByRole("heading", { name: "Explainability Workspace" })).toBeInTheDocument();
-    expect(screen.getByText("Evidence spine：trace-evidence")).toBeInTheDocument();
-    expect(screen.getByText("Diagnostic coverage：scoring_standard/fail/high")).toBeInTheDocument();
-    expect(screen.getByText("Confidence coverage：ablation_pattern/high")).toBeInTheDocument();
-    expect(screen.getByText("Action coverage：prompt/high/applied")).toBeInTheDocument();
-    expect(screen.getByText("Verification coverage：job-verify-1/resolved")).toBeInTheDocument();
-    expect(screen.getByText("Next probe：围绕 multimodal:conflict:1 执行 targeted evidence replay。")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "可解释性分析" })).toBeInTheDocument();
+    expect(screen.getByText("证据追踪：trace-evidence")).toBeInTheDocument();
+    expect(screen.getByText("诊断覆盖情况：scoring_standard/fail/high")).toBeInTheDocument();
+    expect(screen.getByText("置信度覆盖：ablation_pattern/high")).toBeInTheDocument();
+    expect(screen.getByText("操作覆盖情况：prompt/high/applied")).toBeInTheDocument();
+    expect(screen.getByText("验证覆盖情况：job-verify-1/已解决")).toBeInTheDocument();
+    expect(screen.getByText("下一步探测：围绕 multimodal:conflict:1 执行 targeted evidence replay。")).toBeInTheDocument();
   });
 });

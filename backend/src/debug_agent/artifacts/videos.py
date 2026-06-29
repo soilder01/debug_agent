@@ -1,5 +1,9 @@
 import json
+import hashlib
 from pathlib import Path
+
+
+MAX_MANIFEST_STEM_LENGTH = 120
 
 
 def materialize_video_segment_manifest(
@@ -155,4 +159,12 @@ def _segment_payload(metadata: dict[str, object]) -> dict[str, object]:
 
 
 def _safe_artifact_filename(artifact_id: str) -> str:
-    return "".join(character if character.isalnum() or character in {"-", "_"} else "_" for character in artifact_id)
+    safe = "".join(
+        character if character.isalnum() or character in {"-", "_"} else "_"
+        for character in artifact_id
+    ).strip("_")
+    if len(safe) <= MAX_MANIFEST_STEM_LENGTH:
+        return safe or "artifact"
+    digest = hashlib.sha1(artifact_id.encode("utf-8")).hexdigest()[:12]
+    prefix = safe[: MAX_MANIFEST_STEM_LENGTH - len(digest) - 1].rstrip("_")
+    return f"{prefix}_{digest}"

@@ -9,12 +9,12 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
   if (!evidence) {
     return (
       <ProductSurface
-        title="Evidence Detail"
-        eyebrow="Evidence"
-        description="Select an evidence record to inspect request metadata, artifacts, judge output, and raw model response."
+        title="证据详情"
+        eyebrow="证据"
+        description="选择一条证据后查看请求元数据、产物、判分结果和模型原始响应。"
         className="evidence-detail"
       >
-        <EmptyState title="No evidence selected" description="Open evidence from a job, report trajectory, or artifact link." />
+        <EmptyState title="尚未选择证据" description="从任务、报告轨迹或产物链接打开证据。" />
       </ProductSurface>
     );
   }
@@ -26,24 +26,24 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
 
   return (
     <ProductSurface
-      title="Evidence Detail"
-      eyebrow="Evidence"
-      description="Inspect the selected model call, request context, artifacts, judge result, and raw response."
+      title="证据详情"
+      eyebrow="证据"
+      description="检查当前模型调用、请求上下文、产物、判分结果和原始响应。"
       className="evidence-detail"
     >
-      <section className="evidence-section" aria-label="Evidence request metadata">
+      <section className="evidence-section" aria-label="证据请求元数据">
         <MetricStrip
-          label="Evidence summary metrics"
+          label="证据摘要指标"
           metrics={[
-            { label: "Trial", value: evidence.trial, helper: evidence.step_name },
-            { label: "Latency", value: `${evidence.latency_ms}ms`, helper: evidence.model_name },
-            { label: "Prompt", value: evidence.request_summary.prompt_length ?? 0, helper: "Characters" },
-            { label: "Judge", value: evidence.judge.score, helper: "Score" }
+            { label: "轮次", value: evidence.trial, helper: evidence.step_name },
+            { label: "延迟", value: `${evidence.latency_ms}ms`, helper: evidence.model_name },
+            { label: "Prompt", value: evidence.request_summary.prompt_length ?? 0, helper: "字符数" },
+            { label: "Judge", value: evidence.judge.score, helper: "得分" }
           ]}
         />
         <p>证据 ID：{evidence.evidence_id}</p>
         <p>实验步骤：{evidence.step_name}</p>
-        <p>Trial：{evidence.trial}</p>
+        <p>轮次：{evidence.trial}</p>
         <p>模型名称：{evidence.model_name}</p>
         <p>模型 Provider：{evidence.model_provider}</p>
         <p>模型 ID：{evidence.model_id}</p>
@@ -57,14 +57,14 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
         {evidence.model_call_error_type ? <p>模型调用错误类型：{evidence.model_call_error_type}</p> : null}
         {evidence.model_call_error_message ? <p>模型调用错误信息：{evidence.model_call_error_message}</p> : null}
       </section>
-      <section className="evidence-artifacts" aria-label="Evidence artifacts">
+      <section className="evidence-artifacts" aria-label="证据产物">
         {genericArtifacts.length > 0 ? (
           <>
-          <h3>Evidence Artifacts</h3>
+          <h3>证据产物</h3>
           <ul>
             {genericArtifacts.map((artifact) => (
               <li key={artifact.artifact_id}>
-                <h4>Artifact {artifact.artifact_id}</h4>
+                <h4>产物 {artifact.artifact_id}</h4>
                 <p>类型：{artifact.kind}</p>
                 <p>媒介：{artifact.artifact_type}</p>
                 <p>源 URI：{artifact.source_uri || "无"}</p>
@@ -81,7 +81,7 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
                         打开证据预览 {artifact.artifact_id}
                       </a>
                     </p>
-                    <img alt={`Artifact preview ${artifact.artifact_id}`} src={artifact.preview_url} />
+                    <img alt={`证据预览 ${artifact.artifact_id}`} src={artifact.preview_url} />
                   </>
                 ) : (
                   <p>预览：无</p>
@@ -100,11 +100,11 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
           </>
         ) : imageArtifacts.length > 0 ? (
           <>
-          <h3>Evidence Artifacts</h3>
+          <h3>证据产物</h3>
           <ul>
             {imageArtifacts.map((artifact) => (
               <li key={artifact.artifact_id}>
-                <h4>Artifact {artifact.artifact_id}</h4>
+                <h4>产物 {artifact.artifact_id}</h4>
                 <p>类型：{artifact.kind}</p>
                 <p>源图片：{artifact.source_image_uri}</p>
                 <p>派生图片：{artifact.derived_image_uri || "无"}</p>
@@ -115,7 +115,7 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
                         打开裁剪图 {artifact.artifact_id}
                       </a>
                     </p>
-                    <img alt={`Crop preview ${artifact.artifact_id}`} src={artifact.preview_image_url} />
+                    <img alt={`裁剪预览 ${artifact.artifact_id}`} src={artifact.preview_image_url} />
                   </>
                 ) : (
                   <p>预览图：无</p>
@@ -133,12 +133,12 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
           </ul>
           </>
         ) : (
-          <EmptyState title="No evidence artifacts" description="This evidence record does not include media or manifest artifacts." />
+          <EmptyState title="没有证据产物" description="这条证据没有包含媒体或 manifest 产物。" />
         )}
       </section>
-      <section className="evidence-section" aria-label="Judge result">
-        <p>Judge Score：{evidence.judge.score}</p>
-        <h3>Judge Reasons</h3>
+      <section className="evidence-section" aria-label="Judge 判分结果">
+        <p>判分得分：{evidence.judge.score}</p>
+        <h3>Judge 原因</h3>
         <ul>
           {evidence.judge.reasons.map((reason) => (
             <li key={reason}>{reason}</li>
@@ -146,8 +146,8 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
         </ul>
         {judgeDeltas.length > 0 ? (
           <>
-            <h3>Judge Deltas</h3>
-            <ul aria-label="Judge deltas">
+            <h3>Judge 差异</h3>
+            <ul aria-label="Judge 差异">
               {judgeDeltas.map((delta) => (
                 <li key={`${delta.target_id}:${delta.reason}`}>
                   <p>目标：{delta.target_id}</p>
@@ -161,8 +161,8 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
           </>
         ) : null}
       </section>
-      <section className="evidence-section" aria-label="Model raw output">
-        <h3>Raw Output</h3>
+      <section className="evidence-section" aria-label="模型原始输出">
+        <h3>原始输出</h3>
         <pre>{evidence.raw_output}</pre>
       </section>
     </ProductSurface>
@@ -224,7 +224,7 @@ function ArtifactDrilldownLinks({ artifact }: ArtifactDrilldownLinksProps) {
     return (
       <p>
         <a href={derivedUrl} target="_blank" rel="noreferrer">
-          打开 clipped targeted video {artifact.artifact_id}
+          打开定向裁剪视频 {artifact.artifact_id}
         </a>
       </p>
     );
@@ -244,8 +244,8 @@ function VideoSegmentAudit({ artifact }: VideoSegmentAuditProps) {
   const keyframeThumbnails = keyframeThumbnailValues(artifact.metadata.keyframe_thumbnails);
 
   return (
-    <section aria-label="Video segment audit">
-      <h5>Video Segment Audit</h5>
+    <section aria-label="视频片段审计">
+      <h5>视频片段审计</h5>
       <p>Manifest 类型：{manifestType}</p>
       {auditSegment ? <p>审计片段：{auditSegment.start_ms}ms → {auditSegment.end_ms}ms</p> : null}
       <p>审计标签：{expectedSegment?.label ?? "无"} → {actualSegment?.label ?? "无"}</p>
@@ -255,14 +255,14 @@ function VideoSegmentAudit({ artifact }: VideoSegmentAuditProps) {
         </a>
       </p>
       {keyframeThumbnails.length > 0 ? (
-        <section aria-label="Keyframe thumbnails">
-          <h6>Keyframe Thumbnails</h6>
+        <section aria-label="关键帧缩略图">
+          <h6>关键帧缩略图</h6>
           <ul>
             {keyframeThumbnails.map((thumbnail) => (
               <li key={`${artifact.artifact_id}:${thumbnail.timestamp_ms}`}>
                 <p>关键帧：{thumbnail.timestamp_ms}ms</p>
                 <a href={thumbnail.preview_url} target="_blank" rel="noreferrer">
-                  打开关键帧 thumbnail {artifact.artifact_id} {thumbnail.timestamp_ms}ms
+                  打开关键帧缩略图 {artifact.artifact_id} {thumbnail.timestamp_ms}ms
                 </a>
               </li>
             ))}
@@ -286,8 +286,8 @@ function MultimodalConflictAudit({ artifact }: VideoSegmentAuditProps) {
   const manifestUrl = manifestArtifactUrl(artifact.derived_uri);
 
   return (
-    <section aria-label="Multimodal conflict audit">
-      <h5>Multimodal Conflict Audit</h5>
+    <section aria-label="跨模态冲突审计">
+      <h5>跨模态冲突审计</h5>
       <p>Manifest 类型：{manifestType}</p>
       {targetId ? <p>审计目标：{targetId}</p> : null}
       <p>审计模态：{formatList(expectedModalities)} → {formatList(actualModalities)}</p>
@@ -329,14 +329,14 @@ function ArtifactNativeContext({ metadata }: ArtifactNativeContextProps) {
   }
 
   return (
-    <section aria-label="Artifact native context">
+    <section aria-label="产物原生上下文">
       {targetId ? <p>目标：{targetId}</p> : null}
       {expectedRegion ? <p>期望区域：{formatRegion(expectedRegion)}</p> : null}
       {actualRegion ? <p>实际区域：{formatRegion(actualRegion)}</p> : null}
       {expectedSegment ? <p>期望片段：{formatSegment(expectedSegment)}</p> : null}
       {actualSegment ? <p>实际片段：{formatSegment(actualSegment)}</p> : null}
       {timestampDelta ? (
-        <section aria-label="Video timestamp delta">
+        <section aria-label="视频时间差异">
           <p>时间窗字段：{timestampDelta.field}</p>
           <p>期望时间窗：{timestampDelta.expectedRange}s</p>
           <p>实际时间：{timestampDelta.actualValue}s</p>

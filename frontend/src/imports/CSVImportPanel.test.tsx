@@ -21,8 +21,8 @@ describe("CSVImportPanel", () => {
 
     render(<CSVImportPanel value="case_id,image_uri" result={makeResult()} onChange={onChange} onImport={onImport} />);
 
-    fireEvent.change(screen.getByLabelText("CSV cases"), { target: { value: "case_id,image_uri\ncase-2,img.png" } });
-    await userEvent.click(screen.getByRole("button", { name: "Import CSV cases" }));
+    fireEvent.change(screen.getByLabelText("CSV 案件数据"), { target: { value: "case_id,image_uri\ncase-2,img.png" } });
+    await userEvent.click(screen.getByRole("button", { name: "导入 CSV 案件" }));
 
     expect(onChange).toHaveBeenCalledWith("case_id,image_uri\ncase-2,img.png");
     expect(onImport).toHaveBeenCalledTimes(1);

@@ -23,8 +23,8 @@ def test_job_listing_returns_submitted_jobs_with_retry_metadata() -> None:
         assert job["max_attempts"] == 2
         assert job["remaining_attempts"] == 2
         assert job["will_retry"] is False
-        assert job["retry_recommendation"] == "retry_budget_exhausted"
-        assert job["retry_recommendation_detail"]["label"] == "重试预算已耗尽"
+        assert job["retry_recommendation"] == "retry_waiting_for_next_attempt"
+        assert job["retry_recommendation_detail"]["label"] == "等待自动重试"
         assert job["evidence_error_counts"] == {
             "total_evidence": 0,
             "failed_judgements": 0,

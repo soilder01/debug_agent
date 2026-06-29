@@ -17,6 +17,17 @@ class RecordingLarkSheetsTransport:
         self.updated_rows.append((spreadsheet_id, sheet_id, row_id, fields))
 
 
+class RowsJsonLarkSheetsTransport(RecordingLarkSheetsTransport):
+    def __init__(self, rows_json: dict[str, object]) -> None:
+        super().__init__([])
+        self.rows_json = rows_json
+
+    def read_rows_json(self, spreadsheet_id: str, sheet_id: str) -> dict[str, object]:
+        self.read_spreadsheet_id = spreadsheet_id
+        self.read_sheet_id = sheet_id
+        return self.rows_json
+
+
 def test_lark_spreadsheet_client_converts_header_values_to_source_rows() -> None:
     transport = RecordingLarkSheetsTransport(
         [
@@ -52,6 +63,26 @@ def test_lark_spreadsheet_client_skips_empty_rows() -> None:
 
     assert [row.row_id for row in rows] == ["3"]
     assert rows[0].values["case_id"] == "case-1"
+
+
+def test_lark_spreadsheet_client_preserves_source_columns_from_rows_json() -> None:
+    transport = RowsJsonLarkSheetsTransport(
+        {
+            "rows": [
+                {"row_number": 1, "values": {"A": "id", "J": "video"}},
+                {"row_number": 2, "values": {"A": "JSZN-131", "J": "JSZN-131.mp4"}},
+            ]
+        }
+    )
+    client = LarkSpreadsheetClient(transport)
+
+    rows = client.list_rows("spreadsheet-1", "sheet-1")
+
+    assert transport.read_spreadsheet_id == "spreadsheet-1"
+    assert rows[0].row_id == "2"
+    assert rows[0].values["id"] == "JSZN-131"
+    assert rows[0].values["video"] == "JSZN-131.mp4"
+    assert rows[0].values["__field_columns"] == {"id": "A", "video": "J"}
 
 
 def test_lark_spreadsheet_client_uses_first_non_empty_row_as_header() -> None:

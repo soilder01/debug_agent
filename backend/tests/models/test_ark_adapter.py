@@ -11,6 +11,7 @@ from debug_agent.models.ark import ArkModelAdapter, ArkRequest, UrllibArkTranspo
 def test_ark_settings_reads_environment(monkeypatch) -> None:
     monkeypatch.setenv("ARK_API_KEY", "secret-value")
     monkeypatch.setenv("ARK_BASE_URL", "https://ark.example/api/v3")
+    monkeypatch.setenv("ARK_SEEDANCE2_MODEL_ID", "seedance-model")
     monkeypatch.setenv("ARK_SEED2_LITE_MODEL_ID", "lite-model")
     monkeypatch.setenv("ARK_SEED2_PRO_MODEL_ID", "pro-model")
     monkeypatch.setenv("ARK_VIDEO_MODEL_ID", "video-model")
@@ -21,6 +22,7 @@ def test_ark_settings_reads_environment(monkeypatch) -> None:
 
     assert settings.api_key.get_secret_value() == "secret-value"
     assert settings.base_url == "https://ark.example/api/v3"
+    assert settings.seedance2_model_id == "seedance-model"
     assert settings.seed2_lite_model_id == "lite-model"
     assert settings.seed2_pro_model_id == "pro-model"
     assert settings.video_model_id == "video-model"
@@ -56,7 +58,10 @@ def test_ark_adapter_builds_high_no_thinking_video_request() -> None:
         disable_thinking=settings.video_disable_thinking,
     )
 
-    request = adapter.build_request(prompt="segment this video", image_uri="file:///tmp/case.mp4")
+    request = adapter.build_request(
+        prompt="segment this video",
+        image_uri="https://media.example/case.mp4",
+    )
 
     assert request.json_body["model"] == "video-model"
     assert request.json_body["mode"] == "high"
@@ -64,10 +69,13 @@ def test_ark_adapter_builds_high_no_thinking_video_request() -> None:
     messages = request.json_body["messages"]
     assert isinstance(messages, list)
     content = messages[0]["content"]  # type: ignore[index]
-    assert content[1] == {"type": "video_url", "video_url": {"url": "file:///tmp/case.mp4"}}
+    assert content[1] == {
+        "type": "video_url",
+        "video_url": {"url": "https://media.example/case.mp4", "fps": 1},
+    }
 
 
-def test_ark_adapter_converts_local_video_file_uri_to_base64_data_url() -> None:
+def test_ark_adapter_converts_local_video_file_uri_to_base64_url() -> None:
     video_path = Path(__file__).with_name(".ark-test-video.mp4")
     video_path.write_bytes(b"fake-video")
     adapter = ArkModelAdapter(
@@ -87,8 +95,90 @@ def test_ark_adapter_converts_local_video_file_uri_to_base64_data_url() -> None:
     content = messages[0]["content"]  # type: ignore[index]
     video_url = content[1]["video_url"]["url"]  # type: ignore[index]
     assert video_url.startswith("data:video/mp4;base64,")
-    encoded = video_url.split(",", 1)[1]
+    assert content[1]["video_url"]["fps"] == 1  # type: ignore[index]
+    encoded = video_url.removeprefix("data:video/mp4;base64,")
     assert base64.b64decode(encoded) == b"fake-video"
+
+
+def test_ark_adapter_rejects_unresolved_relative_video_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    tmp_media_dir = Path(__file__).resolve().parents[3] / ".tmp"
+    tmp_media_dir.mkdir(exist_ok=True)
+    video_path = tmp_media_dir / "ark-adapter-relative-test.mp4"
+    video_path.write_bytes(b"fake-jszn-video")
+    adapter = ArkModelAdapter(
+        settings=ark_settings(),
+        model_id="video-model",
+        mode="high",
+        disable_thinking=True,
+    )
+
+    try:
+        with pytest.raises(ValueError, match="Unresolved video media URI"):
+            adapter.build_request(
+                prompt="segment this video",
+                image_uri="ark-adapter-relative-test.mp4",
+            )
+    finally:
+        video_path.unlink(missing_ok=True)
+
+
+def test_ark_adapter_rejects_unresolved_debug_proxy_video_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    tmp_media_dir = Path(__file__).resolve().parents[3] / ".tmp"
+    tmp_media_dir.mkdir(exist_ok=True)
+    video_path = tmp_media_dir / "ark-adapter-proxy-test-debug-proxy.mp4"
+    video_path.write_bytes(b"fake-proxy-video")
+    adapter = ArkModelAdapter(
+        settings=ark_settings(),
+        model_id="video-model",
+        mode="high",
+        disable_thinking=True,
+    )
+
+    try:
+        with pytest.raises(ValueError, match="Unresolved video media URI"):
+            adapter.build_request(
+                prompt="segment this video",
+                image_uri="ark-adapter-proxy-test.mp4",
+            )
+    finally:
+        video_path.unlink(missing_ok=True)
+
+
+def test_ark_adapter_generates_proxy_for_large_local_video(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    video_path = tmp_path / "large-video.mp4"
+    video_path.write_bytes(b"0" * (9 * 1024 * 1024))
+    proxy_path = Path(__file__).resolve().parents[3] / ".tmp" / "large-video-debug-proxy.mp4"
+    proxy_path.unlink(missing_ok=True)
+    adapter = ArkModelAdapter(
+        settings=ark_settings(),
+        model_id="video-model",
+        mode="high",
+        disable_thinking=True,
+    )
+
+    def fake_run(command: list[str], **kwargs: object) -> object:
+        del kwargs
+        Path(command[-1]).write_bytes(b"small-proxy-video")
+        return object()
+
+    monkeypatch.setattr("debug_agent.models.ark.shutil.which", lambda name: "ffmpeg")
+    monkeypatch.setattr("debug_agent.models.ark.subprocess.run", fake_run)
+
+    try:
+        request = adapter.build_request(prompt="segment this video", image_uri=video_path.as_uri())
+    finally:
+        proxy_path.unlink(missing_ok=True)
+
+    messages = request.json_body["messages"]
+    assert isinstance(messages, list)
+    content = messages[0]["content"]  # type: ignore[index]
+    video_url = content[1]["video_url"]["url"]  # type: ignore[index]
+    assert video_url.startswith("data:video/mp4;base64,")
+    assert content[1]["video_url"]["fps"] == 1  # type: ignore[index]
+    encoded = video_url.removeprefix("data:video/mp4;base64,")
+    assert base64.b64decode(encoded) == b"small-proxy-video"
 
 
 class FakeArkTransport:

@@ -11,17 +11,17 @@ export function ImportedCaseDetailPanel({ caseDetail, onCreateDebugJob }: Import
   const hasOutputSchema = caseDetail.output_schema && Object.keys(caseDetail.output_schema).length > 0;
 
   return (
-    <section aria-label="Selected case detail" className="case-detail">
+    <section aria-label="选中样本详情" className="case-detail">
       <h3>样本详情：{caseDetail.case_id}</h3>
-      <ActionRow label="Selected case actions">
+      <ActionRow label="选中样本操作">
         <button type="button" onClick={() => onCreateDebugJob(caseDetail.case_id)}>
-          Create debug job for {caseDetail.case_id}
+          为 {caseDetail.case_id} 创建调试任务
         </button>
       </ActionRow>
       <p>图片：{caseDetail.image_uri}</p>
       <p>Prompt：{caseDetail.prompt}</p>
       <p>评分标准：{caseDetail.scoring_standard}</p>
-      <ul aria-label="Golden answers">
+      <ul aria-label="标答列表">
         {caseDetail.golden_answer.answers.map((answer) => (
           <li key={answer.box_id}>
             标答 {answer.box_id}：{answer.student_answer}
@@ -31,7 +31,7 @@ export function ImportedCaseDetailPanel({ caseDetail, onCreateDebugJob }: Import
       {hasExpectedOutput ? <p>期望输出：{JSON.stringify(caseDetail.expected_output)}</p> : null}
       {hasOutputSchema ? <p>输出 Schema：{JSON.stringify(caseDetail.output_schema)}</p> : null}
       {(caseDetail.box_regions ?? []).length > 0 ? (
-        <ul aria-label="Box regions">
+        <ul aria-label="框选区域">
           {caseDetail.box_regions?.map((region) => (
             <li key={region.box_id}>
               区域 {region.box_id}：x={region.x}, y={region.y}, width={region.width}, height={region.height}, unit=
@@ -40,10 +40,10 @@ export function ImportedCaseDetailPanel({ caseDetail, onCreateDebugJob }: Import
           ))}
         </ul>
       ) : null}
-      <ul aria-label="Predictions">
+      <ul aria-label="预测结果">
         {caseDetail.predictions.map((prediction) => (
           <li key={prediction.trial}>
-            预测 trial {prediction.trial}：score {prediction.score}
+            预测轮次 {prediction.trial}：得分 {prediction.score}
           </li>
         ))}
       </ul>

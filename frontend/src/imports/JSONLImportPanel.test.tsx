@@ -21,8 +21,8 @@ describe("JSONLImportPanel", () => {
 
     render(<JSONLImportPanel value='{"case_id":"case-1"}' result={makeResult()} onChange={onChange} onImport={onImport} />);
 
-    fireEvent.change(screen.getByLabelText("JSONL cases"), { target: { value: '{"case_id":"case-2"}' } });
-    await userEvent.click(screen.getByRole("button", { name: "Import JSONL cases" }));
+    fireEvent.change(screen.getByLabelText("JSONL 案件数据"), { target: { value: '{"case_id":"case-2"}' } });
+    await userEvent.click(screen.getByRole("button", { name: "导入 JSONL 案件" }));
 
     expect(onChange).toHaveBeenCalledWith('{"case_id":"case-2"}');
     expect(onImport).toHaveBeenCalledTimes(1);
